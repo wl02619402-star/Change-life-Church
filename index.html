@@ -152,12 +152,13 @@
                 </select>
             </div>
 
-            <div class="form-group" id="pianoSection">
-                <label>鋼琴 (教會外場地禁止借用)</label>
+            <div class="form-group hidden" id="pianoSection">
+                <label id="pianoLabel">鋼琴</label>
                 <div class="radio-group">
-                    <label><input type="radio" name="piano" value="需要"> 需要</label>
-                    <label><input type="radio" name="piano" value="不需要" checked> 不需要</label>
+                    <label><input type="radio" name="piano" value="需要"> <span id="pianoYesText">需要</span></label>
+                    <label><input type="radio" name="piano" value="不需要" checked> <span id="pianoNoText">不需要</span></label>
                 </div>
+                <div id="pianoHint" style="color:#7f8c8d; font-size:12px; margin-top:6px;"></div>
             </div>
 
             <div class="form-group"><label>其他 (備註)</label><input type="text" id="notes" placeholder="無"></div>
@@ -437,9 +438,9 @@
     }
 
     function pianoCell(item) {
-        return item.piano === '是'
-            ? '<b style="color:#8e44ad;">需要</b>'
-            : '<span style="color:#ccc;">—</span>';
+        if (item.piano !== '是') return '<span style="color:#ccc;">—</span>';
+        if (需要架設鋼琴(item)) return '<b style="color:#8e44ad;">需架設</b>';
+        return '<b style="color:#7f8c8d;">會使用</b><br><span style="color:#95a5a6; font-size:11px;">場地自有</span>';
     }
 
     // 📋 某日的備品準備清單
@@ -450,13 +451,18 @@
         let day = (allRecords || []).filter(r =>
             String(r.borrow_date) === String(date) && r.start_time && r.end_time);
 
-        let units = new Set(), piano = false, pendingSpeakers = 0;
+        let units = new Set(), pendingSpeakers = 0;
+        let 需架設 = [], 自有使用 = [];
 
         day.forEach(r => {
             normalizeAssignedList(r.ma303_assigned).forEach(u => units.add(u));
-            if (r.piano === '是') piano = true;
             let need = (parseInt(r.ma303) || 0) + (parseInt(r.ma707) || 0);
             if (need > 0 && normalizeAssignedList(r.ma303_assigned).length === 0) pendingSpeakers++;
+
+            if (r.piano === '是') {
+                if (需要架設鋼琴(r)) 需架設.push(`${r.location} ${r.start_time}-${r.end_time}`);
+                else 自有使用.push(r.location);
+            }
         });
 
         // 以半小時為單位掃過全日，找出譜架同時使用的尖峰
@@ -474,7 +480,12 @@
                 if (n > peakStand) { peakStand = n; peakAt = floatToTimeStr(t); }
             }
         }
-        return { units: [...units].sort(), piano, pendingSpeakers, peakStand, peakAt, groups: day.length };
+        return {
+            units: [...units].sort(), pendingSpeakers, peakStand, peakAt,
+            鋼琴需架設: 需架設,
+            鋼琴自有使用: [...new Set(自有使用)],
+            groups: day.length
+        };
     }
 
     function summaryBox(s) {
@@ -488,7 +499,9 @@
         const dash = '<span style="color:#ccc;">—</span>';
         let speakerVal = s.units.length > 0 ? `<span style="color:#16a085;">${s.units.join('<br>')}</span>` : dash;
         let standVal = s.peakStand > 0 ? `<span style="color:#2c3e50;">${s.peakStand} 個</span>` : dash;
-        let pianoVal = s.piano ? `<span style="color:#8e44ad;">需要</span>` : dash;
+        let pianoVal = s.鋼琴需架設.length > 0
+            ? `<span style="color:#8e44ad; font-size:13px;">${s.鋼琴需架設.join('<br>')}</span>`
+            : dash;
 
         let warn = s.pendingSpeakers > 0
             ? `<div style="margin-top:10px; background:#fdecea; color:#a02622; padding:8px 10px; border-radius:4px; font-size:12px;">
@@ -502,8 +515,12 @@
             <div style="display:flex; gap:26px; flex-wrap:wrap; margin-top:10px;">
                 ${cell('喇叭（機台）', speakerVal, s.units.length > 0 ? '把這幾台搬到櫃檯' : '')}
                 ${cell('譜架', standVal, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : '')}
-                ${cell('鋼琴', pianoVal, s.piano ? '現場設備，不用搬' : '')}
+                ${cell('鋼琴架設', pianoVal, s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '今天不用架設')}
             </div>
+            ${s.鋼琴自有使用.length > 0
+                ? `<div style="margin-top:8px; color:#7f8c8d; font-size:11px;">
+                     ${s.鋼琴自有使用.join('、')} 會使用自己的鋼琴，不需要準備。</div>`
+                : ''}
             ${warn}
         </div>`;
     }
@@ -543,23 +560,51 @@
     function openModal() { document.getElementById('rulesModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('rulesModal').style.display = 'none'; }
 
+    // 🎹 鋼琴是「每個場地各一台」，不是大家搶同一台。
+    //    兒主／幼主有自己的鋼琴，只需要知道會不會用；
+    //    交誼廳／餐廳的鋼琴要同工架設；教會外場地沒有鋼琴。
+    const 自有鋼琴場地 = ['兒主', '幼主'];
+    const 需架設鋼琴場地 = ['交誼廳', '餐廳'];
+
     function checkRules() {
         var loc = document.getElementById("location").value;
         var pianoSec = document.getElementById("pianoSection");
         var techSec = document.getElementById("soundTechSection");
-        if (loc === "教會外場地") {
+
+        if (自有鋼琴場地.indexOf(loc) >= 0) {
+            pianoSec.classList.remove("hidden");
+            document.getElementById('pianoLabel').textContent = '鋼琴使用情形';
+            document.getElementById('pianoYesText').textContent = '會使用';
+            document.getElementById('pianoNoText').textContent = '不使用';
+            document.getElementById('pianoHint').textContent =
+                loc + '有自己的鋼琴，這題只是讓管理員知道您會不會用到，不需要另外準備。';
+        } else if (需架設鋼琴場地.indexOf(loc) >= 0) {
+            pianoSec.classList.remove("hidden");
+            document.getElementById('pianoLabel').textContent = '是否需要鋼琴';
+            document.getElementById('pianoYesText').textContent = '需要';
+            document.getElementById('pianoNoText').textContent = '不需要';
+            document.getElementById('pianoHint').textContent =
+                '選「需要」的話，同工會事先幫您把' + loc + '的鋼琴架設好。';
+        } else {
+            // 尚未選場地，或選了教會外場地（沒有鋼琴）
             pianoSec.classList.add("hidden");
             document.querySelector('input[name="piano"][value="不需要"]').checked = true;
-        } else {
-            pianoSec.classList.remove("hidden");
         }
+
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
+    }
+
+    /** 這筆借用是否需要同工去架設鋼琴（兒主／幼主自有的不算） */
+    function 需要架設鋼琴(item) {
+        return item.piano === '是' && 需架設鋼琴場地.indexOf(item.location) >= 0;
     }
 
     // 📊 算出某個時段內「最吃緊的那半小時」還剩多少設備。
     //    取整段期間的最大使用量，因為只要其中一刻不夠，整段就借不了。
+    //    注意：鋼琴不列入計算。每個場地各有自己的鋼琴，而場地本身已經是排他的，
+    //    所以只要訂得到場地就一定有那台鋼琴，不可能被別組搶走。
     function windowAvailability(records, startFloat, endFloat) {
-        let maxSpeaker = 0, maxStand = 0, pianoTaken = false;
+        let maxSpeaker = 0, maxStand = 0;
         let busyVenues = new Set();
 
         for (let t = startFloat; t < endFloat; t += 0.5) {
@@ -569,7 +614,6 @@
                 if (timeToFloat(r.start_time) <= t && timeToFloat(r.end_time) > t) {
                     sp += (parseInt(r.ma303) || 0) + (parseInt(r.ma707) || 0);
                     st += parseInt(r.music_stand) || 0;
-                    if (r.piano === '是') pianoTaken = true;
                     if (r.location) busyVenues.add(r.location);
                 }
             });
@@ -579,7 +623,6 @@
         return {
             speakerLeft: Math.max(0, SPEAKER_TOTAL - maxSpeaker),
             standLeft: Math.max(0, STAND_TOTAL - maxStand),
-            pianoTaken: pianoTaken,
             busyVenues: [...busyVenues]
         };
     }
@@ -632,17 +675,14 @@
                 ${venueMsg}
                 ${line('喇叭', a.speakerLeft > 0 ? `還有 ${a.speakerLeft} 台` : '已全部借出', a.speakerLeft > 0)}
                 ${line('譜架', a.standLeft > 0 ? `還有 ${a.standLeft} 個` : '已全部借出', a.standLeft > 0)}
-                ${line('鋼琴', a.pianoTaken ? '已被借走' : '可借用', !a.pianoTaken)}
              </div>
-             <div style="margin-top:8px; color:#7f8c8d; font-size:11px;">借不到的選項已自動鎖住，改時段就會重新計算。</div>`;
+             <div style="margin-top:8px; color:#7f8c8d; font-size:11px;">借不到的選項已自動鎖住，改時段就會重新計算。<br>鋼琴每個場地各有一台，選到場地就有，不會被別組借走。</div>`;
     }
 
     // 還原成沒有限制的狀態
     function resetAvailabilityLimits() {
         let yes = document.querySelector('input[name="needSpeaker"][value="是"]');
-        let pianoYes = document.querySelector('input[name="piano"][value="需要"]');
         if (yes) setOptionEnabled(yes, true);
-        if (pianoYes) setOptionEnabled(pianoYes, true);
         rebuildStandOptions(2);
         restoreVenueOptions([]);
     }
@@ -653,12 +693,6 @@
         let no = document.querySelector('input[name="needSpeaker"][value="否"]');
         setOptionEnabled(yes, a.speakerLeft > 0);
         if (a.speakerLeft === 0 && yes.checked) no.checked = true;
-
-        // 鋼琴
-        let pianoYes = document.querySelector('input[name="piano"][value="需要"]');
-        let pianoNo = document.querySelector('input[name="piano"][value="不需要"]');
-        setOptionEnabled(pianoYes, !a.pianoTaken);
-        if (a.pianoTaken && pianoYes.checked) pianoNo.checked = true;
 
         // 譜架：選項只留得到的數量
         rebuildStandOptions(Math.min(2, a.standLeft));
@@ -1017,7 +1051,8 @@
             var reqSpeaker = (speakerNode && speakerNode.value === "是") ? 1 : 0;
             var reqStand = parseInt(document.getElementById("musicStand").value) || 0;
             var pianoNode = document.querySelector('input[name="piano"]:checked');
-            var reqPiano = (loc !== "教會外場地") && pianoNode && pianoNode.value === "需要";
+            var 該場地有鋼琴 = 自有鋼琴場地.indexOf(loc) >= 0 || 需架設鋼琴場地.indexOf(loc) >= 0;
+            var reqPiano = 該場地有鋼琴 && pianoNode && pianoNode.value === "需要";
 
             showLoading("檢查時段與設備狀態中...");
 
@@ -1026,7 +1061,7 @@
 
             for (let t = startFloat; t < endFloat; t += 0.5) {
                 let timeStr = `${floatToTimeStr(t)}-${floatToTimeStr(t+0.5)}`;
-                let usedSpeaker = 0, usedStand = 0, usedPiano = false;
+                let usedSpeaker = 0, usedStand = 0;
                 for (let record of records) {
                     if (!record.start_time || !record.end_time) continue;
                     let recStart = timeToFloat(record.start_time);
@@ -1035,12 +1070,11 @@
                         if (record.location === loc) { hideLoading(); alert(`⛔ ${timeStr}「${loc}」已被預約！`); return; }
                         usedSpeaker += (parseInt(record.ma303) || 0) + (parseInt(record.ma707) || 0);
                         usedStand += parseInt(record.music_stand) || 0;
-                        if (record.piano === "是") usedPiano = true;
                     }
                 }
+                // 鋼琴不檢查：每個場地各有一台，場地訂到就有
                 if (reqSpeaker > 0 && (reqSpeaker + usedSpeaker > SPEAKER_TOTAL)) { hideLoading(); alert(`⛔ ${timeStr} 喇叭已全部借出！`); return; }
                 if (reqStand > 0 && (reqStand + usedStand > STAND_TOTAL)) { hideLoading(); alert(`⛔ ${timeStr} 譜架 庫存不足！`); return; }
-                if (reqPiano && usedPiano) { hideLoading(); alert(`⛔ ${timeStr} 鋼琴 已被借出！`); return; }
             }
 
             document.getElementById('loadingText').innerText = "資料傳送中...";
