@@ -39,6 +39,18 @@
 
         /* 載入動畫專用樣式 */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 📱 手機版：查詢結果改成一筆一張卡片，不必左右滑動 */
+        @media (max-width: 600px) {
+            body { padding: 10px; }
+            .container { padding: 18px 15px; }
+            .responsive-table thead { display: none; }
+            .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; box-sizing: border-box; }
+            .responsive-table tr { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 14px; padding: 4px 10px; background: #fff; }
+            .responsive-table td { border: none; border-bottom: 1px dashed #eee; padding: 9px 0; white-space: normal; text-align: right; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+            .responsive-table td:last-child { border-bottom: none; }
+            .responsive-table td::before { content: attr(data-label); font-weight: bold; color: #7f8c8d; text-align: left; flex-shrink: 0; }
+        }
     </style>
 </head>
 <body>
@@ -95,11 +107,13 @@
     <div id="borrowSection" class="form-section">
         <h3 style="text-align: center; color: #3498db;">📝 填寫借用單</h3>
         <form id="borrowForm">
-            <div class="form-group"><label>日期 (限 2026年12月)</label><input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" required></div>
+            <div class="form-group"><label>日期 (限 2026年12月)</label><input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" onchange="refreshAvailability()" required></div>
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;"><label>借用時間</label><input type="time" id="startTime" step="1800" onchange="snapTime(this)" required></div>
-                <div class="form-group" style="flex: 1;"><label>歸還時間</label><input type="time" id="endTime" step="1800" onchange="snapTime(this)" required></div>
+                <div class="form-group" style="flex: 1;"><label>借用時間</label><input type="time" id="startTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
+                <div class="form-group" style="flex: 1;"><label>歸還時間</label><input type="time" id="endTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
             </div>
+
+            <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-bottom:15px; font-size:13px; line-height:1.7;"></div>
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex: 1;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
                 <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="text" id="leaderPhone" placeholder="例：0912345678" required></div>
@@ -247,12 +261,27 @@
         b.style.display = 'block';
     }
 
+    // 📞 電話統一去掉空白、括號與連字號，避免「0912-345-678」和「0912345678」查不到彼此
+    function normalizePhone(s) {
+        return String(s || '').replace(/[\s\-()+]/g, '');
+    }
+
     // 🔒 會眾端一律透過受限的資料庫函式讀取，讀不到別人的姓名與電話。
     //    若資料庫尚未建立函式，自動退回舊的直接查詢，方便新舊版本並存。
     async function fetchMyRecords(phone) {
-        let r = await db.rpc('get_my_records', { p_phone: phone });
-        if (!r.error) return { data: r.data || [], error: null };
-        return await db.from('borrow_records').select('*').eq('leader_phone', phone);
+        const lookup = async (p) => {
+            let r = await db.rpc('get_my_records', { p_phone: p });
+            if (!r.error) return { data: r.data || [], error: null };
+            return await db.from('borrow_records').select('*').eq('leader_phone', p);
+        };
+        let clean = normalizePhone(phone);
+        let res = await lookup(clean);
+        // 舊資料可能存成「0912-345-678」這種格式，正規化後查無資料時再用原字串試一次
+        if (!res.error && res.data.length === 0 && clean !== phone) {
+            let alt = await lookup(phone);
+            if (!alt.error && alt.data.length > 0) return alt;
+        }
+        return res;
     }
 
     async function fetchDayRecords(date) {
@@ -527,6 +556,147 @@
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
     }
 
+    // 📊 算出某個時段內「最吃緊的那半小時」還剩多少設備。
+    //    取整段期間的最大使用量，因為只要其中一刻不夠，整段就借不了。
+    function windowAvailability(records, startFloat, endFloat) {
+        let maxSpeaker = 0, maxStand = 0, pianoTaken = false;
+        let busyVenues = new Set();
+
+        for (let t = startFloat; t < endFloat; t += 0.5) {
+            let sp = 0, st = 0;
+            (records || []).forEach(r => {
+                if (!r.start_time || !r.end_time) return;
+                if (timeToFloat(r.start_time) <= t && timeToFloat(r.end_time) > t) {
+                    sp += (parseInt(r.ma303) || 0) + (parseInt(r.ma707) || 0);
+                    st += parseInt(r.music_stand) || 0;
+                    if (r.piano === '是') pianoTaken = true;
+                    if (r.location) busyVenues.add(r.location);
+                }
+            });
+            if (sp > maxSpeaker) maxSpeaker = sp;
+            if (st > maxStand) maxStand = st;
+        }
+        return {
+            speakerLeft: Math.max(0, SPEAKER_TOTAL - maxSpeaker),
+            standLeft: Math.max(0, STAND_TOTAL - maxStand),
+            pianoTaken: pianoTaken,
+            busyVenues: [...busyVenues]
+        };
+    }
+
+    // 把某個選項標成不可選，並加上刪除線
+    function setOptionEnabled(input, enabled) {
+        input.disabled = !enabled;
+        let label = input.parentElement;
+        if (label) {
+            label.style.color = enabled ? '' : '#c0392b';
+            label.style.textDecoration = enabled ? '' : 'line-through';
+        }
+    }
+
+    let availToken = 0;
+    async function refreshAvailability() {
+        let panel = document.getElementById('availPanel');
+        let date = document.getElementById('borrowDate').value;
+        let s = document.getElementById('startTime').value;
+        let e = document.getElementById('endTime').value;
+
+        // 資料不齊或時間顛倒就先不顯示
+        if (!db || !date || !s || !e || timeToFloat(s) >= timeToFloat(e)) {
+            panel.classList.add('hidden');
+            resetAvailabilityLimits();
+            return;
+        }
+
+        let my = ++availToken;
+        panel.classList.remove('hidden');
+        panel.innerHTML = '<span style="color:#7f8c8d;">正在查詢這個時段的剩餘設備…</span>';
+
+        let res = await fetchDayRecords(date);
+        if (my !== availToken) return;               // 使用者又改了條件，捨棄這次結果
+        if (res.error) { panel.classList.add('hidden'); resetAvailabilityLimits(); return; }
+
+        let a = windowAvailability(res.data, timeToFloat(s), timeToFloat(e));
+        applyAvailabilityLimits(a);
+
+        const line = (label, value, ok) =>
+            `<div><span style="color:#7f8c8d;">${label}</span>　<b style="color:${ok ? '#1e8449' : '#c0392b'};">${value}</b></div>`;
+
+        let venueMsg = a.busyVenues.length > 0
+            ? line('場地', a.busyVenues.join('、') + ' 已被預約', false)
+            : line('場地', '全部可借', true);
+
+        panel.innerHTML =
+            `<b style="color:#2471a3;">📊 ${date} ${s}–${e} 的剩餘設備</b>
+             <div style="margin-top:8px;">
+                ${venueMsg}
+                ${line('喇叭', a.speakerLeft > 0 ? `還有 ${a.speakerLeft} 台` : '已全部借出', a.speakerLeft > 0)}
+                ${line('譜架', a.standLeft > 0 ? `還有 ${a.standLeft} 個` : '已全部借出', a.standLeft > 0)}
+                ${line('鋼琴', a.pianoTaken ? '已被借走' : '可借用', !a.pianoTaken)}
+             </div>
+             <div style="margin-top:8px; color:#7f8c8d; font-size:11px;">借不到的選項已自動鎖住，改時段就會重新計算。</div>`;
+    }
+
+    // 還原成沒有限制的狀態
+    function resetAvailabilityLimits() {
+        let yes = document.querySelector('input[name="needSpeaker"][value="是"]');
+        let pianoYes = document.querySelector('input[name="piano"][value="需要"]');
+        if (yes) setOptionEnabled(yes, true);
+        if (pianoYes) setOptionEnabled(pianoYes, true);
+        rebuildStandOptions(2);
+        restoreVenueOptions([]);
+    }
+
+    function applyAvailabilityLimits(a) {
+        // 喇叭
+        let yes = document.querySelector('input[name="needSpeaker"][value="是"]');
+        let no = document.querySelector('input[name="needSpeaker"][value="否"]');
+        setOptionEnabled(yes, a.speakerLeft > 0);
+        if (a.speakerLeft === 0 && yes.checked) no.checked = true;
+
+        // 鋼琴
+        let pianoYes = document.querySelector('input[name="piano"][value="需要"]');
+        let pianoNo = document.querySelector('input[name="piano"][value="不需要"]');
+        setOptionEnabled(pianoYes, !a.pianoTaken);
+        if (a.pianoTaken && pianoYes.checked) pianoNo.checked = true;
+
+        // 譜架：選項只留得到的數量
+        rebuildStandOptions(Math.min(2, a.standLeft));
+
+        // 場地：已被預約的直接不能選
+        restoreVenueOptions(a.busyVenues);
+    }
+
+    function rebuildStandOptions(maxAllowed) {
+        let sel = document.getElementById('musicStand');
+        if (!sel) return;
+        let cur = parseInt(sel.value) || 0;
+        let html = '<option value="0">不需要</option>';
+        if (maxAllowed >= 1) html += '<option value="1">1 個</option>';
+        if (maxAllowed >= 2) html += '<option value="2">2 個</option>';
+        sel.innerHTML = html;
+        sel.value = (cur <= maxAllowed) ? String(cur) : '0';
+    }
+
+    function restoreVenueOptions(busy) {
+        let sel = document.getElementById('location');
+        if (!sel) return;
+        let cleared = false;
+        Array.from(sel.options).forEach(opt => {
+            if (!opt.value) return;
+            if (!opt.dataset.base) opt.dataset.base = opt.textContent;
+            if (busy.indexOf(opt.value) >= 0) {
+                opt.disabled = true;
+                opt.textContent = opt.dataset.base + '（此時段已被預約）';
+                if (sel.value === opt.value) { sel.value = ''; cleared = true; }
+            } else {
+                opt.disabled = false;
+                opt.textContent = opt.dataset.base;
+            }
+        });
+        if (cleared) { checkRules(); }
+    }
+
     function snapTime(input) {
         if (!input.value) return;
         var parts = input.value.split(':');
@@ -554,7 +724,7 @@
             if(data.length === 0) { document.getElementById('queryResult').innerHTML = "找不到此電話的借用紀錄。"; return; }
             data.sort((a, b) => String(b.borrow_date).localeCompare(String(a.borrow_date)));
 
-            let html = '<table><tr><th>日期時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr>';
+            let html = '<table class="responsive-table"><thead><tr><th>日期時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr></thead><tbody>';
             data.forEach(item => {
                 let status = item.is_returned ? "✅ 已歸還" : "⚠️ 未歸還";
 
@@ -564,15 +734,15 @@
                     else { pickup = `<br><span style="color:#95a5a6;">(管理員尚未上傳位置)</span>`; }
                 }
                 html += `<tr>
-                    <td>${item.borrow_date}<br>${item.start_time}-${item.end_time}</td>
-                    <td>${item.location}</td>
-                    <td style="white-space:normal;">${speakerCell(item)}</td>
-                    <td>${standCell(item)}</td>
-                    <td>${pianoCell(item)}</td>
-                    <td>${status}${pickup}</td>
+                    <td data-label="日期時間">${item.borrow_date}<br>${item.start_time}-${item.end_time}</td>
+                    <td data-label="場地">${item.location}</td>
+                    <td data-label="喇叭" style="white-space:normal;">${speakerCell(item)}</td>
+                    <td data-label="譜架">${standCell(item)}</td>
+                    <td data-label="鋼琴">${pianoCell(item)}</td>
+                    <td data-label="狀態">${status}${pickup}</td>
                 </tr>`;
             });
-            html += '</table>';
+            html += '</tbody></table>';
             document.getElementById('queryResult').innerHTML = html;
         } catch (e) {
             document.getElementById('queryResult').innerHTML = "發生系統錯誤，請稍後再試。";
@@ -818,10 +988,26 @@
             var startTime = document.getElementById("startTime").value;
             var endTime = document.getElementById("endTime").value;
             var loc = document.getElementById("location").value;
-            var name = document.getElementById("leaderName").value;
-            var phone = document.getElementById("leaderPhone").value;
+            var name = document.getElementById("leaderName").value.trim();
+            var phone = normalizePhone(document.getElementById("leaderPhone").value);
 
             if (!date || !startTime || !endTime || !name || !phone || !loc) { alert("請填寫所有必填欄位！"); return; }
+
+            // 日期必須落在 2026 年 12 月（送出鈕不是表單送出，瀏覽器不會自己檢查 min/max）
+            if (!/^2026-12-\d{2}$/.test(date)) {
+                alert("借用日期僅開放 2026 年 12 月 1 日至 12 月 31 日，請重新選擇。");
+                return;
+            }
+            var dayNum = parseInt(date.slice(8), 10);
+            if (!(dayNum >= 1 && dayNum <= 31)) {
+                alert("借用日期不正確，請重新選擇。");
+                return;
+            }
+            if (name.length < 2) { alert("請填寫負責人姓名（至少 2 個字）。"); return; }
+            if (!/^\d{8,15}$/.test(phone)) {
+                alert("聯絡電話請填寫數字，例如 0912345678。\n這組號碼是您日後查詢與歸還的唯一依據，請務必填正確。");
+                return;
+            }
 
             var startFloat = timeToFloat(startTime);
             var endFloat = timeToFloat(endTime);
@@ -874,6 +1060,8 @@
                 setTimeout(() => {
                     alert("申請成功！");
                     document.getElementById("borrowForm").reset();
+                    document.getElementById('availPanel').classList.add('hidden');
+                    resetAvailabilityLimits();
                     checkRules();
                     showSection('homeMenu');
                 }, 100);
