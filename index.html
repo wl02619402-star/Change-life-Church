@@ -11,12 +11,11 @@
         h2 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
         .home-menu { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .btn-main { width: 100%; max-width: 280px; padding: 18px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; text-align: center; }
-        .btn-tutorial { background-color: #f39c12; color: white; }
         .btn-borrow { background-color: #3498db; color: white; }
         .btn-query { background-color: #9b59b6; color: white; }
-        .btn-speaker { background-color: #16a085; color: white; }
         .btn-return { background-color: #e67e22; color: white; }
-        
+        .btn-speaker { background-color: #16a085; color: white; }
+
         .form-section, .admin-section { display: none; }
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 14px; }
@@ -37,7 +36,7 @@
         .rules-link { color: #3498db; text-decoration: underline; cursor: pointer; font-weight: bold; }
         .date-header { background: #34495e; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-weight: bold; margin-top: 15px; font-size: 15px; }
         .grouped-table { margin-top: 0; border-radius: 0 0 6px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        
+
         /* 載入動畫專用樣式 */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -53,12 +52,13 @@
 <div class="container">
     <h2 onclick="secretAdminTrigger()" style="user-select: none; cursor: pointer;">🎄 2026聖誕餐會 設備外借管理系統</h2>
 
+    <div id="connBanner" style="display:none; background:#fdecea; border:1px solid #f5c6cb; color:#a02622; padding:12px 15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;"></div>
+
     <div id="homeMenu" class="home-menu">
-        <button class="btn-main btn-tutorial" onclick="showSection('tutorialSection')">📖 借用教學</button>
         <button class="btn-main btn-borrow" onclick="showSection('rulesSection')">📦 我要借設備</button>
         <button class="btn-main btn-query" onclick="showSection('querySection')">🔍 查詢我的借用狀況</button>
-        <button class="btn-main btn-speaker" onclick="window.open('https://drive.google.com/file/d/1oHQoinOaArzRL0UxMvJP6zYvX3sx_S7h/view?usp=drive_link', '_blank')">🔊 音箱使用教學</button>
         <button class="btn-main btn-return" onclick="showSection('returnSection'); resetReturnForm();">🔄 我要歸還設備</button>
+        <button class="btn-main btn-speaker" onclick="window.open('https://drive.google.com/file/d/1oHQoinOaArzRL0UxMvJP6zYvX3sx_S7h/view?usp=drive_link', '_blank')">🔊 音箱使用教學</button>
     </div>
 
     <div id="loginModal" class="modal">
@@ -71,27 +71,12 @@
         </div>
     </div>
 
-    <div id="tutorialSection" class="form-section">
-        <h3 style="text-align: center; color: #f39c12;">📖 設備借用教學流程</h3>
-        <div style="background: #fff; padding: 20px; border-radius: 8px; line-height: 1.8; font-size: 14px; border: 1px solid #ddd; margin-bottom: 20px;">
-            <h4 style="color: #3498db; margin-top: 0; border-bottom: 2px solid #ecf0f1; padding-bottom: 5px;">Step 1：填寫借用單</h4>
-            <p style="margin-top: 5px; color: #555;">點擊「<strong>📦 我要借設備</strong>」，閱讀並同意借用守則後，填寫日期、借還時間、場地與負責人資訊。接著選擇需要的設備數量並送出，若遇時段衝突，系統會自動提醒！</p>
-
-            <h4 style="color: #9b59b6; margin-top: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 5px;">Step 2：查詢與領取設備</h4>
-            <p style="margin-top: 5px; color: #555;">管理員審核後，會在後台為您分配設備型號（如 MA303 編號A）。請點擊「<strong>🔍 查詢我的借用狀況</strong>」，輸入聯絡電話即可查看分配結果。若管理員已拍照，還能點擊「📍 查看領取照片」確認設備放置位置。</p>
-
-            <h4 style="color: #e67e22; margin-top: 20px; border-bottom: 2px solid #ecf0f1; padding-bottom: 5px;">Step 3：歸還設備</h4>
-            <p style="margin-top: 5px; margin-bottom: 0; color: #555;">使用完畢後，點擊「<strong>🔄 我要歸還設備</strong>」，輸入您的聯絡電話尋找您的訂單。勾選要歸還的項目，並上傳設備歸還現況的照片，填寫狀態後送出即可完成歸還程序。</p>
-        </div>
-        <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
-    </div>
-
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0;">設備借用守則</h3>
-            <p>1. 請務必於申請時段內歸還設備。</p>
-            <p>2. 歸還時請將設備恢復原狀，並拍攝照片上傳至歸還系統。</p>
-            <p>3. 若有設備損壞，請主動於歸還備註中說明。</p>
+            <p>1. 領取及歸還，務必於「設備外借管理系統」的網頁填寫。</p>
+            <p>2. 請於預約時間準時歸還，讓後面租借的小組可以順利進行。</p>
+            <p>3. 領取設備時，請至系統查詢您的「領取位置照片」。</p>
             <button class="btn-submit" onclick="closeModal()">我瞭解了</button>
         </div>
     </div>
@@ -99,20 +84,11 @@
     <div id="rulesSection" class="form-section">
         <h3 style="text-align: center; color: #c0392b;">⚠️ 借用設備需知</h3>
         <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; line-height: 1.6; font-size: 15px;">
-            <p>1. 僅開放 <strong>2026年12月份</strong> 借用。</p>
-            <p>2. 借用與歸還時間請確實遵守，以免影響下一個使用的小組。</p>
+            <p>1. 領取及歸還，務必於「設備外借管理系統」的網頁填寫。</p>
+            <p>2. 請於預約時間準時歸還，讓後面租借的小組可以順利進行。</p>
             <p>3. 領取設備時，請至系統查詢您的「領取位置照片」。</p>
-            <p>4. 歸還時請拍攝設備現況上傳，若有損壞請務必備註。</p>
         </div>
         <button class="btn-submit" onclick="showSection('borrowSection')">我同意，開始填寫</button>
-        <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
-    </div>
-
-    <div id="querySection" class="form-section">
-        <h3 style="text-align: center; color: #9b59b6;">🔍 查詢借用與領取狀況</h3>
-        <div class="form-group"><label>請輸入當時填寫的聯絡電話</label><input type="text" id="searchPhone" placeholder="例：0912345678"></div>
-        <button class="btn-submit" onclick="queryRecords()">查詢</button>
-        <div id="queryResult" style="margin-top: 20px; overflow-x: auto;"></div>
         <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
     </div>
 
@@ -136,7 +112,7 @@
                     <option value="幼主">幼主</option><option value="教會外場地">教會外場地</option>
                 </select>
             </div>
-            
+
             <div class="form-group hidden" id="soundTechSection">
                 <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
                 <div class="radio-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
@@ -144,15 +120,37 @@
 
             <hr>
             <h4 style="color: #333;">設備需求</h4>
-            <div class="form-group"><label>MA303 (總量：3，型號由管理員分配)</label><select id="ma303"><option value="0">不需要</option><option value="1">1 台</option><option value="2">2 台</option><option value="3">3 台</option></select></div>
-            <div class="form-group"><label>MA707 (總量：1)</label><select id="ma707"><option value="0">不需要</option><option value="1">1 台</option></select></div>
-            <div class="form-group"><label>譜架 (總量：6，最多借2個)</label><select id="musicStand"><option value="0">不需要</option><option value="1">1 個</option><option value="2">2 個</option></select></div>
-            <div class="form-group" id="pianoSection"><label>鋼琴 (教會外場地禁止借用)</label><label style="font-weight: normal; font-size: 16px;"><input type="checkbox" id="piano"> 需要借用鋼琴</label></div>
+
+            <div class="form-group">
+                <label>是否需要喇叭？</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="needSpeaker" value="是"> 是</label>
+                    <label><input type="radio" name="needSpeaker" value="否" checked> 否</label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>譜架</label>
+                <select id="musicStand">
+                    <option value="0">不需要</option>
+                    <option value="1">1 個</option>
+                    <option value="2">2 個</option>
+                </select>
+            </div>
+
+            <div class="form-group" id="pianoSection">
+                <label>鋼琴 (教會外場地禁止借用)</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="piano" value="需要"> 需要</label>
+                    <label><input type="radio" name="piano" value="不需要" checked> 不需要</label>
+                </div>
+            </div>
+
             <div class="form-group"><label>其他 (備註)</label><input type="text" id="notes" placeholder="無"></div>
 
             <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;">
                 <label style="font-weight: normal; color: #d9534f; font-size: 15px; display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="agreeRules" required> 
+                    <input type="checkbox" id="agreeRules" required>
                     我已閱讀並同意 <span class="rules-link" onclick="openModal()">設備借用守則</span>
                 </label>
             </div>
@@ -162,9 +160,17 @@
         </form>
     </div>
 
+    <div id="querySection" class="form-section">
+        <h3 style="text-align: center; color: #9b59b6;">🔍 查詢借用與領取狀況</h3>
+        <div class="form-group"><label>請輸入當時填寫的聯絡電話</label><input type="text" id="searchPhone" placeholder="例：0912345678"></div>
+        <button class="btn-submit" onclick="queryRecords()">查詢</button>
+        <div id="queryResult" style="margin-top: 20px; overflow-x: auto;"></div>
+        <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
+    </div>
+
     <div id="returnSection" class="form-section">
         <h3 style="text-align: center; color: #e67e22;">🔄 填寫歸還單</h3>
-        
+
         <div class="form-group" id="returnSearchBlock">
             <label>請輸入借用時填寫的聯絡電話</label>
             <div style="display: flex; gap: 10px;">
@@ -180,11 +186,11 @@
                 <div id="unreturnedList" style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;">
                 </div>
             </div>
-            
+
             <div class="form-group"><label>歸還設備照片上傳 (自動壓縮)</label><input type="file" id="returnPhoto" accept="image/*" required></div>
             <div class="form-group"><label>歸還狀態 (如有損壞請註明)</label><input type="text" id="returnNotes" placeholder="設備皆正常歸還"></div>
-            
-            <button type="button" class="btn-submit" onclick="submitReturn()">送出歸還通知</button>
+
+            <button type="button" id="submitReturnBtn" class="btn-submit" onclick="submitReturn()">送出歸還通知</button>
         </form>
         <button type="button" class="btn-back" onclick="showSection('homeMenu'); resetReturnForm();">返回首頁</button>
     </div>
@@ -205,13 +211,13 @@
             <button class="btn-back" style="width: 48%; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
             <button class="btn-back" style="width: 48%; margin:0; background-color: #c0392b;" onclick="adminLogout()">登出管理員</button>
         </div>
-        
+
         <h4>⚠️ 未歸還清單</h4>
         <div id="unreturnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
-        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單</h4>
+        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單 <span style="font-size:12px; font-weight:normal; color:#7f8c8d;">(依歸還上傳時間排序)</span></h4>
         <div id="returnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
-        
+
         <button class="btn-back" style="margin-top: 25px;" onclick="showSection('homeMenu')">返回首頁</button>
     </div>
 </div>
@@ -219,7 +225,49 @@
 <script>
     const SUPABASE_URL = 'https://xziokuyieegbuznwrnjp.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_fg9cjYZrdkzZ8oiE6yH_Kg_Qcppb6pg';
-    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 🔌 資料庫連線（即使失敗也不讓整頁的 JS 中斷）
+    let db = null;
+    let dbError = '';
+    try {
+        if (window.supabase && window.supabase.createClient) {
+            db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } else {
+            dbError = '資料庫程式庫 supabase-js 沒有載入成功（外部 CDN 被封鎖）。';
+        }
+    } catch (e) {
+        dbError = e.message;
+    }
+
+    function showBanner(msg) {
+        let b = document.getElementById('connBanner');
+        b.innerHTML = `<b>⚠️ 無法連線到資料庫</b><br>${msg}<br>
+            <span style="color:#7f8c8d;">頁面的畫面與流程都可以正常瀏覽，但「登入後台／查詢／送出申請／歸還」需要連到 Supabase 才能運作。
+            請把這個 HTML 檔放到您自己的網站空間（GitHub Pages、Netlify、公司網站等）再使用。</span>`;
+        b.style.display = 'block';
+    }
+
+    function requireDb() {
+        if (!db) {
+            alert('⚠️ 目前無法連線到資料庫，此功能無法使用。\n\n原因：' + (dbError || '外部連線被封鎖') + '\n\n請將本頁部署到您自己的網站空間後再操作。');
+            return false;
+        }
+        return true;
+    }
+
+    // 頁面載入後自動測試一次連線，有問題就顯示橫幅
+    window.addEventListener('DOMContentLoaded', async () => {
+        if (!db) { showBanner(dbError); return; }
+        try {
+            const { error } = await db.from('borrow_records').select('id').limit(1);
+            if (error) showBanner('資料庫回應錯誤：' + error.message);
+        } catch (e) {
+            showBanner('連線被瀏覽器或預覽環境封鎖：' + (e && e.message ? e.message : e));
+        }
+    });
+
+    const SPEAKER_TOTAL = 4;   // 喇叭總數
+    const STAND_TOTAL = 6;     // 譜架總數
 
     // 🔥 顯示與隱藏載入動畫工具
     function showLoading(text) {
@@ -233,10 +281,10 @@
     async function compressImage(file, maxWidth = 1024, maxHeight = 1024, quality = 0.6) {
         return new Promise((resolve, reject) => {
             const img = new Image();
-            img.src = URL.createObjectURL(file); 
-            
+            img.src = URL.createObjectURL(file);
+
             img.onload = () => {
-                URL.revokeObjectURL(img.src); 
+                URL.revokeObjectURL(img.src);
                 let width = img.width;
                 let height = img.height;
 
@@ -278,22 +326,105 @@
         let parts = timeStr.split(':');
         return parseInt(parts[0], 10) + (parseInt(parts[1], 10) / 60);
     }
-    
+
     function floatToTimeStr(f) {
         let h = Math.floor(f);
         let m = (f - h) >= 0.5 ? '30' : '00';
         return h.toString().padStart(2, '0') + ':' + m;
     }
 
+    // 🕒 從歸還照片檔名還原上傳時間 (檔名格式：<timestamp>_return.jpg)
+    function getReturnTimestamp(url) {
+        if (!url) return 0;
+        let m = String(url).match(/(\d{10,})_return/);
+        return m ? parseInt(m[1], 10) : 0;
+    }
+
+    function formatReturnTime(ts) {
+        if (!ts) return '';
+        try {
+            return new Intl.DateTimeFormat('zh-TW', {
+                timeZone: 'Asia/Taipei', year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', hour12: false
+            }).format(new Date(ts)).replace(/\//g, '-');
+        } catch (e) { return ''; }
+    }
+
+    // 🔈 喇叭機台名稱正規化（相容舊資料 "A機" / "編號A"）
+    function normalizeUnit(s) {
+        s = String(s || '').trim();
+        if (!s) return null;
+        if (/707/.test(s)) return 'MA707';
+        let core = s.replace(/MA\d+/gi, '');
+        let m = core.match(/([ABC])/);
+        return m ? 'MA303 編號' + m[1] : null;
+    }
+
+    function normalizeAssignedList(str) {
+        if (!str) return [];
+        return String(str).split(/[,、]/).map(normalizeUnit).filter(Boolean);
+    }
+
+    // 找出與這筆借用時段重疊、且已被分配走的機台
+    function busyUnits(allRecords, item) {
+        let s = timeToFloat(item.start_time), e = timeToFloat(item.end_time);
+        let busy = new Set();
+        (allRecords || []).forEach(rec => {
+            if (rec.id === item.id || rec.borrow_date !== item.borrow_date) return;
+            if (!rec.start_time || !rec.end_time) return;
+            let rs = timeToFloat(rec.start_time), re = timeToFloat(rec.end_time);
+            if (rs < e && re > s) normalizeAssignedList(rec.ma303_assigned).forEach(u => busy.add(u));
+        });
+        return busy;
+    }
+
+    // 📦 統一的設備顯示文字（speakerHtml 有值時，喇叭欄改用管理員的分配介面）
+    function equipmentText(item, speakerHtml) {
+        let parts = [];
+        let speakers = (parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0);
+        if (speakers > 0) {
+            if (speakerHtml) {
+                parts.push(`喇叭：${speakerHtml}`);
+            } else {
+                let assigned = normalizeAssignedList(item.ma303_assigned);
+                parts.push(assigned.length > 0
+                    ? `喇叭：<b style="color:#27ae60;">${assigned.join('、')}</b>`
+                    : `喇叭：<b style="color:#16a085;">是</b><br><span style="color:#e74c3c; font-size:11px;">(等待管理員分配機台)</span>`);
+            }
+        }
+        if (parseInt(item.music_stand) > 0) parts.push(`譜架：${item.music_stand} 個`);
+        if (item.piano === '是') parts.push(`鋼琴：<b style="color:#8e44ad;">需要</b>`);
+        return parts.length > 0 ? parts.join('<br>') : '<span style="color:#95a5a6;">無借用設備</span>';
+    }
+
+    // 管理員的喇叭分配介面
+    function speakerAssignUI(item, allRecords) {
+        let assigned = normalizeAssignedList(item.ma303_assigned);
+        if (assigned.length > 0) {
+            return `<b style="color:#27ae60;">${assigned.join('、')}</b><br>
+                <button onclick="resetAssign(${item.id})" style="font-size:11px; padding:2px 6px; margin-top:4px; cursor:pointer; border:1px solid #ccc; border-radius:4px; background:#f9f9f9;">重新分配</button>`;
+        }
+        let busy = busyUnits(allRecords, item);
+        const units = [['sp_A', 'MA303 編號A', 'A'], ['sp_B', 'MA303 編號B', 'B'], ['sp_C', 'MA303 編號C', 'C'], ['sp_707', 'MA707', '707']];
+        let boxes = units.map(u => {
+            let taken = busy.has(u[1]);
+            return `<label style="font-weight:normal; display:inline-block; margin-right:8px; ${taken ? 'color:#c0392b; text-decoration:line-through;' : ''}" title="${taken ? '此時段已被其他小組使用' : ''}">
+                <input type="checkbox" id="${u[0]}_${item.id}" ${taken ? 'disabled' : ''}> ${u[2]}</label>`;
+        }).join('');
+        return `<div style="font-size:11px; background:#fff; padding:6px; border-radius:4px; border:1px solid #ddd; margin-top:2px;">
+            <span style="color:#e74c3c; font-weight:bold;">待分配機台</span><br>${boxes}<br>
+            <button onclick="assignSpeaker(${item.id}, '${item.borrow_date}', '${item.start_time}', '${item.end_time}')" style="margin-top:5px; cursor:pointer; font-size:11px; background:#34495e; color:white; border:none; padding:4px 8px; border-radius:3px;">確認分配</button>
+        </div>`;
+    }
+
     function showSection(sectionId) {
         document.getElementById('homeMenu').style.display = 'none';
-        document.getElementById('tutorialSection').style.display = 'none';
         document.getElementById('borrowSection').style.display = 'none';
         document.getElementById('rulesSection').style.display = 'none';
         document.getElementById('returnSection').style.display = 'none';
         document.getElementById('querySection').style.display = 'none';
         document.getElementById('adminSection').style.display = 'none';
-        
+
         if (sectionId === 'homeMenu') document.getElementById('homeMenu').style.display = 'flex';
         else document.getElementById(sectionId).style.display = 'block';
     }
@@ -305,7 +436,12 @@
         var loc = document.getElementById("location").value;
         var pianoSec = document.getElementById("pianoSection");
         var techSec = document.getElementById("soundTechSection");
-        if (loc === "教會外場地") { pianoSec.classList.add("hidden"); document.getElementById("piano").checked = false; } else { pianoSec.classList.remove("hidden"); }
+        if (loc === "教會外場地") {
+            pianoSec.classList.add("hidden");
+            document.querySelector('input[name="piano"][value="不需要"]').checked = true;
+        } else {
+            pianoSec.classList.remove("hidden");
+        }
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
     }
 
@@ -325,6 +461,7 @@
     }
 
     async function queryRecords() {
+        if (!requireDb()) return;
         var phone = document.getElementById('searchPhone').value;
         if(!phone) { alert('請輸入電話號碼'); return; }
         document.getElementById('queryResult').innerHTML = "查詢中...";
@@ -334,29 +471,17 @@
             if(error) { document.getElementById('queryResult').innerHTML = "查詢失敗"; return; }
             if(data.length === 0) { document.getElementById('queryResult').innerHTML = "找不到此電話的借用紀錄。"; return; }
 
-            let html = '<table><tr><th>日期時間</th><th>場地</th><th>設備</th><th>狀態與領取位置</th></tr>';
+            let html = '<table><tr><th>日期時間</th><th>場地</th><th>設備 / 分配機台</th><th>狀態與領取位置</th></tr>';
             data.forEach(item => {
                 let status = item.is_returned ? "✅ 已歸還" : "⚠️ 未歸還";
-                let reqQty = parseInt(item.ma303) || 0;
-                
-                let eqParts = [];
-                if (reqQty > 0) {
-                    let assignedClean = item.ma303_assigned ? item.ma303_assigned.replace(/A機/g, '編號A').replace(/B機/g, '編號B').replace(/C機/g, '編號C') : '';
-                    let ma303Status = assignedClean ? `<span style="color:#27ae60; font-weight:bold;">${assignedClean}</span>` : `已申請 ${reqQty} 台<br><span style="color:#e74c3c;">(等待分配)</span>`;
-                    eqParts.push(`MA303: ${ma303Status}`);
-                }
-                if (parseInt(item.ma707) > 0) eqParts.push(`MA707: ${item.ma707}`);
-                if (parseInt(item.music_stand) > 0) eqParts.push(`譜架: ${item.music_stand}`);
-                if (item.piano === '是') eqParts.push(`鋼琴: 是`);
-                
-                let eq = eqParts.length > 0 ? eqParts.join('<br>') : `<span style="color:#95a5a6;">無借用設備</span>`;
+                let eq = equipmentText(item);
 
                 let pickup = "";
                 if (!item.is_returned) {
-                    if (item.pickup_photo_url) { pickup = `<br><a href="${item.pickup_photo_url}" target="_blank" style="color:#e67e22; font-weight:bold;">📍 查看領取照片</a>`; } 
+                    if (item.pickup_photo_url) { pickup = `<br><a href="${item.pickup_photo_url}" target="_blank" style="color:#e67e22; font-weight:bold;">📍 查看領取照片</a>`; }
                     else { pickup = `<br><span style="color:#95a5a6;">(管理員尚未上傳位置)</span>`; }
                 }
-                html += `<tr><td>${item.borrow_date}<br>${item.start_time}-${item.end_time}</td><td>${item.location}</td><td style="font-size:11px;">${eq}</td><td>${status}${pickup}</td></tr>`;
+                html += `<tr><td>${item.borrow_date}<br>${item.start_time}-${item.end_time}</td><td>${item.location}</td><td style="font-size:11px; white-space:normal; min-width:110px;">${eq}</td><td>${status}${pickup}</td></tr>`;
             });
             html += '</table>';
             document.getElementById('queryResult').innerHTML = html;
@@ -366,22 +491,25 @@
     }
 
     async function checkAdminAccess() {
+        if (!requireDb()) return;
         const { data: { session } } = await db.auth.getSession();
-        if (session) { showSection('adminSection'); loadAdminData(); } 
+        if (session) { showSection('adminSection'); loadAdminData(); }
         else { document.getElementById('loginModal').style.display = 'flex'; }
     }
 
     async function adminLogin() {
+        if (!requireDb()) return;
         var email = document.getElementById('adminEmail').value;
         var password = document.getElementById('adminPassword').value;
         const { error } = await db.auth.signInWithPassword({ email: email, password: password });
-        if (error) { alert("登入失敗：" + error.message); } 
+        if (error) { alert("登入失敗：" + error.message); }
         else { document.getElementById('loginModal').style.display = 'none'; showSection('adminSection'); loadAdminData(); }
     }
 
-    async function adminLogout() { await db.auth.signOut(); showSection('homeMenu'); }
+    async function adminLogout() { if (db) await db.auth.signOut(); showSection('homeMenu'); }
 
     async function deleteRecord(id) {
+        if (!requireDb()) return;
         if(confirm("確定要永久刪除這筆紀錄嗎？")) {
             showLoading("資料刪除中...");
             await db.from('borrow_records').delete().eq('id', id);
@@ -391,9 +519,10 @@
     }
 
     async function uploadPickupPhoto(id, inputElement) {
+        if (!requireDb()) return;
         if(inputElement.files.length === 0) return;
         var file = inputElement.files[0];
-        
+
         showLoading("照片壓縮與上傳中<br><span style='font-size:14px; font-weight:normal;'>大約需要 1~3 秒</span>");
 
         try {
@@ -405,7 +534,7 @@
 
             const { data: urlData } = db.storage.from('pickup_photos').getPublicUrl(fileName);
             await db.from('borrow_records').update({ pickup_photo_url: urlData.publicUrl }).eq('id', id);
-            
+
             hideLoading();
             setTimeout(() => { alert("領取照片上傳成功！"); loadAdminData(); }, 100);
         } catch (e) {
@@ -414,8 +543,59 @@
         }
     }
 
-    async function editMa303(id) {
-        if(confirm("確定要清除並重新分配型號嗎？")) {
+    // 🔈 管理員分配喇叭機台
+    async function assignSpeaker(id, date, start, end) {
+        if (!requireDb()) return;
+        let selected = [];
+        if (document.getElementById(`sp_A_${id}`).checked) selected.push('MA303 編號A');
+        if (document.getElementById(`sp_B_${id}`).checked) selected.push('MA303 編號B');
+        if (document.getElementById(`sp_C_${id}`).checked) selected.push('MA303 編號C');
+        if (document.getElementById(`sp_707_${id}`).checked) selected.push('MA707');
+
+        if (selected.length === 0) { alert('請至少勾選一台要分配的喇叭！'); return; }
+
+        showLoading("檢查時段衝突與儲存中...");
+
+        try {
+            let startFloat = timeToFloat(start);
+            let endFloat = timeToFloat(end);
+
+            const { data: records, error } = await db.from('borrow_records').select('*').eq('borrow_date', date).neq('id', id);
+            if (error) { hideLoading(); alert("系統連線失敗"); return; }
+
+            for (let t = startFloat; t < endFloat; t += 0.5) {
+                let timeStr = `${floatToTimeStr(t)}-${floatToTimeStr(t + 0.5)}`;
+                let usedThisSlot = [];
+                for (let rec of records) {
+                    if (!rec.start_time || !rec.end_time) continue;
+                    let rStart = timeToFloat(rec.start_time);
+                    let rEnd = timeToFloat(rec.end_time);
+                    if (rStart <= t && rEnd > t) usedThisSlot.push(...normalizeAssignedList(rec.ma303_assigned));
+                }
+                for (let sel of selected) {
+                    if (usedThisSlot.includes(sel)) {
+                        hideLoading();
+                        alert(`⛔ 衝突！${timeStr} 的「${sel}」已經分配給其他小組了。\n請改選其他機台。`);
+                        return;
+                    }
+                }
+            }
+
+            const { error: updateError } = await db.from('borrow_records').update({ ma303_assigned: selected.join(', ') }).eq('id', id);
+            hideLoading();
+            if (updateError) { alert("分配失敗：" + updateError.message); }
+            else {
+                setTimeout(() => { alert(`分配成功！\n已指定：${selected.join('、')}\n該小組可於「查詢我的借用狀況」看到。`); loadAdminData(); }, 100);
+            }
+        } catch (e) {
+            hideLoading();
+            alert("發生錯誤：" + e.message);
+        }
+    }
+
+    async function resetAssign(id) {
+        if (!requireDb()) return;
+        if (confirm("確定要清除並重新分配機台嗎？")) {
             showLoading("重設分配狀態中...");
             await db.from('borrow_records').update({ ma303_assigned: null }).eq('id', id);
             hideLoading();
@@ -423,178 +603,103 @@
         }
     }
 
-    async function assignMa303(id, date, start, end, reqQty) {
-        let selected = [];
-        if(document.getElementById(`ma303_A_${id}`).checked) selected.push("編號A");
-        if(document.getElementById(`ma303_B_${id}`).checked) selected.push("編號B");
-        if(document.getElementById(`ma303_C_${id}`).checked) selected.push("編號C");
-        
-        if (selected.length !== reqQty) {
-            alert(`該小組申請了 ${reqQty} 台，您目前勾選了 ${selected.length} 台，請確認數量相符！`);
-            return;
-        }
-
-        showLoading("檢查時段衝突與儲存中...");
-        
-        try {
-            let startFloat = timeToFloat(start);
-            let endFloat = timeToFloat(end);
-            
-            const { data: records, error } = await db.from('borrow_records').select('*').eq('borrow_date', date).neq('id', id);
-            if (error) { hideLoading(); alert("系統連線失敗"); return; }
-            
-            for (let t = startFloat; t < endFloat; t += 0.5) {
-                let timeStr = `${floatToTimeStr(t)}-${floatToTimeStr(t+0.5)}`;
-                let usedThisHour = [];
-                for (let rec of records) {
-                    if (!rec.start_time || !rec.end_time) continue;
-                    let rStart = timeToFloat(rec.start_time);
-                    let rEnd = timeToFloat(rec.end_time);
-                    if (rStart <= t && rEnd > t && rec.ma303_assigned) {
-                        let cleanAssigned = rec.ma303_assigned.replace(/A機/g, '編號A').replace(/B機/g, '編號B').replace(/C機/g, '編號C');
-                        usedThisHour.push(...cleanAssigned.split(', '));
-                    }
-                }
-                for (let sel of selected) {
-                    if (usedThisHour.includes(sel)) {
-                        hideLoading();
-                        alert(`⛔ 衝突！${timeStr} 的「${sel}」已經分配給其他小組了！\n請選擇其他型號。`);
-                        return;
-                    }
-                }
-            }
-            
-            const { error: updateError } = await db.from('borrow_records').update({ ma303_assigned: selected.join(', ') }).eq('id', id);
-            hideLoading();
-            if (updateError) { alert("分配失敗：" + updateError.message); } 
-            else { 
-                setTimeout(() => { alert("分配成功！"); loadAdminData(); }, 100);
-            }
-        } catch(e) {
-            hideLoading();
-            alert("發生錯誤：" + e.message);
-        }
-    }
-
     async function loadAdminData() {
+        if (!db) return;
         let weekFilter = document.getElementById("adminWeekFilter").value;
         const { data: records, error } = await db.from('borrow_records').select('*');
         if (error) return;
 
-        records.sort((a, b) => {
-            let dateA = a.borrow_date || '';
-            let dateB = b.borrow_date || '';
-            if (dateA !== dateB) return dateA.localeCompare(dateB);
-            
-            let timeA = timeToFloat(a.start_time);
-            let timeB = timeToFloat(b.start_time);
-            return timeA - timeB;
-        });
+        function passFilter(item) {
+            if (weekFilter === '' || !item.borrow_date) return true;
+            let parts = item.borrow_date.split('-');
+            if (parts.length !== 3) return true;
+            let month = parseInt(parts[1], 10), day = parseInt(parts[2], 10);
+            if (month !== 12) return false;
+            if (weekFilter === '1') return day >= 1 && day <= 7;
+            if (weekFilter === '2') return day >= 8 && day <= 14;
+            if (weekFilter === '3') return day >= 15 && day <= 21;
+            if (weekFilter === '4') return day >= 22;
+            return true;
+        }
 
         let unreturnedGroups = {};
-        let returnedGroups = {};
+        let returnedList = [];
 
         records.forEach(item => {
-            if (weekFilter !== '' && item.borrow_date) {
-                let parts = item.borrow_date.split('-');
-                if (parts.length === 3) {
-                    let month = parseInt(parts[1], 10), day = parseInt(parts[2], 10);
-                    if (month !== 12) return; 
-                    if (weekFilter === '1' && (day < 1 || day > 7)) return;
-                    if (weekFilter === '2' && (day < 8 || day > 14)) return;
-                    if (weekFilter === '3' && (day < 15 || day > 21)) return;
-                    if (weekFilter === '4' && day < 22) return;
-                }
-            }
-
+            if (!passFilter(item)) return;
             if (item.is_returned === false) {
                 if (!unreturnedGroups[item.borrow_date]) unreturnedGroups[item.borrow_date] = [];
                 unreturnedGroups[item.borrow_date].push(item);
             } else {
-                if (!returnedGroups[item.borrow_date]) returnedGroups[item.borrow_date] = [];
-                returnedGroups[item.borrow_date].push(item);
+                returnedList.push(item);
             }
         });
 
+        // 未歸還：依借用日期分組，組內依開始時間排序
+        let dates = Object.keys(unreturnedGroups).sort((a, b) => String(a).localeCompare(String(b)));
         let unreturnedHtml = '';
-        if (Object.keys(unreturnedGroups).length === 0) {
+        if (dates.length === 0) {
             unreturnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         } else {
-            for (let date in unreturnedGroups) {
-                unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
-                unreturnedHtml += `<table class="grouped-table"><tr><th style="width: 125px;">時間/場地/人/電話</th><th>借出設備</th><th>📍 領取照片</th><th>操作</th></tr>`;
-                
-                unreturnedGroups[date].forEach(item => {
-                    let reqQty = parseInt(item.ma303) || 0;
-                    let ma303AdminUI = '無';
-                    let eqParts = [];
-                    
-                    if (reqQty > 0) {
-                        let assigned = item.ma303_assigned || '';
-                        assigned = assigned.replace(/A機/g, '編號A').replace(/B機/g, '編號B').replace(/C機/g, '編號C');
-                        
-                        if (assigned) {
-                            ma303AdminUI = `<span style="color:#27ae60; font-weight:bold;">${assigned}</span><br>
-                            <button onclick="editMa303(${item.id})" style="font-size:11px; padding:2px 6px; margin-top:4px; cursor:pointer; border:1px solid #ccc; border-radius:4px; background:#f9f9f9;">重新分配</button>`;
-                        } else {
-                            ma303AdminUI = `<div style="font-size:11px; background:#fff; padding:5px; border-radius:4px; border:1px solid #ddd; display:inline-block; margin-top:2px;">
-                                申請 <b>${reqQty}</b> 台<br>
-                                <label><input type="checkbox" id="ma303_A_${item.id}" value="編號A">A</label>
-                                <label><input type="checkbox" id="ma303_B_${item.id}" value="編號B">B</label>
-                                <label><input type="checkbox" id="ma303_C_${item.id}" value="編號C">C</label><br>
-                                <button id="btn_assign_${item.id}" onclick="assignMa303(${item.id}, '${item.borrow_date}', '${item.start_time}', '${item.end_time}', ${reqQty})" style="margin-top:4px; cursor:pointer; font-size:11px; background:#34495e; color:white; border:none; padding:3px 6px; border-radius:3px;">確認分配</button>
-                            </div>`;
-                        }
-                        eqParts.push(`MA303: ${ma303AdminUI}`);
-                    }
-                    
-                    if (parseInt(item.ma707) > 0) eqParts.push(`MA707: ${item.ma707}`);
-                    if (parseInt(item.music_stand) > 0) eqParts.push(`譜架: ${item.music_stand}`);
-                    if (item.piano === '是') eqParts.push(`鋼琴: 是`);
-                    
-                    let eq = eqParts.length > 0 ? eqParts.join('<br>') : `<span style="color:#95a5a6;">無</span>`;
+            dates.forEach(date => {
+                unreturnedGroups[date].sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
 
-                    let photoAction = item.pickup_photo_url 
-                        ? `<a href="${item.pickup_photo_url}" target="_blank">查看</a> | <label class="upload-label">重傳<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>` 
+                unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
+                unreturnedHtml += `<table class="grouped-table"><tr><th style="width: 125px;">時間/場地/人/電話</th><th>借出設備 / 機台分配</th><th>📍 領取照片</th><th>操作</th></tr>`;
+
+                unreturnedGroups[date].forEach(item => {
+                    let eq = equipmentText(item, speakerAssignUI(item, records));
+                    let tech = item.need_tech === '是' ? `<br><span style="color:#e74c3c; font-size:11px;">需音控同工</span>` : '';
+                    let note = item.notes ? `<br><span style="color:#7f8c8d; font-size:11px;">備註：${item.notes}</span>` : '';
+
+                    let photoAction = item.pickup_photo_url
+                        ? `<a href="${item.pickup_photo_url}" target="_blank">查看</a> | <label class="upload-label">重傳<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`
                         : `<label class="upload-label">上傳照片<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`;
 
                     unreturnedHtml += `<tr>
-                        <td><b>${item.start_time}-${item.end_time}</b><br>${item.location}<br>${item.leader_name}<br>${item.leader_phone}</td>
-                        <td style="min-width:140px;">${eq}</td><td>${photoAction}</td>
+                        <td><b>${item.start_time}-${item.end_time}</b><br>${item.location}<br>${item.leader_name}<br>${item.leader_phone}${tech}</td>
+                        <td style="min-width:170px; white-space:normal;">${eq}${note}</td><td>${photoAction}</td>
                         <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
                     </tr>`;
                 });
                 unreturnedHtml += `</table>`;
-            }
+            });
         }
         document.getElementById('unreturnedContainer').innerHTML = unreturnedHtml;
 
+        // 已歸還：依歸還照片上傳時間排序（最新在上）
+        returnedList.sort((a, b) => getReturnTimestamp(b.return_photo_url) - getReturnTimestamp(a.return_photo_url));
+
         let returnedHtml = '';
-        if (Object.keys(returnedGroups).length === 0) {
+        if (returnedList.length === 0) {
             returnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         } else {
-            for (let date in returnedGroups) {
-                returnedHtml += `<div class="date-header" style="background: #27ae60;">📅 借出日期：${date}</div>`;
-                returnedHtml += `<table class="grouped-table"><tr><th style="width: 125px;">時間/場地/人/電話</th><th>歸還日期/狀態</th><th>📸 照片</th><th>操作</th></tr>`;
-                
-                returnedGroups[date].forEach(item => {
-                    returnedHtml += `<tr>
-                        <td><b>${item.start_time}-${item.end_time}</b><br>${item.location}<br>${item.leader_name}<br>${item.leader_phone}</td>
-                        <td>${item.return_date}<br>${item.return_notes || '正常'}</td>
-                        <td><a href="${item.return_photo_url}" target="_blank">檢視</a></td>
-                        <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
-                    </tr>`;
-                });
-                returnedHtml += `</table>`;
-            }
+            returnedHtml += `<table class="grouped-table" style="border-radius:6px;"><tr><th style="width: 120px;">🕒 歸還時間</th><th style="width: 125px;">借用時段/場地/人</th><th>設備/狀態</th><th>📸 照片</th><th>操作</th></tr>`;
+            returnedList.forEach(item => {
+                let ts = getReturnTimestamp(item.return_photo_url);
+                let timeLabel = ts
+                    ? formatReturnTime(ts).replace(' ', '<br>')
+                    : `${item.return_date || '—'}<br><span style="color:#95a5a6; font-size:11px;">(無時間紀錄)</span>`;
+                let photo = item.return_photo_url ? `<a href="${item.return_photo_url}" target="_blank">檢視</a>` : '<span style="color:#95a5a6;">無</span>';
+
+                returnedHtml += `<tr>
+                    <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
+                    <td>${item.borrow_date}<br><b>${item.start_time}-${item.end_time}</b><br>${item.location}<br>${item.leader_name}</td>
+                    <td style="white-space:normal; min-width:120px;">${equipmentText(item)}<br><span style="color:#7f8c8d; font-size:11px;">${item.return_notes || '正常歸還'}</span></td>
+                    <td>${photo}</td>
+                    <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
+                </tr>`;
+            });
+            returnedHtml += `</table>`;
         }
         document.getElementById('returnedContainer').innerHTML = returnedHtml;
     }
 
     async function submitBorrow() {
+        if (!requireDb()) return;
         try {
             if (!document.getElementById("agreeRules").checked) { alert("請勾選同意借用守則！"); return; }
-            
+
             var date = document.getElementById("borrowDate").value;
             var startTime = document.getElementById("startTime").value;
             var endTime = document.getElementById("endTime").value;
@@ -608,10 +713,11 @@
             var endFloat = timeToFloat(endTime);
             if (startFloat >= endFloat) { alert("歸還時間必須晚於借用時間！"); return; }
 
-            var reqMa303 = parseInt(document.getElementById("ma303").value) || 0;
-            var reqMa707 = parseInt(document.getElementById("ma707").value) || 0;
+            var speakerNode = document.querySelector('input[name="needSpeaker"]:checked');
+            var reqSpeaker = (speakerNode && speakerNode.value === "是") ? 1 : 0;
             var reqStand = parseInt(document.getElementById("musicStand").value) || 0;
-            var reqPiano = document.getElementById("piano").checked;
+            var pianoNode = document.querySelector('input[name="piano"]:checked');
+            var reqPiano = (loc !== "教會外場地") && pianoNode && pianoNode.value === "需要";
 
             showLoading("檢查時段與設備狀態中...");
 
@@ -620,22 +726,20 @@
 
             for (let t = startFloat; t < endFloat; t += 0.5) {
                 let timeStr = `${floatToTimeStr(t)}-${floatToTimeStr(t+0.5)}`;
-                let usedMa303 = 0, usedMa707 = 0, usedStand = 0, usedPiano = false;
+                let usedSpeaker = 0, usedStand = 0, usedPiano = false;
                 for (let record of records) {
-                    if (!record.start_time || !record.end_time) continue; 
+                    if (!record.start_time || !record.end_time) continue;
                     let recStart = timeToFloat(record.start_time);
                     let recEnd = timeToFloat(record.end_time);
                     if (recStart <= t && recEnd > t) {
                         if (record.location === loc) { hideLoading(); alert(`⛔ ${timeStr}「${loc}」已被預約！`); return; }
-                        usedMa303 += parseInt(record.ma303) || 0;
-                        usedMa707 += parseInt(record.ma707) || 0;
+                        usedSpeaker += (parseInt(record.ma303) || 0) + (parseInt(record.ma707) || 0);
                         usedStand += parseInt(record.music_stand) || 0;
                         if (record.piano === "是") usedPiano = true;
                     }
                 }
-                if (reqMa303 > 0 && (reqMa303 + usedMa303 > 3)) { hideLoading(); alert(`⛔ ${timeStr} MA303 總庫存不足！`); return; }
-                if (reqMa707 > 0 && (reqMa707 + usedMa707 > 1)) { hideLoading(); alert(`⛔ ${timeStr} MA707 已被借出！`); return; }
-                if (reqStand > 0 && (reqStand + usedStand > 6)) { hideLoading(); alert(`⛔ ${timeStr} 譜架 庫存不足！`); return; }
+                if (reqSpeaker > 0 && (reqSpeaker + usedSpeaker > SPEAKER_TOTAL)) { hideLoading(); alert(`⛔ ${timeStr} 喇叭已全部借出！`); return; }
+                if (reqStand > 0 && (reqStand + usedStand > STAND_TOTAL)) { hideLoading(); alert(`⛔ ${timeStr} 譜架 庫存不足！`); return; }
                 if (reqPiano && usedPiano) { hideLoading(); alert(`⛔ ${timeStr} 鋼琴 已被借出！`); return; }
             }
 
@@ -646,18 +750,18 @@
             const { error } = await db.from('borrow_records').insert([{
                 borrow_date: date, start_time: startTime, end_time: endTime, location: loc,
                 leader_name: name, leader_phone: phone, need_tech: techOption,
-                ma303: reqMa303.toString(), ma707: reqMa707.toString(),
+                ma303: reqSpeaker.toString(), ma707: "0",
                 piano: reqPiano ? "是" : "無", music_stand: reqStand.toString(), notes: document.getElementById("notes").value
             }]);
 
             hideLoading();
-            if (error) { alert("發生錯誤：" + error.message); } 
-            else { 
+            if (error) { alert("發生錯誤：" + error.message); }
+            else {
                 setTimeout(() => {
-                    alert("申請成功！"); 
-                    document.getElementById("borrowForm").reset(); 
-                    checkRules(); 
-                    showSection('homeMenu'); 
+                    alert("申請成功！");
+                    document.getElementById("borrowForm").reset();
+                    checkRules();
+                    showSection('homeMenu');
                 }, 100);
             }
         } catch (e) {
@@ -670,12 +774,14 @@
         document.getElementById('returnSearchPhone').value = '';
         document.getElementById('returnForm').classList.add('hidden');
         document.getElementById('returnForm').reset();
+        document.getElementById('unreturnedList').innerHTML = '';
     }
 
     async function searchUnreturned() {
+        if (!requireDb()) return;
         var phone = document.getElementById('returnSearchPhone').value;
         if(!phone) { alert('請輸入借用時填寫的電話號碼'); return; }
-        
+
         let listContainer = document.getElementById('unreturnedList');
         listContainer.innerHTML = "搜尋中...";
         document.getElementById('returnForm').classList.remove('hidden');
@@ -683,10 +789,10 @@
         try {
             const { data, error } = await db.from('borrow_records').select('*').eq('leader_phone', phone).eq('is_returned', false).order('borrow_date', { ascending: true });
             if(error) { listContainer.innerHTML = "查詢失敗"; return; }
-            if(data.length === 0) { 
-                listContainer.innerHTML = "找不到此電話的「未歸還」紀錄。"; 
+            if(data.length === 0) {
+                listContainer.innerHTML = "找不到此電話的「未歸還」紀錄。";
                 document.getElementById('submitReturnBtn').style.display = 'none';
-                return; 
+                return;
             }
 
             document.getElementById('submitReturnBtn').style.display = 'block';
@@ -694,7 +800,7 @@
             data.forEach((item, index) => {
                 let checked = index === 0 ? 'checked' : '';
                 html += `<label style="display: block; margin-bottom: 10px; cursor: pointer; border-bottom: 1px dashed #eee; padding-bottom: 8px;">
-                    <input type="radio" name="returnRecordId" value="${item.id}" ${checked} style="margin-right: 8px;"> 
+                    <input type="radio" name="returnRecordId" value="${item.id}" ${checked} style="margin-right: 8px;">
                     ${item.borrow_date} | ${item.location} (${item.start_time}-${item.end_time})
                 </label>`;
             });
@@ -705,19 +811,21 @@
     }
 
     async function submitReturn() {
+        if (!requireDb()) return;
         try {
             var selectedRadio = document.querySelector('input[name="returnRecordId"]:checked');
             if (!selectedRadio) { alert("請先搜尋並選擇要歸還的紀錄！"); return; }
-            
+
             var recordId = selectedRadio.value;
             var fileInput = document.getElementById("returnPhoto");
             if(fileInput.files.length === 0) { alert("請上傳歸還照片！"); return; }
-            
+
             showLoading("照片壓縮中 (1/2)<br><span style='font-size:14px; font-weight:normal;'>約需 1~3 秒</span>");
 
             var file = fileInput.files[0];
             var compressedFile = await compressImage(file);
-            var fileName = Date.now() + "_return.jpg"; 
+            var uploadedAt = Date.now();
+            var fileName = uploadedAt + "_return.jpg";
 
             document.getElementById('loadingText').innerHTML = "雲端上傳中 (2/2)<br><span style='font-size:14px; font-weight:normal;'>即將完成</span>";
 
@@ -728,19 +836,19 @@
             let todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date());
 
             const { error: dbError } = await db.from('borrow_records').update({
-                is_returned: true, 
-                return_date: todayStr, 
-                return_photo_url: urlData.publicUrl, 
+                is_returned: true,
+                return_date: todayStr,
+                return_photo_url: urlData.publicUrl,
                 return_notes: document.getElementById("returnNotes").value
             }).eq('id', recordId);
 
             hideLoading();
-            if (dbError) { alert("寫入資料庫失敗"); } 
-            else { 
+            if (dbError) { alert("寫入資料庫失敗"); }
+            else {
                 setTimeout(() => {
-                    alert("歸還成功！"); 
+                    alert("歸還成功！歸還時間：" + formatReturnTime(uploadedAt));
                     resetReturnForm();
-                    showSection('homeMenu'); 
+                    showSection('homeMenu');
                 }, 100);
             }
         } catch(e) {
