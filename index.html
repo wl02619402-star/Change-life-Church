@@ -1238,7 +1238,11 @@
                 let checked = index === 0 ? 'checked' : '';
                 html += `<label style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; cursor: pointer; border-bottom: 1px dashed #eee; padding-bottom: 8px;">
                     <input type="radio" name="returnRecordId" value="${item.id}" ${checked} style="margin-top: 3px;">
-                    <span>${dateTimeCell(item)}<span style="color:#2c3e50;">📍 ${item.location}</span></span>
+                    <span>
+                        <div style="font-weight:bold; color:#2c3e50;">📅 日期：${formatDateLabel(item.borrow_date)}</div>
+                        <div style="color:#5d7a8c; font-size:12.5px; margin-top:2px;">🕐 時間：${item.start_time}–${item.end_time}</div>
+                        <div style="color:#2c3e50; font-size:12.5px; margin-top:2px;">📍 場地：${item.location}</div>
+                    </span>
                 </label>`;
             });
             listContainer.innerHTML = html;
