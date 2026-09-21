@@ -7,7 +7,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; transition: max-width .15s; }
+        /* 後台在夠寬的電腦螢幕上放寬容器，表格才有空間把時間/場地/聯絡人/電話拆成各自獨立的欄位；
+           手機或視窗較窄時（<900px）維持原本 600px，用堆疊式儲存格排版（已個別測試過清楚易讀）。
+           寬度模式在 loadAdminData() 用 window.innerWidth 判斷、由 showSection() 切換 .admin-wide class。 */
+        @media (min-width: 900px) {
+            .container.admin-wide { max-width: 1200px; }
+        }
         h2 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
         .home-menu { display: flex; flex-direction: column; align-items: center; gap: 15px; }
         .btn-main { width: 100%; max-width: 280px; padding: 18px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; text-align: center; }
@@ -656,6 +662,9 @@
         if (sectionId === 'homeMenu') document.getElementById('homeMenu').style.display = 'flex';
         else document.getElementById(sectionId).style.display = 'block';
 
+        // 後台畫面在寬螢幕時放寬容器（見上方 CSS），其他頁面維持原本手機優先的窄版面
+        document.querySelector('.container').classList.toggle('admin-wide', sectionId === 'adminSection');
+
         if (!opts.fromPopstate) {
             if (!history.state || history.state.section !== sectionId) {
                 history.pushState({ section: sectionId }, '', '#' + sectionId);
@@ -1031,6 +1040,10 @@
 
     async function loadAdminData() {
         if (!db) return;
+        // 螢幕夠寬（電腦，非手機）時用「每欄位各自獨立」的寬版表格；
+        // 窄螢幕（手機）維持堆疊式儲存格，資訊不會被拆得太細反而更難讀。
+        // 這個判斷只在每次重新載入資料時做一次，若中途手動縮放視窗，要等下一次資料更新（例如按了按鈕、切換頁籤）才會套用新版面。
+        let wide = window.innerWidth >= 900;
         let weekFilter = document.getElementById("adminWeekFilter").value;
         const { data: records, error } = await db.from('borrow_records').select('*');
         if (error) return;
@@ -1084,23 +1097,37 @@
 
                 unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
                 unreturnedHtml += summaryBox(dailySummary(records, date));
-                unreturnedHtml += `<table class="grouped-table"><tr>
-                    <th style="width:95px;">時間/場地</th>
-                    <th style="width:110px;">聯絡人</th>
-                    <th style="min-width:150px;">喇叭</th>
-                    <th>譜架</th>
-                    <th>鋼琴</th>
-                    <th>📍 領取照片</th>
-                    <th>操作</th></tr>`;
+                unreturnedHtml += wide
+                    ? `<table class="grouped-table"><tr>
+                        <th>時間</th>
+                        <th>場地</th>
+                        <th>聯絡人</th>
+                        <th>電話</th>
+                        <th style="min-width:150px;">喇叭</th>
+                        <th>譜架</th>
+                        <th>鋼琴</th>
+                        <th>📍 領取照片</th>
+                        <th>操作</th></tr>`
+                    : `<table class="grouped-table"><tr>
+                        <th style="width:95px;">時間/場地</th>
+                        <th style="width:110px;">聯絡人</th>
+                        <th style="min-width:150px;">喇叭</th>
+                        <th>譜架</th>
+                        <th>鋼琴</th>
+                        <th>📍 領取照片</th>
+                        <th>操作</th></tr>`;
 
                 unreturnedGroups[date].forEach(item => {
                     let overdue = isOverdue(item);
 
-                    // 音控/逾期用小徽章而不是一行行文字，跟聯絡資訊分開放，一眼就能認出「這是狀態標示」
-                    let badges = '';
-                    if (overdue) badges += `<span style="display:inline-block; background:#e74c3c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">⚠️ 已逾期</span>`;
-                    if (item.need_tech === '是') badges += `<span style="display:inline-block; background:#fdecea; color:#c0392b; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">🎛️ 需音控</span>`;
-                    let badgeRow = badges ? `<div>${badges}</div>` : '';
+                    // 逾期/音控各自獨立成一個小徽章，寬版跟窄版會放到不同欄位，所以分開存
+                    let overdueBadge = overdue
+                        ? `<span style="display:inline-block; background:#e74c3c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">⚠️ 已逾期</span>`
+                        : '';
+                    let techBadge = item.need_tech === '是'
+                        ? `<span style="display:inline-block; background:#fdecea; color:#c0392b; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">🎛️ 需音控</span>`
+                        : '';
+                    let badgeRow = (overdueBadge + techBadge) ? `<div>${overdueBadge}${techBadge}</div>` : '';
 
                     // 會眾備註單獨一個淺色小方塊，跟姓名電話分開，不會混在一起變成一整段字
                     let noteBlock = item.notes
@@ -1116,15 +1143,27 @@
                         ? speakerAssignUI(item, records)
                         : '<span style="color:#ccc;">—</span>';
 
-                    unreturnedHtml += `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
-                        <td style="white-space:normal;"><b>🕐 ${item.start_time}-${item.end_time}</b><br>📍 ${item.location}</td>
-                        <td style="white-space:normal;">👤 ${item.leader_name}<br>📞 ${item.leader_phone}${badgeRow}${noteBlock}</td>
-                        <td style="white-space:normal;">${speakerAdmin}</td>
-                        <td>${standCell(item)}</td>
-                        <td>${pianoCell(item)}</td>
-                        <td>${photoAction}</td>
-                        <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
-                    </tr>`;
+                    unreturnedHtml += wide
+                        ? `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
+                            <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}</td>
+                            <td style="white-space:nowrap;">📍 ${item.location}</td>
+                            <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}</td>
+                            <td style="white-space:nowrap;">📞 ${item.leader_phone}</td>
+                            <td style="white-space:normal;">${speakerAdmin}</td>
+                            <td>${standCell(item)}</td>
+                            <td>${pianoCell(item)}</td>
+                            <td>${photoAction}</td>
+                            <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
+                        </tr>`
+                        : `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
+                            <td style="white-space:normal;"><b>🕐 ${item.start_time}-${item.end_time}</b><br>📍 ${item.location}</td>
+                            <td style="white-space:normal;">👤 ${item.leader_name}<br>📞 ${item.leader_phone}${badgeRow}${noteBlock}</td>
+                            <td style="white-space:normal;">${speakerAdmin}</td>
+                            <td>${standCell(item)}</td>
+                            <td>${pianoCell(item)}</td>
+                            <td>${photoAction}</td>
+                            <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
+                        </tr>`;
                 });
                 unreturnedHtml += `</table>`;
             });
@@ -1138,16 +1177,29 @@
         if (returnedList.length === 0) {
             returnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         } else {
-            returnedHtml += `<table class="grouped-table" style="border-radius:6px;"><tr>
-                <th style="width:100px;">🕒 歸還時間</th>
-                <th style="width:95px;">借用時段</th>
-                <th style="width:110px;">場地/負責人</th>
-                <th>喇叭</th>
-                <th>譜架</th>
-                <th>鋼琴</th>
-                <th>歸還狀態</th>
-                <th>📸 照片</th>
-                <th>操作</th></tr>`;
+            returnedHtml += wide
+                ? `<table class="grouped-table" style="border-radius:6px;"><tr>
+                    <th>🕒 歸還時間</th>
+                    <th>日期</th>
+                    <th>時段</th>
+                    <th>場地</th>
+                    <th>負責人</th>
+                    <th>喇叭</th>
+                    <th>譜架</th>
+                    <th>鋼琴</th>
+                    <th>歸還狀態</th>
+                    <th>📸 照片</th>
+                    <th>操作</th></tr>`
+                : `<table class="grouped-table" style="border-radius:6px;"><tr>
+                    <th style="width:100px;">🕒 歸還時間</th>
+                    <th style="width:95px;">借用時段</th>
+                    <th style="width:110px;">場地/負責人</th>
+                    <th>喇叭</th>
+                    <th>譜架</th>
+                    <th>鋼琴</th>
+                    <th>歸還狀態</th>
+                    <th>📸 照片</th>
+                    <th>操作</th></tr>`;
             returnedList.forEach(item => {
                 let ts = getReturnTimestamp(item.return_photo_url);
                 let timeLabel = ts
@@ -1163,17 +1215,31 @@
                     ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
                     : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
 
-                returnedHtml += `<tr>
-                    <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
-                    <td style="white-space:normal;">📅 ${formatDateLabel(item.borrow_date)}<br><b>🕐 ${item.start_time}-${item.end_time}</b></td>
-                    <td style="white-space:normal;">📍 ${item.location}<br>👤 ${item.leader_name}</td>
-                    <td style="white-space:normal;">${speakerCell(item)}</td>
-                    <td>${standCell(item)}</td>
-                    <td>${pianoCell(item)}</td>
-                    <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
-                    <td>${photo}</td>
-                    <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
-                </tr>`;
+                returnedHtml += wide
+                    ? `<tr>
+                        <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
+                        <td style="white-space:nowrap;">📅 ${formatDateLabel(item.borrow_date)}</td>
+                        <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
+                        <td style="white-space:nowrap;">📍 ${item.location}</td>
+                        <td style="white-space:nowrap;">👤 ${item.leader_name}</td>
+                        <td style="white-space:normal;">${speakerCell(item)}</td>
+                        <td>${standCell(item)}</td>
+                        <td>${pianoCell(item)}</td>
+                        <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
+                        <td>${photo}</td>
+                        <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
+                    </tr>`
+                    : `<tr>
+                        <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
+                        <td style="white-space:normal;">📅 ${formatDateLabel(item.borrow_date)}<br><b>🕐 ${item.start_time}-${item.end_time}</b></td>
+                        <td style="white-space:normal;">📍 ${item.location}<br>👤 ${item.leader_name}</td>
+                        <td style="white-space:normal;">${speakerCell(item)}</td>
+                        <td>${standCell(item)}</td>
+                        <td>${pianoCell(item)}</td>
+                        <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
+                        <td>${photo}</td>
+                        <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
+                    </tr>`;
             });
             returnedHtml += `</table>`;
         }
