@@ -19,7 +19,18 @@
         .form-section, .admin-section { display: none; }
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 14px; }
-        input[type="text"], input[type="date"], input[type="time"], input[type="file"], input[type="password"], input[type="email"], select { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        /* ✏️ 一般文字／日期／時間欄位：加粗邊框＋聚焦時的藍色光暈，跟卡片、按鈕的風格一致 */
+        input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #2c3e50; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+        input[type="text"]:focus, input[type="tel"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="password"]:focus, input[type="email"]:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        input[type="text"]::placeholder, input[type="tel"]::placeholder, input[type="email"]::placeholder { color: #adb9c2; }
+
+        /* 🔽 下拉選單：換成自訂箭頭圖示，去掉瀏覽器預設的陽春樣式 */
+        select { width: 100%; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%237f8c8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center; -webkit-appearance: none; -moz-appearance: none; appearance: none; color: #2c3e50; font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+        select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        select:disabled { background-color: #f4f6f8; color: #b0bcc4; cursor: not-allowed; }
+
+        /* 📎 檔案上傳欄位：改成虛線框，看起來像「拖放上傳」而不是陽春的瀏覽器按鈕 */
+        input[type="file"] { width: 100%; padding: 10px 12px; border: 2px dashed #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 13.5px; background: #fbfcfd; color: #7f8c8d; font-family: inherit; }
         .hidden { display: none; }
         .radio-group { display: flex; gap: 15px; align-items: center; margin-top: 5px; flex-wrap: wrap; }
         .radio-group label { display: flex; align-items: center; font-weight: normal; font-size: 16px; margin: 0; cursor: pointer; }
