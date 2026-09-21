@@ -241,7 +241,7 @@
             </div>
 
             <div class="form-group"><label>歸還設備照片上傳 (自動壓縮)</label><input type="file" id="returnPhoto" accept="image/*" required></div>
-            <div class="form-group"><label>歸還狀態 (如有損壞請註明)</label><input type="text" id="returnNotes" placeholder="設備皆正常歸還"></div>
+            <div class="form-group"><label>歸還狀態 <span style="font-weight:normal; color:#95a5a6; font-size:12.5px;">（選填，如有損壞或異常才需要說明）</span></label><input type="text" id="returnNotes" placeholder="一切正常，可以不用填寫"></div>
 
             <button type="submit" id="submitReturnBtn" class="btn-submit">送出歸還通知</button>
         </form>
@@ -264,6 +264,8 @@
             <button class="btn-back" style="width: 48%; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
             <button class="btn-back" style="width: 48%; margin:0; background-color: #c0392b;" onclick="adminLogout()">登出管理員</button>
         </div>
+
+        <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
 
         <h4>⚠️ 未歸還清單</h4>
         <div id="unreturnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
@@ -437,6 +439,14 @@
                 <div style="color:#5d7a8c; font-size:12.5px; margin-top:2px;">🕐 ${item.start_time}–${item.end_time}</div>`;
     }
 
+    // ⚠️ 判斷這筆借用是否已經「逾期未歸還」：借用時段的結束時間已經過了現在，但還沒標記歸還
+    function isOverdue(item) {
+        if (!item.borrow_date || !item.end_time) return false;
+        let dt = new Date(`${item.borrow_date}T${item.end_time}:00`);
+        if (isNaN(dt.getTime())) return false;
+        return dt.getTime() < Date.now();
+    }
+
     // 🕒 從歸還照片檔名還原上傳時間 (檔名格式：<timestamp>_return.jpg)
     function getReturnTimestamp(url) {
         if (!url) return 0;
@@ -586,6 +596,10 @@
     }
 
     // 管理員的喇叭分配介面
+    //    每組理論上只借 1 台（前端申請表只有是/否，沒有數量欄位），
+    //    所以這裡不硬性限制勾選數量（保留真的需要 2 台以上的彈性），
+    //    但會把會眾備註搬到勾選框正上方、並在勾超過 1 台時跳出提醒，
+    //    讓管理員在分配的當下就能核對，而不是分配完才發現不對。
     function speakerAssignUI(item, allRecords) {
         let assigned = normalizeAssignedList(item.ma303_assigned);
         if (assigned.length > 0) {
@@ -597,12 +611,34 @@
         let boxes = units.map(u => {
             let taken = busy.has(u[1]);
             return `<label style="font-weight:normal; display:inline-block; margin-right:8px; ${taken ? 'color:#c0392b; text-decoration:line-through;' : ''}" title="${taken ? '此時段已被其他小組使用' : ''}">
-                <input type="checkbox" id="${u[0]}_${item.id}" ${taken ? 'disabled' : ''}> ${u[2]}</label>`;
+                <input type="checkbox" id="${u[0]}_${item.id}" onchange="checkSpeakerCount(${item.id})" ${taken ? 'disabled' : ''}> ${u[2]}</label>`;
         }).join('');
+        let noteHint = item.notes
+            ? `<div style="color:#8e44ad; margin-bottom:4px;">💬 會眾備註：${item.notes}</div>`
+            : '';
         return `<div style="font-size:11px; background:#fff; padding:6px; border-radius:4px; border:1px solid #ddd; margin-top:2px;">
-            <span style="color:#e74c3c; font-weight:bold;">待分配機台</span><br>${boxes}<br>
+            <span style="color:#e74c3c; font-weight:bold;">待分配機台</span> <span style="color:#95a5a6;">（一般每組 1 台）</span><br>
+            ${noteHint}${boxes}
+            <div id="speakerWarn_${item.id}" style="display:none; color:#e67e22; font-weight:bold; margin-top:4px;">⚠️ 已勾選 <span id="speakerCount_${item.id}"></span> 台，請確認會眾是否真的需要這麼多</div>
             <button onclick="assignSpeaker(${item.id}, '${item.borrow_date}', '${item.start_time}', '${item.end_time}')" style="margin-top:5px; cursor:pointer; font-size:11px; background:#34495e; color:white; border:none; padding:4px 8px; border-radius:3px;">確認分配</button>
         </div>`;
+    }
+
+    // 勾選框數量即時檢查：超過 1 台就跳出提醒（不阻擋送出，只是提醒管理員多看一眼）
+    function checkSpeakerCount(id) {
+        const prefixes = ['sp_A', 'sp_B', 'sp_C', 'sp_707'];
+        let count = prefixes.filter(p => {
+            let el = document.getElementById(`${p}_${id}`);
+            return el && el.checked;
+        }).length;
+        let warn = document.getElementById(`speakerWarn_${id}`);
+        if (!warn) return;
+        if (count > 1) {
+            document.getElementById(`speakerCount_${id}`).textContent = count;
+            warn.style.display = 'block';
+        } else {
+            warn.style.display = 'none';
+        }
     }
 
     // 🔙 讓手機/瀏覽器原生的「上一頁」可以在這些區塊之間切換，不用每次都按「返回首頁」。
@@ -1027,6 +1063,18 @@
 
         // 未歸還：依借用日期分組，組內依開始時間排序
         let dates = Object.keys(unreturnedGroups).sort((a, b) => String(a).localeCompare(String(b)));
+
+        // 📋 頂部總覽：一眼看出還有幾組沒歸還、其中幾組已經逾期，不用捲到底數
+        let totalUnreturned = 0, overdueCount = 0;
+        dates.forEach(d => unreturnedGroups[d].forEach(item => {
+            totalUnreturned++;
+            if (isOverdue(item)) overdueCount++;
+        }));
+        document.getElementById('adminSummary').innerHTML =
+            `<span>📋 未歸還 <b style="color:#c0392b;">${totalUnreturned}</b> 組</span>` +
+            (overdueCount > 0 ? `<span style="color:#e74c3c; font-weight:bold;">⚠️ 其中 ${overdueCount} 組已逾期</span>` : '') +
+            `<span>✅ 已歸還 <b style="color:#27ae60;">${returnedList.length}</b> 組</span>`;
+
         let unreturnedHtml = '';
         if (dates.length === 0) {
             unreturnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
@@ -1037,7 +1085,8 @@
                 unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
                 unreturnedHtml += summaryBox(dailySummary(records, date));
                 unreturnedHtml += `<table class="grouped-table"><tr>
-                    <th style="width:125px;">時間/場地/人</th>
+                    <th style="width:95px;">時間/場地</th>
+                    <th style="width:110px;">聯絡人</th>
                     <th style="min-width:150px;">喇叭</th>
                     <th>譜架</th>
                     <th>鋼琴</th>
@@ -1045,8 +1094,18 @@
                     <th>操作</th></tr>`;
 
                 unreturnedGroups[date].forEach(item => {
-                    let tech = item.need_tech === '是' ? `<br><span style="color:#e74c3c; font-size:11px;">需音控同工</span>` : '';
-                    let note = item.notes ? `<br><span style="color:#7f8c8d; font-size:11px;">備註：${item.notes}</span>` : '';
+                    let overdue = isOverdue(item);
+
+                    // 音控/逾期用小徽章而不是一行行文字，跟聯絡資訊分開放，一眼就能認出「這是狀態標示」
+                    let badges = '';
+                    if (overdue) badges += `<span style="display:inline-block; background:#e74c3c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">⚠️ 已逾期</span>`;
+                    if (item.need_tech === '是') badges += `<span style="display:inline-block; background:#fdecea; color:#c0392b; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">🎛️ 需音控</span>`;
+                    let badgeRow = badges ? `<div>${badges}</div>` : '';
+
+                    // 會眾備註單獨一個淺色小方塊，跟姓名電話分開，不會混在一起變成一整段字
+                    let noteBlock = item.notes
+                        ? `<div style="background:#f4f0fa; color:#6c5a8c; font-size:11px; border-radius:4px; padding:3px 6px; margin-top:4px;">💬 ${item.notes}</div>`
+                        : '';
 
                     let photoAction = item.pickup_photo_url
                         ? `<a href="${item.pickup_photo_url}" target="_blank">查看</a> | <label class="upload-label">重傳<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`
@@ -1057,8 +1116,9 @@
                         ? speakerAssignUI(item, records)
                         : '<span style="color:#ccc;">—</span>';
 
-                    unreturnedHtml += `<tr>
-                        <td style="white-space:normal;"><b>${item.start_time}-${item.end_time}</b><br>${item.location}<br>${item.leader_name}<br>${item.leader_phone}${tech}${note}</td>
+                    unreturnedHtml += `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
+                        <td style="white-space:normal;"><b>🕐 ${item.start_time}-${item.end_time}</b><br>📍 ${item.location}</td>
+                        <td style="white-space:normal;">👤 ${item.leader_name}<br>📞 ${item.leader_phone}${badgeRow}${noteBlock}</td>
                         <td style="white-space:normal;">${speakerAdmin}</td>
                         <td>${standCell(item)}</td>
                         <td>${pianoCell(item)}</td>
@@ -1079,8 +1139,9 @@
             returnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         } else {
             returnedHtml += `<table class="grouped-table" style="border-radius:6px;"><tr>
-                <th style="width:120px;">🕒 歸還時間</th>
-                <th style="width:125px;">借用時段/場地/人</th>
+                <th style="width:100px;">🕒 歸還時間</th>
+                <th style="width:95px;">借用時段</th>
+                <th style="width:110px;">場地/負責人</th>
                 <th>喇叭</th>
                 <th>譜架</th>
                 <th>鋼琴</th>
@@ -1094,13 +1155,22 @@
                     : `${item.return_date || '—'}<br><span style="color:#95a5a6; font-size:11px;">(無時間紀錄)</span>`;
                 let photo = item.return_photo_url ? `<a href="${item.return_photo_url}" target="_blank">檢視</a>` : '<span style="color:#95a5a6;">無</span>';
 
+                // 歸還狀態用顏色分流：留空，或會眾自己寫的字裡有「正常」兩個字（不管是「正常歸還」「設備正常」哪種寫法都算），
+                // 一律視為沒問題、用綠色勾勾；其他文字才代表真的有異常說明，用橘色凸顯，不用逐行讀文字
+                let noteText = (item.return_notes || '').trim();
+                let looksNormal = !noteText || noteText.includes('正常');
+                let statusCell = looksNormal
+                    ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
+                    : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
+
                 returnedHtml += `<tr>
                     <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
-                    <td>${item.borrow_date}<br><b>${item.start_time}-${item.end_time}</b><br>${item.location}<br>${item.leader_name}</td>
+                    <td style="white-space:normal;">📅 ${formatDateLabel(item.borrow_date)}<br><b>🕐 ${item.start_time}-${item.end_time}</b></td>
+                    <td style="white-space:normal;">📍 ${item.location}<br>👤 ${item.leader_name}</td>
                     <td style="white-space:normal;">${speakerCell(item)}</td>
                     <td>${standCell(item)}</td>
                     <td>${pianoCell(item)}</td>
-                    <td style="white-space:normal; max-width:150px; color:#7f8c8d; font-size:12px;">${item.return_notes || '正常歸還'}</td>
+                    <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
                     <td>${photo}</td>
                     <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
                 </tr>`;
