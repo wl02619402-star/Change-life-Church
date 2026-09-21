@@ -42,9 +42,11 @@
         .form-card-title { font-size: 15px; font-weight: bold; color: #2c3e50; margin: 0 0 14px; display: flex; align-items: center; gap: 6px; }
         .form-card-sub { font-size: 12px; color: #95a5a6; margin: -10px 0 14px; }
 
-        /* 🔘 是/否、數量這種二選一或三選一的題目，改成大按鈕，一眼就看出目前選了哪個 */
-        .toggle-group { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-        .toggle-group label { flex: 1; min-width: 76px; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 11px 8px; border: 2px solid #dfe6ea; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; color: #7f8c8d; background: #fff; margin: 0; transition: border-color .15s, background .15s, color .15s; }
+        /* 🔘 是/否、數量這種二選一或三選一的題目，改成大按鈕，一眼就看出目前選了哪個
+           用 grid 而不是 flex：不管按鈕裡文字多寬，永遠固定排成一列、平均分配寬度，
+           不會因為某個選項字比較多就跳到下一行、排版忽大忽小。 */
+        .toggle-group { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 6px; }
+        .toggle-group label { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 11px 4px; border: 2px solid #dfe6ea; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; color: #7f8c8d; background: #fff; margin: 0; transition: border-color .15s, background .15s, color .15s; }
         .toggle-group label.active { border-color: #3498db; background: #eaf4fc; color: #2471a3; }
         .toggle-group input[type="radio"] { display: none; }
 
@@ -58,6 +60,9 @@
         @media (max-width: 600px) {
             body { padding: 10px; }
             .container { padding: 18px 15px; }
+            h2 { font-size: 19px; line-height: 1.4; margin-bottom: 20px; }
+            .form-card { padding: 14px 12px 2px; }
+            .toggle-group label { padding: 11px 2px; font-size: 13.5px; }
             .responsive-table thead { display: none; }
             .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; box-sizing: border-box; }
             .responsive-table tr { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 14px; padding: 4px 10px; background: #fff; }
@@ -90,8 +95,8 @@
     <div id="loginModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0; color: #34495e;">🔐 管理員身分驗證</h3>
-            <div class="form-group"><label>管理員信箱</label><input type="email" id="adminEmail" placeholder="admin@christmas.com"></div>
-            <div class="form-group"><label>密碼</label><input type="password" id="adminPassword"></div>
+            <div class="form-group"><label>管理員信箱</label><input type="email" id="adminEmail" placeholder="admin@christmas.com" onkeydown="if(event.key==='Enter'){event.preventDefault(); adminLogin();}"></div>
+            <div class="form-group"><label>密碼</label><input type="password" id="adminPassword" onkeydown="if(event.key==='Enter'){event.preventDefault(); adminLogin();}"></div>
             <button class="btn-submit" onclick="adminLogin()">登入後台</button>
             <button class="btn-back" onclick="document.getElementById('loginModal').style.display='none'">取消</button>
         </div>
@@ -120,7 +125,7 @@
 
     <div id="borrowSection" class="form-section">
         <h3 style="text-align: center; color: #3498db;">📝 填寫借用單</h3>
-        <form id="borrowForm">
+        <form id="borrowForm" onsubmit="event.preventDefault(); submitBorrow(); return false;">
 
             <div class="form-card">
                 <div class="form-card-title">🕐 借用時間</div>
@@ -136,7 +141,7 @@
                 <div class="form-card-title">📍 場地與聯絡資訊</div>
                 <div style="display: flex; gap: 10px;">
                     <div class="form-group" style="flex: 1;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
-                    <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="text" id="leaderPhone" placeholder="例：0912345678" required></div>
+                    <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="tel" id="leaderPhone" inputmode="numeric" maxlength="10" minlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" required></div>
                 </div>
                 <div class="form-group">
                     <label>借用場地</label>
@@ -192,14 +197,14 @@
                 </label>
             </div>
 
-            <button type="button" class="btn-submit" onclick="submitBorrow()">送出借用申請</button>
+            <button type="submit" class="btn-submit">送出借用申請</button>
             <button type="button" class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
         </form>
     </div>
 
     <div id="querySection" class="form-section">
         <h3 style="text-align: center; color: #9b59b6;">🔍 查詢借用與領取狀況</h3>
-        <div class="form-group"><label>請輸入當時填寫的聯絡電話</label><input type="text" id="searchPhone" placeholder="例：0912345678"></div>
+        <div class="form-group"><label>請輸入當時填寫的聯絡電話</label><input type="tel" id="searchPhone" inputmode="numeric" maxlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" onkeydown="if(event.key==='Enter'){event.preventDefault(); queryRecords();}"></div>
         <button class="btn-submit" onclick="queryRecords()">查詢</button>
         <div id="queryResult" style="margin-top: 20px; overflow-x: auto;"></div>
         <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
@@ -211,12 +216,12 @@
         <div class="form-group" id="returnSearchBlock">
             <label>請輸入借用時填寫的聯絡電話</label>
             <div style="display: flex; gap: 10px;">
-                <input type="text" id="returnSearchPhone" placeholder="例：0912345678" style="flex: 1;">
+                <input type="tel" id="returnSearchPhone" inputmode="numeric" maxlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchUnreturned();}" style="flex: 1;">
                 <button type="button" class="btn-submit" style="margin-top: 0; width: auto; padding: 12px 20px;" onclick="searchUnreturned()">搜尋</button>
             </div>
         </div>
 
-        <form id="returnForm" class="hidden">
+        <form id="returnForm" class="hidden" onsubmit="event.preventDefault(); submitReturn(); return false;">
             <hr>
             <div class="form-group">
                 <label style="color: #c0392b;">請選擇要歸還的紀錄：</label>
@@ -227,7 +232,7 @@
             <div class="form-group"><label>歸還設備照片上傳 (自動壓縮)</label><input type="file" id="returnPhoto" accept="image/*" required></div>
             <div class="form-group"><label>歸還狀態 (如有損壞請註明)</label><input type="text" id="returnNotes" placeholder="設備皆正常歸還"></div>
 
-            <button type="button" id="submitReturnBtn" class="btn-submit" onclick="submitReturn()">送出歸還通知</button>
+            <button type="submit" id="submitReturnBtn" class="btn-submit">送出歸還通知</button>
         </form>
         <button type="button" class="btn-back" onclick="showSection('homeMenu'); resetReturnForm();">返回首頁</button>
     </div>
@@ -287,6 +292,12 @@
     // 📞 電話統一去掉空白、括號與連字號，避免「0912-345-678」和「0912345678」查不到彼此
     function normalizePhone(s) {
         return String(s || '').replace(/[\s\-()+]/g, '');
+    }
+
+    // 🔒 電話欄位防呆：邊打字邊過濾，只能輸入數字，最多 10 碼（台灣手機號碼位數）
+    function digitsOnly(input) {
+        let v = input.value.replace(/\D/g, '').slice(0, 10);
+        if (v !== input.value) input.value = v;
     }
 
     // 🔒 會眾端一律透過受限的資料庫函式讀取，讀不到別人的姓名與電話。
@@ -397,6 +408,22 @@
         let h = Math.floor(f);
         let m = (f - h) >= 0.5 ? '30' : '00';
         return h.toString().padStart(2, '0') + ':' + m;
+    }
+
+    // 📅 把 "2026-12-06" 這種格式，轉成比較好讀的「12/6（六）」
+    const 週幾文字 = ['日', '一', '二', '三', '四', '五', '六'];
+    function formatDateLabel(dateStr) {
+        let parts = String(dateStr || '').split('-');
+        if (parts.length !== 3) return dateStr || '';
+        let y = parseInt(parts[0], 10), m = parseInt(parts[1], 10), d = parseInt(parts[2], 10);
+        let wd = 週幾文字[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+        return `${m}/${d}（${wd}）`;
+    }
+
+    // 日期＋時間合併顯示成兩行：上面是好讀的日期，下面是時間區間，比純數字清楚
+    function dateTimeCell(item) {
+        return `<div style="font-weight:bold; color:#2c3e50;">📅 ${formatDateLabel(item.borrow_date)}</div>
+                <div style="color:#5d7a8c; font-size:12.5px; margin-top:2px;">🕐 ${item.start_time}–${item.end_time}</div>`;
     }
 
     // 🕒 從歸還照片檔名還原上傳時間 (檔名格式：<timestamp>_return.jpg)
@@ -567,7 +594,11 @@
         </div>`;
     }
 
-    function showSection(sectionId) {
+    // 🔙 讓手機/瀏覽器原生的「上一頁」可以在這些區塊之間切換，不用每次都按「返回首頁」。
+    //    每次切換畫面就記一筆瀏覽紀錄；使用者按上一頁時瀏覽器會觸發 popstate，
+    //    這時改用 fromPopstate 旗標呼叫 showSection，避免又重複記一筆造成迴圈。
+    function showSection(sectionId, opts) {
+        opts = opts || {};
         document.getElementById('homeMenu').style.display = 'none';
         document.getElementById('borrowSection').style.display = 'none';
         document.getElementById('rulesSection').style.display = 'none';
@@ -577,7 +608,19 @@
 
         if (sectionId === 'homeMenu') document.getElementById('homeMenu').style.display = 'flex';
         else document.getElementById(sectionId).style.display = 'block';
+
+        if (!opts.fromPopstate) {
+            if (!history.state || history.state.section !== sectionId) {
+                history.pushState({ section: sectionId }, '', '#' + sectionId);
+            }
+        }
+        window.scrollTo(0, 0);
     }
+
+    window.addEventListener('popstate', function (e) {
+        var sectionId = (e.state && e.state.section) || 'homeMenu';
+        showSection(sectionId, { fromPopstate: true });
+    });
 
     function openModal() { document.getElementById('rulesModal').style.display = 'flex'; }
     function closeModal() { document.getElementById('rulesModal').style.display = 'none'; }
@@ -800,7 +843,8 @@
             if(data.length === 0) { document.getElementById('queryResult').innerHTML = "找不到此電話的借用紀錄。"; return; }
             data.sort((a, b) => String(b.borrow_date).localeCompare(String(a.borrow_date)));
 
-            let html = '<table class="responsive-table"><thead><tr><th>日期時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr></thead><tbody>';
+            let html = `<div style="color:#7f8c8d; font-size:12.5px; margin-bottom:8px;">共找到 <b style="color:#2471a3;">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
+            html += '<table class="responsive-table"><thead><tr><th>日期／時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr></thead><tbody>';
             data.forEach(item => {
                 let status = item.is_returned ? "✅ 已歸還" : "⚠️ 未歸還";
 
@@ -810,7 +854,7 @@
                     else { pickup = `<br><span style="color:#95a5a6;">(管理員尚未上傳位置)</span>`; }
                 }
                 html += `<tr>
-                    <td data-label="日期時間">${item.borrow_date}<br>${item.start_time}-${item.end_time}</td>
+                    <td data-label="日期／時間" style="white-space:normal;">${dateTimeCell(item)}</td>
                     <td data-label="場地">${item.location}</td>
                     <td data-label="喇叭" style="white-space:normal;">${speakerCell(item)}</td>
                     <td data-label="譜架">${standCell(item)}</td>
@@ -1080,8 +1124,8 @@
                 return;
             }
             if (name.length < 2) { alert("請填寫負責人姓名（至少 2 個字）。"); return; }
-            if (!/^\d{8,15}$/.test(phone)) {
-                alert("聯絡電話請填寫數字，例如 0912345678。\n這組號碼是您日後查詢與歸還的唯一依據，請務必填正確。");
+            if (!/^\d{10}$/.test(phone)) {
+                alert("聯絡電話請填寫 10 碼數字，例如 0912345678。\n這組號碼是您日後查詢與歸還的唯一依據，請務必填正確。");
                 return;
             }
 
@@ -1181,9 +1225,9 @@
             let html = '';
             data.forEach((item, index) => {
                 let checked = index === 0 ? 'checked' : '';
-                html += `<label style="display: block; margin-bottom: 10px; cursor: pointer; border-bottom: 1px dashed #eee; padding-bottom: 8px;">
-                    <input type="radio" name="returnRecordId" value="${item.id}" ${checked} style="margin-right: 8px;">
-                    ${item.borrow_date} | ${item.location} (${item.start_time}-${item.end_time})
+                html += `<label style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; cursor: pointer; border-bottom: 1px dashed #eee; padding-bottom: 8px;">
+                    <input type="radio" name="returnRecordId" value="${item.id}" ${checked} style="margin-top: 3px;">
+                    <span>${dateTimeCell(item)}<span style="color:#2c3e50;">📍 ${item.location}</span></span>
                 </label>`;
             });
             listContainer.innerHTML = html;
@@ -1241,6 +1285,9 @@
 
     // 頁面剛載入時，先把預設選中的按鈕（否／不需要）畫成選中的樣子
     syncToggles();
+
+    // 頁面剛載入時就在瀏覽紀錄留一筆「首頁」，這樣之後每按一次上一頁都會準確退回前一個畫面
+    history.replaceState({ section: 'homeMenu' }, '', location.pathname);
 
     let clickCount = 0; let clickTimer = null;
     function secretAdminTrigger() {
