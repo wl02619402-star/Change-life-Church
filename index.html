@@ -37,6 +37,20 @@
         .date-header { background: #34495e; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-weight: bold; margin-top: 15px; font-size: 15px; }
         .grouped-table { margin-top: 0; border-radius: 0 0 6px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
+        /* 🗂️ 借用表單：把相關欄位框在同一張卡片裡，讓頁面分區更清楚 */
+        .form-card { background: #f8fafc; border: 1px solid #e8edf2; border-radius: 10px; padding: 16px 16px 4px; margin-bottom: 18px; }
+        .form-card-title { font-size: 15px; font-weight: bold; color: #2c3e50; margin: 0 0 14px; display: flex; align-items: center; gap: 6px; }
+        .form-card-sub { font-size: 12px; color: #95a5a6; margin: -10px 0 14px; }
+
+        /* 🔘 是/否、數量這種二選一或三選一的題目，改成大按鈕，一眼就看出目前選了哪個 */
+        .toggle-group { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+        .toggle-group label { flex: 1; min-width: 76px; display: flex; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 11px 8px; border: 2px solid #dfe6ea; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; color: #7f8c8d; background: #fff; margin: 0; transition: border-color .15s, background .15s, color .15s; }
+        .toggle-group label.active { border-color: #3498db; background: #eaf4fc; color: #2471a3; }
+        .toggle-group input[type="radio"] { display: none; }
+
+        /* 💬 說明文字改用有底色的提示框，比純文字更不容易被忽略 */
+        .info-box { background:#f4f0fa; border:1px solid #e3d7f4; color:#6c5a8c; font-size:12.5px; line-height:1.65; padding:9px 11px; border-radius:6px; margin-top:8px; }
+
         /* 載入動畫專用樣式 */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
@@ -107,58 +121,66 @@
     <div id="borrowSection" class="form-section">
         <h3 style="text-align: center; color: #3498db;">📝 填寫借用單</h3>
         <form id="borrowForm">
-            <div class="form-group"><label>日期 (限 2026年12月)</label><input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" onchange="refreshAvailability()" required></div>
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;"><label>借用時間</label><input type="time" id="startTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
-                <div class="form-group" style="flex: 1;"><label>歸還時間</label><input type="time" id="endTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
+
+            <div class="form-card">
+                <div class="form-card-title">🕐 借用時間</div>
+                <div class="form-group"><label>日期 (限 2026年12月)</label><input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" onchange="refreshAvailability()" required></div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;"><label>借用時間</label><input type="time" id="startTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
+                    <div class="form-group" style="flex: 1;"><label>歸還時間</label><input type="time" id="endTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
+                </div>
+                <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13px; line-height:1.7;"></div>
             </div>
 
-            <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-bottom:15px; font-size:13px; line-height:1.7;"></div>
-            <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
-                <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="text" id="leaderPhone" placeholder="例：0912345678" required></div>
-            </div>
-            <div class="form-group">
-                <label>借用場地</label>
-                <select id="location" onchange="checkRules()" required>
-                    <option value="">請選擇場地...</option>
-                    <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
-                    <option value="幼主">幼主</option><option value="教會外場地">教會外場地</option>
-                </select>
-            </div>
-
-            <div class="form-group hidden" id="soundTechSection">
-                <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
-                <div class="radio-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
-            </div>
-
-            <hr>
-            <h4 style="color: #333;">設備需求</h4>
-
-            <div class="form-group">
-                <label>是否需要喇叭？</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="needSpeaker" value="是"> 是</label>
-                    <label><input type="radio" name="needSpeaker" value="否" checked> 否</label>
+            <div class="form-card">
+                <div class="form-card-title">📍 場地與聯絡資訊</div>
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
+                    <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="text" id="leaderPhone" placeholder="例：0912345678" required></div>
+                </div>
+                <div class="form-group">
+                    <label>借用場地</label>
+                    <select id="location" onchange="checkRules()" required>
+                        <option value="">請選擇場地...</option>
+                        <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
+                        <option value="幼主">幼主</option><option value="教會外場地">教會外場地</option>
+                    </select>
+                </div>
+                <div class="form-group hidden" id="soundTechSection" style="margin-bottom: 6px;">
+                    <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
+                    <div class="toggle-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label>譜架</label>
-                <select id="musicStand">
-                    <option value="0">不需要</option>
-                    <option value="1">1 個</option>
-                    <option value="2">2 個</option>
-                </select>
-            </div>
+            <div class="form-card">
+                <div class="form-card-title">🎛️ 設備需求</div>
+                <div class="form-card-sub">以下請依實際需求填寫，不需要的維持預設值即可</div>
 
-            <div class="form-group hidden" id="pianoSection">
-                <label id="pianoLabel">鋼琴</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="piano" value="需要"> <span id="pianoYesText">需要</span></label>
-                    <label><input type="radio" name="piano" value="不需要" checked> <span id="pianoNoText">不需要</span></label>
+                <div class="form-group">
+                    <label>🔊 是否需要喇叭？</label>
+                    <div class="toggle-group">
+                        <label><input type="radio" name="needSpeaker" value="是"> 是</label>
+                        <label><input type="radio" name="needSpeaker" value="否" checked> 否</label>
+                    </div>
                 </div>
-                <div id="pianoHint" style="color:#7f8c8d; font-size:12px; margin-top:6px;"></div>
+
+                <div class="form-group">
+                    <label>🎼 譜架</label>
+                    <div class="toggle-group">
+                        <label><input type="radio" name="musicStand" value="0" checked> 不需要</label>
+                        <label><input type="radio" name="musicStand" value="1"> 1 個</label>
+                        <label><input type="radio" name="musicStand" value="2"> 2 個</label>
+                    </div>
+                </div>
+
+                <div class="form-group hidden" id="pianoSection">
+                    <label id="pianoLabel">🎹 鋼琴</label>
+                    <div class="toggle-group">
+                        <label><input type="radio" name="piano" value="需要"> <span id="pianoYesText">需要</span></label>
+                        <label><input type="radio" name="piano" value="不需要" checked> <span id="pianoNoText">不需要</span></label>
+                    </div>
+                    <div id="pianoHint" class="info-box"></div>
+                </div>
             </div>
 
             <div class="form-group"><label>其他 (備註)</label><input type="text" id="notes" placeholder="無"></div>
@@ -592,6 +614,7 @@
         }
 
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
+        syncToggles();
     }
 
     /** 這筆借用是否需要同工去架設鋼琴（兒主／幼主自有的不算） */
@@ -634,8 +657,25 @@
         if (label) {
             label.style.color = enabled ? '' : '#c0392b';
             label.style.textDecoration = enabled ? '' : 'line-through';
+            label.style.opacity = enabled ? '' : '0.55';
+            label.style.cursor = enabled ? '' : 'not-allowed';
         }
     }
+
+    // 🔘 讓「是/否」「數量」這種按鈕，目前選中的那個會有藍色外框與底色，一眼看出選了什麼
+    function syncToggles(root) {
+        (root || document).querySelectorAll('.toggle-group').forEach(g => {
+            g.querySelectorAll('label').forEach(l => {
+                let inp = l.querySelector('input[type="radio"]');
+                if (inp) l.classList.toggle('active', inp.checked);
+            });
+        });
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches && e.target.matches('.toggle-group input[type="radio"]')) {
+            syncToggles();
+        }
+    });
 
     let availToken = 0;
     async function refreshAvailability() {
@@ -685,6 +725,7 @@
         if (yes) setOptionEnabled(yes, true);
         rebuildStandOptions(2);
         restoreVenueOptions([]);
+        syncToggles();
     }
 
     function applyAvailabilityLimits(a) {
@@ -699,17 +740,18 @@
 
         // 場地：已被預約的直接不能選
         restoreVenueOptions(a.busyVenues);
+        syncToggles();
     }
 
     function rebuildStandOptions(maxAllowed) {
-        let sel = document.getElementById('musicStand');
-        if (!sel) return;
-        let cur = parseInt(sel.value) || 0;
-        let html = '<option value="0">不需要</option>';
-        if (maxAllowed >= 1) html += '<option value="1">1 個</option>';
-        if (maxAllowed >= 2) html += '<option value="2">2 個</option>';
-        sel.innerHTML = html;
-        sel.value = (cur <= maxAllowed) ? String(cur) : '0';
+        let radios = document.querySelectorAll('input[name="musicStand"]');
+        if (!radios.length) return;
+        radios.forEach(r => setOptionEnabled(r, parseInt(r.value) <= maxAllowed));
+        let checked = document.querySelector('input[name="musicStand"]:checked');
+        if (checked && parseInt(checked.value) > maxAllowed) {
+            document.querySelector('input[name="musicStand"][value="0"]').checked = true;
+        }
+        syncToggles();
     }
 
     function restoreVenueOptions(busy) {
@@ -1049,7 +1091,8 @@
 
             var speakerNode = document.querySelector('input[name="needSpeaker"]:checked');
             var reqSpeaker = (speakerNode && speakerNode.value === "是") ? 1 : 0;
-            var reqStand = parseInt(document.getElementById("musicStand").value) || 0;
+            var standNode = document.querySelector('input[name="musicStand"]:checked');
+            var reqStand = standNode ? (parseInt(standNode.value) || 0) : 0;
             var pianoNode = document.querySelector('input[name="piano"]:checked');
             var 該場地有鋼琴 = 自有鋼琴場地.indexOf(loc) >= 0 || 需架設鋼琴場地.indexOf(loc) >= 0;
             var reqPiano = 該場地有鋼琴 && pianoNode && pianoNode.value === "需要";
@@ -1097,6 +1140,7 @@
                     document.getElementById('availPanel').classList.add('hidden');
                     resetAvailabilityLimits();
                     checkRules();
+                    syncToggles();
                     showSection('homeMenu');
                 }, 100);
             }
@@ -1194,6 +1238,9 @@
             alert("壓縮或傳送發生例外錯誤：" + e.message);
         }
     }
+
+    // 頁面剛載入時，先把預設選中的按鈕（否／不需要）畫成選中的樣子
+    syncToggles();
 
     let clickCount = 0; let clickTimer = null;
     function secretAdminTrigger() {
