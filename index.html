@@ -8,9 +8,9 @@
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; transition: max-width .15s; }
-        /* 後台在夠寬的電腦螢幕上放寬容器，表格才有空間把時間/場地/聯絡人/電話拆成各自獨立的欄位；
-           手機或視窗較窄時（<900px）維持原本 600px，用堆疊式儲存格排版（已個別測試過清楚易讀）。
-           寬度模式在 loadAdminData() 用 window.innerWidth 判斷、由 showSection() 切換 .admin-wide class。 */
+        /* 後台表格一律拆成獨立欄位顯示（見 loadAdminData()），電腦螢幕夠寬時放寬容器，
+           讓表格盡量不用橫向捲動就看得到大部分欄位；手機或視窗較窄時維持原本 600px，
+           表格本身用 overflow-x:auto 橫向捲動。由 showSection() 切換 .admin-wide class。 */
         @media (min-width: 900px) {
             .container.admin-wide { max-width: 1200px; }
         }
@@ -29,6 +29,13 @@
         input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #2c3e50; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
         input[type="text"]:focus, input[type="tel"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="password"]:focus, input[type="email"]:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
         input[type="text"]::placeholder, input[type="tel"]::placeholder, input[type="email"]::placeholder { color: #adb9c2; }
+
+        /* 📅🕐 日期／時間欄位的假 placeholder：iOS Safari 對 type="date"/"time" 空白時完全不顯示任何提示文字
+           （不像文字欄位有 placeholder 屬性可用，也不像電腦版瀏覽器會顯示 yyyy/mm/dd 這種灰色提示格式），
+           導致欄位看起來像個空白方框、不知道要做什麼。這裡疊一層自己畫的提示文字，
+           選好日期/時間後用 syncDatePlaceholder() 隱藏，讓行為跟其他欄位一致。 */
+        .date-field-wrap { position: relative; }
+        .date-field-wrap .date-placeholder { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #adb9c2; font-size: 15px; pointer-events: none; }
 
         /* 🔽 下拉選單：換成自訂箭頭圖示，去掉瀏覽器預設的陽春樣式 */
         select { width: 100%; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%237f8c8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center; -webkit-appearance: none; -moz-appearance: none; appearance: none; color: #2c3e50; font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
@@ -146,10 +153,25 @@
 
             <div class="form-card">
                 <div class="form-card-title">🕐 借用時間</div>
-                <div class="form-group"><label>日期 (限 2026年12月)</label><input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" onchange="refreshAvailability()" required></div>
+                <div class="form-group"><label>日期 (限 2026年12月)</label>
+                    <div class="date-field-wrap">
+                        <input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" onchange="refreshAvailability(); syncDatePlaceholder(this);" oninput="syncDatePlaceholder(this);" required>
+                        <span class="date-placeholder" id="borrowDatePh">請點選選擇日期</span>
+                    </div>
+                </div>
                 <div style="display: flex; gap: 10px;">
-                    <div class="form-group" style="flex: 1;"><label>借用時間</label><input type="time" id="startTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
-                    <div class="form-group" style="flex: 1;"><label>歸還時間</label><input type="time" id="endTime" step="1800" onchange="snapTime(this); refreshAvailability();" required></div>
+                    <div class="form-group" style="flex: 1;"><label>借用時間</label>
+                        <div class="date-field-wrap">
+                            <input type="time" id="startTime" step="1800" onchange="snapTime(this); refreshAvailability(); syncDatePlaceholder(this);" oninput="syncDatePlaceholder(this);" required>
+                            <span class="date-placeholder" id="startTimePh">請點選選擇時間</span>
+                        </div>
+                    </div>
+                    <div class="form-group" style="flex: 1;"><label>歸還時間</label>
+                        <div class="date-field-wrap">
+                            <input type="time" id="endTime" step="1800" onchange="snapTime(this); refreshAvailability(); syncDatePlaceholder(this);" oninput="syncDatePlaceholder(this);" required>
+                            <span class="date-placeholder" id="endTimePh">請點選選擇時間</span>
+                        </div>
+                    </div>
                 </div>
                 <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13px; line-height:1.7;"></div>
             </div>
@@ -887,6 +909,32 @@
         }
     }
 
+    // iOS Safari 對空白的 type="date"/"time" 完全不顯示任何提示；但電腦版與 Android 的 Chrome
+    // 本來就會自己畫「mm/dd/yyyy」這類提示文字，如果我們的假提示疊上去，兩段文字會疊在一起變亂碼。
+    // 日期欄位（會被瀏覽器自己畫提示影響）只在確定是 iOS 才顯示假提示；時間欄位測過各瀏覽器都不會衝突，一律顯示。
+    function isIOSSafariDevice() {
+        var ua = navigator.userAgent || '';
+        return /iP(hone|od|ad)/.test(ua) && !window.MSStream;
+    }
+
+    // 有選日期/時間就藏起假的提示文字，欄位空白就顯示——見上方 CSS 的 .date-placeholder 說明
+    function syncDatePlaceholder(input) {
+        var ph = input.nextElementSibling;
+        if (!ph || !ph.classList.contains('date-placeholder')) return;
+        if (input.id === 'borrowDate' && !isIOSSafariDevice()) {
+            ph.style.display = 'none';
+            return;
+        }
+        ph.style.display = input.value ? 'none' : 'block';
+    }
+
+    function refreshAllDatePlaceholders() {
+        ['borrowDate', 'startTime', 'endTime'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) syncDatePlaceholder(el);
+        });
+    }
+
     async function queryRecords() {
         if (!requireDb()) return;
         var phone = document.getElementById('searchPhone').value;
@@ -1040,10 +1088,10 @@
 
     async function loadAdminData() {
         if (!db) return;
-        // 螢幕夠寬（電腦，非手機）時用「每欄位各自獨立」的寬版表格；
-        // 窄螢幕（手機）維持堆疊式儲存格，資訊不會被拆得太細反而更難讀。
-        // 這個判斷只在每次重新載入資料時做一次，若中途手動縮放視窗，要等下一次資料更新（例如按了按鈕、切換頁籤）才會套用新版面。
-        let wide = window.innerWidth >= 900;
+        // 表格一律拆成每個欄位各自獨立顯示（不再依螢幕寬度切換堆疊式版面）：
+        // 手機上欄位多本來就會超出螢幕寬度需要橫向捲動，就算把時間/場地、姓名/電話這類欄位硬擠在同一格，
+        // 也還是得橫向捲動才看得到後面的欄位，反而讓資訊更難讀。乾脆統一拆開，配合下面 #unreturnedContainer/
+        // #returnedContainer 的 overflow-x:auto 讓整張表可以橫向捲動，內容清楚優先。
         let weekFilter = document.getElementById("adminWeekFilter").value;
         const { data: records, error } = await db.from('borrow_records').select('*');
         if (error) return;
@@ -1095,22 +1143,18 @@
             dates.forEach(date => {
                 unreturnedGroups[date].sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
 
+                // 用 inline-block + min-width:100% 包住「日期標題＋準備清單＋表格」三個元素：
+                // 手機上表格常常比螢幕寬（要橫向捲動），如果標題跟綠色清單框各自維持螢幕寬度，
+                // 捲到後面就會看到它們沒跟著延伸、露出一塊空白，跟表格對不齊。包成一組後，
+                // 三者會一起以表格的實際寬度為準（不夠寬時仍撐滿容器），捲動時顏色區塊也會跟著捲到底。
+                unreturnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
                 unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
                 unreturnedHtml += summaryBox(dailySummary(records, date));
-                unreturnedHtml += wide
-                    ? `<table class="grouped-table"><tr>
+                unreturnedHtml += `<table class="grouped-table"><tr>
                         <th>時間</th>
                         <th>場地</th>
                         <th>聯絡人</th>
                         <th>電話</th>
-                        <th style="min-width:150px;">喇叭</th>
-                        <th>譜架</th>
-                        <th>鋼琴</th>
-                        <th>📍 領取照片</th>
-                        <th>操作</th></tr>`
-                    : `<table class="grouped-table"><tr>
-                        <th style="width:95px;">時間/場地</th>
-                        <th style="width:110px;">聯絡人</th>
                         <th style="min-width:150px;">喇叭</th>
                         <th>譜架</th>
                         <th>鋼琴</th>
@@ -1120,16 +1164,15 @@
                 unreturnedGroups[date].forEach(item => {
                     let overdue = isOverdue(item);
 
-                    // 逾期/音控各自獨立成一個小徽章，寬版跟窄版會放到不同欄位，所以分開存
+                    // 逾期/音控各自獨立成一個小徽章，各自跟著自己相關的欄位放
                     let overdueBadge = overdue
                         ? `<span style="display:inline-block; background:#e74c3c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">⚠️ 已逾期</span>`
                         : '';
                     let techBadge = item.need_tech === '是'
                         ? `<span style="display:inline-block; background:#fdecea; color:#c0392b; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">🎛️ 需音控</span>`
                         : '';
-                    let badgeRow = (overdueBadge + techBadge) ? `<div>${overdueBadge}${techBadge}</div>` : '';
 
-                    // 會眾備註單獨一個淺色小方塊，跟姓名電話分開，不會混在一起變成一整段字
+                    // 會眾備註單獨一個淺色小方塊，跟姓名分開，不會混在一起變成一整段字
                     let noteBlock = item.notes
                         ? `<div style="background:#f4f0fa; color:#6c5a8c; font-size:11px; border-radius:4px; padding:3px 6px; margin-top:4px;">💬 ${item.notes}</div>`
                         : '';
@@ -1143,8 +1186,7 @@
                         ? speakerAssignUI(item, records)
                         : '<span style="color:#ccc;">—</span>';
 
-                    unreturnedHtml += wide
-                        ? `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
+                    unreturnedHtml += `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
                             <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}</td>
@@ -1154,18 +1196,9 @@
                             <td>${pianoCell(item)}</td>
                             <td>${photoAction}</td>
                             <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
-                        </tr>`
-                        : `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
-                            <td style="white-space:normal;"><b>🕐 ${item.start_time}-${item.end_time}</b><br>📍 ${item.location}</td>
-                            <td style="white-space:normal;">👤 ${item.leader_name}<br>📞 ${item.leader_phone}${badgeRow}${noteBlock}</td>
-                            <td style="white-space:normal;">${speakerAdmin}</td>
-                            <td>${standCell(item)}</td>
-                            <td>${pianoCell(item)}</td>
-                            <td>${photoAction}</td>
-                            <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
                         </tr>`;
                 });
-                unreturnedHtml += `</table>`;
+                unreturnedHtml += `</table></div>`;
             });
         }
         document.getElementById('unreturnedContainer').innerHTML = unreturnedHtml;
@@ -1177,23 +1210,12 @@
         if (returnedList.length === 0) {
             returnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         } else {
-            returnedHtml += wide
-                ? `<table class="grouped-table" style="border-radius:6px;"><tr>
+            returnedHtml += `<table class="grouped-table" style="border-radius:6px;"><tr>
                     <th>🕒 歸還時間</th>
                     <th>日期</th>
                     <th>時段</th>
                     <th>場地</th>
                     <th>負責人</th>
-                    <th>喇叭</th>
-                    <th>譜架</th>
-                    <th>鋼琴</th>
-                    <th>歸還狀態</th>
-                    <th>📸 照片</th>
-                    <th>操作</th></tr>`
-                : `<table class="grouped-table" style="border-radius:6px;"><tr>
-                    <th style="width:100px;">🕒 歸還時間</th>
-                    <th style="width:95px;">借用時段</th>
-                    <th style="width:110px;">場地/負責人</th>
                     <th>喇叭</th>
                     <th>譜架</th>
                     <th>鋼琴</th>
@@ -1215,24 +1237,12 @@
                     ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
                     : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
 
-                returnedHtml += wide
-                    ? `<tr>
+                returnedHtml += `<tr>
                         <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
                         <td style="white-space:nowrap;">📅 ${formatDateLabel(item.borrow_date)}</td>
                         <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
                         <td style="white-space:nowrap;">📍 ${item.location}</td>
                         <td style="white-space:nowrap;">👤 ${item.leader_name}</td>
-                        <td style="white-space:normal;">${speakerCell(item)}</td>
-                        <td>${standCell(item)}</td>
-                        <td>${pianoCell(item)}</td>
-                        <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
-                        <td>${photo}</td>
-                        <td><button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button></td>
-                    </tr>`
-                    : `<tr>
-                        <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
-                        <td style="white-space:normal;">📅 ${formatDateLabel(item.borrow_date)}<br><b>🕐 ${item.start_time}-${item.end_time}</b></td>
-                        <td style="white-space:normal;">📍 ${item.location}<br>👤 ${item.leader_name}</td>
                         <td style="white-space:normal;">${speakerCell(item)}</td>
                         <td>${standCell(item)}</td>
                         <td>${pianoCell(item)}</td>
@@ -1332,6 +1342,7 @@
                     resetAvailabilityLimits();
                     checkRules();
                     syncToggles();
+                    refreshAllDatePlaceholders();
                     showSection('homeMenu');
                 }, 100);
             }
@@ -1436,6 +1447,9 @@
 
     // 頁面剛載入時，先把預設選中的按鈕（否／不需要）畫成選中的樣子
     syncToggles();
+
+    // 頁面剛載入時，日期/時間欄位都是空的，先把假提示文字顯示出來（見 syncDatePlaceholder 說明）
+    refreshAllDatePlaceholders();
 
     // 頁面剛載入時就在瀏覽紀錄留一筆「首頁」，這樣之後每按一次上一頁都會準確退回前一個畫面
     history.replaceState({ section: 'homeMenu' }, '', location.pathname);
