@@ -26,19 +26,14 @@
         .form-group { margin-bottom: 15px; }
         label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 14px; }
         /* ✏️ 一般文字／日期／時間欄位：加粗邊框＋聚焦時的藍色光暈，跟卡片、按鈕的風格一致 */
-        input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff; color: #2c3e50; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+        /*    字級一律 16px：iPhone Safari 遇到字小於 16px 的欄位，點下去會自動放大整個畫面，版面看起來就像突出框框、跑掉了。 */
+        input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; min-width: 0; background: #fff; color: #2c3e50; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
         input[type="text"]:focus, input[type="tel"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="password"]:focus, input[type="email"]:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
         input[type="text"]::placeholder, input[type="tel"]::placeholder, input[type="email"]::placeholder { color: #adb9c2; }
 
-        /* 📅🕐 日期／時間欄位的假 placeholder：iOS Safari 對 type="date"/"time" 空白時完全不顯示任何提示文字
-           （不像文字欄位有 placeholder 屬性可用，也不像電腦版瀏覽器會顯示 yyyy/mm/dd 這種灰色提示格式），
-           導致欄位看起來像個空白方框、不知道要做什麼。這裡疊一層自己畫的提示文字，
-           選好日期/時間後用 syncDatePlaceholder() 隱藏，讓行為跟其他欄位一致。 */
-        .date-field-wrap { position: relative; }
-        .date-field-wrap .date-placeholder { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #adb9c2; font-size: 15px; pointer-events: none; }
 
         /* 🔽 下拉選單：換成自訂箭頭圖示，去掉瀏覽器預設的陽春樣式 */
-        select { width: 100%; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 15px; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%237f8c8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center; -webkit-appearance: none; -moz-appearance: none; appearance: none; color: #2c3e50; font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+        select { width: 100%; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; min-width: 0; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%237f8c8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center; -webkit-appearance: none; -moz-appearance: none; appearance: none; color: #2c3e50; font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
         select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
         select:disabled { background-color: #f4f6f8; color: #b0bcc4; cursor: not-allowed; }
 
@@ -135,9 +130,9 @@
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0;">設備借用守則</h3>
-            <p>1. 領取及歸還，務必於「設備外借管理系統」的網頁填寫。</p>
-            <p>2. 請於預約時間準時歸還，讓後面租借的小組可以順利進行。</p>
-            <p>3. 領取設備時，請至系統查詢您的「領取位置照片」。</p>
+            <p>1. 領取及歸還，<b>務必於「設備外借管理系統」的網頁填寫</b>。</p>
+            <p>2. 請於預約時間<b>準時歸還</b>，讓後面租借的小組可以順利進行。</p>
+            <p>3. 領取設備時，請至系統<b>查詢您的「領取位置照片」</b>。</p>
             <button class="btn-submit" onclick="closeModal()">我瞭解了</button>
         </div>
     </div>
@@ -152,10 +147,10 @@
         <div class="modal-content" style="max-width: 520px;">
             <h3 style="margin-top: 0; color: #34495e;">✏️ 編輯借用紀錄</h3>
             <input type="hidden" id="editId">
-            <div class="form-group"><label>日期</label><input type="date" id="editDate" min="2026-12-01" max="2026-12-31"></div>
+            <div class="form-group"><label>日期</label><select id="editDate"></select></div>
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;"><label>借用時間</label><input type="time" id="editStart" step="1800"></div>
-                <div class="form-group" style="flex: 1;"><label>歸還時間</label><input type="time" id="editEnd" step="1800"></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label><select id="editStart" onchange="syncEndTimeOptions('editStart', 'editEnd')"></select></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label><select id="editEnd"></select></div>
             </div>
             <div class="form-group"><label>場地</label>
                 <select id="editLocation" onchange="syncEditVenueFields()">
@@ -164,8 +159,8 @@
                 </select>
             </div>
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1;"><label>負責人</label><input type="text" id="editName"></div>
-                <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="tel" id="editPhone" inputmode="numeric" maxlength="10" oninput="digitsOnly(this)"></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>負責人</label><input type="text" id="editName"></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>聯絡電話</label><input type="tel" id="editPhone" inputmode="numeric" maxlength="10" oninput="digitsOnly(this)"></div>
             </div>
             <div class="form-group"><label>🔊 喇叭</label>
                 <div class="toggle-group">
@@ -201,9 +196,9 @@
     <div id="rulesSection" class="form-section">
         <h3 style="text-align: center; color: #c0392b;">⚠️ 借用設備需知</h3>
         <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; line-height: 1.6; font-size: 15px;">
-            <p>1. 領取及歸還，務必於「設備外借管理系統」的網頁填寫。</p>
-            <p>2. 請於預約時間準時歸還，讓後面租借的小組可以順利進行。</p>
-            <p>3. 領取設備時，請至系統查詢您的「領取位置照片」。</p>
+            <p>1. 領取及歸還，<b>務必於「設備外借管理系統」的網頁填寫</b>。</p>
+            <p>2. 請於預約時間<b>準時歸還</b>，讓後面租借的小組可以順利進行。</p>
+            <p>3. 領取設備時，請至系統<b>查詢您的「領取位置照片」</b>。</p>
         </div>
         <button class="btn-submit" onclick="showSection('borrowSection')">我同意，開始填寫</button>
         <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
@@ -211,28 +206,25 @@
 
     <div id="borrowSection" class="form-section">
         <h3 style="text-align: center; color: #3498db;">📝 填寫借用單</h3>
-        <form id="borrowForm" onsubmit="event.preventDefault(); submitBorrow(); return false;">
+        <!-- novalidate：關掉瀏覽器內建的欄位檢查，全部改由 submitBorrow() 檢查。
+             iPhone Safari 內建檢查不通過時只會在某個欄位旁邊跳一個很小、很容易錯過的提示，
+             使用者會以為「按了送出沒反應」；自己檢查可以跳出清楚的訊息並捲到有問題的欄位。 -->
+        <form id="borrowForm" novalidate onsubmit="event.preventDefault(); submitBorrow(); return false;">
 
             <div class="form-card">
                 <div class="form-card-title">🕐 借用時間</div>
-                <div class="form-group"><label>日期 (限 2026年12月)</label>
-                    <div class="date-field-wrap">
-                        <input type="date" id="borrowDate" min="2026-12-01" max="2026-12-31" onchange="refreshAvailability(); syncDatePlaceholder(this);" oninput="syncDatePlaceholder(this);" required>
-                        <span class="date-placeholder" id="borrowDatePh">請點選選擇日期</span>
-                    </div>
+                <!-- 日期、時間都用下拉選單：iPhone 內建的日期選擇器不理會「只限 12 月」的設定，
+                     時間滾輪也能選到 11:25 這種非半點時間；下拉選單只列出允許的選項，從根本上選不錯。
+                     選項由 fillDateOptions()／fillTimeOptions() 在頁面載入時產生。 -->
+                <div class="form-group"><label>日期（限 2026 年 12 月）</label>
+                    <select id="borrowDate" onchange="refreshAvailability()"></select>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <div class="form-group" style="flex: 1;"><label>借用時間</label>
-                        <div class="date-field-wrap">
-                            <input type="time" id="startTime" step="1800" onchange="snapTime(this); refreshAvailability(); syncDatePlaceholder(this);" oninput="syncDatePlaceholder(this);" required>
-                            <span class="date-placeholder" id="startTimePh">請點選選擇時間</span>
-                        </div>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label>
+                        <select id="startTime" onchange="syncEndTimeOptions('startTime', 'endTime'); refreshAvailability()"></select>
                     </div>
-                    <div class="form-group" style="flex: 1;"><label>歸還時間</label>
-                        <div class="date-field-wrap">
-                            <input type="time" id="endTime" step="1800" onchange="snapTime(this); refreshAvailability(); syncDatePlaceholder(this);" oninput="syncDatePlaceholder(this);" required>
-                            <span class="date-placeholder" id="endTimePh">請點選選擇時間</span>
-                        </div>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label>
+                        <select id="endTime" onchange="refreshAvailability()"></select>
                     </div>
                 </div>
                 <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13px; line-height:1.7;"></div>
@@ -241,8 +233,8 @@
             <div class="form-card">
                 <div class="form-card-title">📍 場地與聯絡資訊</div>
                 <div style="display: flex; gap: 10px;">
-                    <div class="form-group" style="flex: 1;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
-                    <div class="form-group" style="flex: 1;"><label>聯絡電話</label><input type="tel" id="leaderPhone" inputmode="numeric" maxlength="10" minlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" required></div>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>聯絡電話</label><input type="tel" id="leaderPhone" inputmode="numeric" maxlength="10" minlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" required></div>
                 </div>
                 <div class="form-group">
                     <label>借用場地</label>
@@ -294,7 +286,7 @@
             <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;">
                 <label style="font-weight: normal; color: #d9534f; font-size: 15px; display: flex; align-items: center; gap: 8px;">
                     <input type="checkbox" id="agreeRules" required>
-                    我已閱讀並同意 <span class="rules-link" onclick="openModal()">設備借用守則</span>
+                    我已閱讀並同意 <span class="rules-link" onclick="event.preventDefault(); event.stopPropagation(); openModal();">設備借用守則</span>
                 </label>
             </div>
 
@@ -322,7 +314,7 @@
             </div>
         </div>
 
-        <form id="returnForm" class="hidden" onsubmit="event.preventDefault(); submitReturn(); return false;">
+        <form id="returnForm" class="hidden" novalidate onsubmit="event.preventDefault(); submitReturn(); return false;">
             <hr>
             <div class="form-group">
                 <label style="color: #c0392b;">請選擇要歸還的紀錄：</label>
@@ -1011,45 +1003,61 @@
         if (cleared) { checkRules(); }
     }
 
-    function snapTime(input) {
-        if (!input.value) return;
-        var parts = input.value.split(':');
-        var hours = parseInt(parts[0], 10);
-        var mins = parseInt(parts[1], 10);
-        if (mins !== 0 && mins !== 30) {
-            if (mins >= 45) { hours += 1; mins = 0; }
-            else if (mins >= 15) { mins = 30; }
-            else { mins = 0; }
-            if (hours >= 24) hours = 0;
-            input.value = hours.toString().padStart(2, '0') + ':' + mins.toString().padStart(2, '0');
-            alert("系統已將時間自動調整為「半小時」為單位！");
+    // 📅🕐 日期、時間的下拉選單選項
+    //    日期只列 2026/12/1–12/31（附星期幾）；時間只列整點與半點。
+    //    原本用 <input type="date"/"time">，但 iPhone 的日期選擇器不理會「只限 12 月」的設定、
+    //    時間滾輪可以選到 11:25，選錯的值會讓瀏覽器悄悄擋下送出，使用者以為按了沒反應。
+    const TIME_FIRST = 6;      // 最早 06:00
+    const TIME_LAST = 23.5;    // 最晚 23:30（借用時間最晚 23:00，歸還時間最晚 23:30）
+
+    function fillDateOptions(selectId) {
+        let sel = document.getElementById(selectId);
+        if (!sel) return;
+        let html = '<option value="">請選擇日期</option>';
+        for (let d = 1; d <= 31; d++) {
+            let v = `2026-12-${String(d).padStart(2, '0')}`;
+            html += `<option value="${v}">${formatDateLabel(v)}</option>`;
         }
+        sel.innerHTML = html;
     }
 
-    // iOS Safari 對空白的 type="date"/"time" 完全不顯示任何提示；但電腦版與 Android 的 Chrome
-    // 本來就會自己畫「mm/dd/yyyy」這類提示文字，如果我們的假提示疊上去，兩段文字會疊在一起變亂碼。
-    // 日期欄位（會被瀏覽器自己畫提示影響）只在確定是 iOS 才顯示假提示；時間欄位測過各瀏覽器都不會衝突，一律顯示。
-    function isIOSSafariDevice() {
-        var ua = navigator.userAgent || '';
-        return /iP(hone|od|ad)/.test(ua) && !window.MSStream;
-    }
-
-    // 有選日期/時間就藏起假的提示文字，欄位空白就顯示——見上方 CSS 的 .date-placeholder 說明
-    function syncDatePlaceholder(input) {
-        var ph = input.nextElementSibling;
-        if (!ph || !ph.classList.contains('date-placeholder')) return;
-        if (input.id === 'borrowDate' && !isIOSSafariDevice()) {
-            ph.style.display = 'none';
-            return;
+    // kind = 'start'（06:00–23:00）或 'end'（06:30–23:30）
+    function fillTimeOptions(selectId, kind) {
+        let sel = document.getElementById(selectId);
+        if (!sel) return;
+        let from = kind === 'end' ? TIME_FIRST + 0.5 : TIME_FIRST;
+        let to = kind === 'end' ? TIME_LAST : TIME_LAST - 0.5;
+        let html = '<option value="">請選擇</option>';
+        for (let t = from; t <= to; t += 0.5) {
+            let v = floatToTimeStr(t);
+            html += `<option value="${v}">${v}</option>`;
         }
-        ph.style.display = input.value ? 'none' : 'block';
+        sel.innerHTML = html;
     }
 
-    function refreshAllDatePlaceholders() {
-        ['borrowDate', 'startTime', 'endTime'].forEach(function (id) {
-            var el = document.getElementById(id);
-            if (el) syncDatePlaceholder(el);
+    // 歸還時間只能選「晚於借用時間」的選項：早於或等於借用時間的選項變灰不能選；
+    // 如果原本選的歸還時間已經不合理（例如先選歸還再把借用時間往後調），就清空讓使用者重選。
+    function syncEndTimeOptions(startId, endId) {
+        let start = document.getElementById(startId).value;
+        let endSel = document.getElementById(endId);
+        let s = start ? timeToFloat(start) : -1;
+        Array.from(endSel.options).forEach(o => {
+            if (!o.value) return;
+            o.disabled = s >= 0 && timeToFloat(o.value) <= s;
         });
+        if (endSel.value && s >= 0 && timeToFloat(endSel.value) <= s) endSel.value = '';
+    }
+
+    // 設定下拉選單的值；舊資料的時間/日期如果不在選項裡（例如 05:00），補一個選項進去，編輯時才不會被清掉
+    function setSelectValue(selectId, value, label) {
+        let sel = document.getElementById(selectId);
+        if (!value) { sel.value = ''; return; }
+        if (!Array.from(sel.options).some(o => o.value === value)) {
+            let o = document.createElement('option');
+            o.value = value; o.textContent = label || value;
+            sel.appendChild(o);
+        }
+        sel.value = value;
     }
 
     async function queryRecords() {
@@ -1309,9 +1317,10 @@
         let item = adminRecordMap[id];
         if (!item) { alert('找不到這筆資料，請先按「🔄 重新整理」'); return; }
         document.getElementById('editId').value = id;
-        document.getElementById('editDate').value = item.borrow_date || '';
-        document.getElementById('editStart').value = item.start_time || '';
-        document.getElementById('editEnd').value = item.end_time || '';
+        setSelectValue('editDate', item.borrow_date, formatDateLabel(item.borrow_date));
+        setSelectValue('editStart', item.start_time);
+        setSelectValue('editEnd', item.end_time);
+        syncEndTimeOptions('editStart', 'editEnd');
         document.getElementById('editLocation').value = item.location || '交誼廳';
         document.getElementById('editName').value = item.leader_name || '';
         document.getElementById('editPhone').value = item.leader_phone || '';
@@ -1610,11 +1619,21 @@
         document.getElementById('returnedContainer').innerHTML = returnedHtml;
     }
 
+    // ⚠️ 表單檢查不通過時：跳出訊息，並把畫面捲到有問題的欄位、讓那一欄閃一下紅框，
+    //    小組長在手機上一眼就知道要改哪裡（表單設了 novalidate，不靠瀏覽器內建的小提示）。
+    function formProblem(fieldId, message) {
+        alert(message);
+        let el = document.getElementById(fieldId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow .2s';
+        el.style.boxShadow = '0 0 0 3px rgba(231,76,60,0.55)';
+        setTimeout(() => { el.style.boxShadow = ''; }, 2200);
+    }
+
     async function submitBorrow() {
         if (!requireDb()) return;
         try {
-            if (!document.getElementById("agreeRules").checked) { alert("請勾選同意借用守則！"); return; }
-
             var date = document.getElementById("borrowDate").value;
             var startTime = document.getElementById("startTime").value;
             var endTime = document.getElementById("endTime").value;
@@ -1622,27 +1641,24 @@
             var name = document.getElementById("leaderName").value.trim();
             var phone = normalizePhone(document.getElementById("leaderPhone").value);
 
-            if (!date || !startTime || !endTime || !name || !phone || !loc) { alert("請填寫所有必填欄位！"); return; }
-
-            // 日期必須落在 2026 年 12 月（送出鈕不是表單送出，瀏覽器不會自己檢查 min/max）
-            if (!/^2026-12-\d{2}$/.test(date)) {
-                alert("借用日期僅開放 2026 年 12 月 1 日至 12 月 31 日，請重新選擇。");
-                return;
+            // 依畫面由上到下的順序逐欄檢查，每次只提醒第一個有問題的欄位
+            if (!date) { formProblem('borrowDate', "請選擇借用日期。"); return; }
+            // 日期必須落在 2026 年 12 月（選單本來就只有 12 月，這裡再保險檢查一次）
+            if (!/^2026-12-(0[1-9]|[12]\d|3[01])$/.test(date)) {
+                formProblem('borrowDate', "借用日期僅開放 2026 年 12 月 1 日至 12 月 31 日，請重新選擇。"); return;
             }
-            var dayNum = parseInt(date.slice(8), 10);
-            if (!(dayNum >= 1 && dayNum <= 31)) {
-                alert("借用日期不正確，請重新選擇。");
-                return;
-            }
-            if (name.length < 2) { alert("請填寫負責人姓名（至少 2 個字）。"); return; }
-            if (!/^\d{10}$/.test(phone)) {
-                alert("聯絡電話請填寫 10 碼數字，例如 0912345678。\n這組號碼是您日後查詢與歸還的唯一依據，請務必填正確。");
-                return;
-            }
-
+            if (!startTime) { formProblem('startTime', "請選擇借用時間。"); return; }
+            if (!endTime) { formProblem('endTime', "請選擇歸還時間。"); return; }
             var startFloat = timeToFloat(startTime);
             var endFloat = timeToFloat(endTime);
-            if (startFloat >= endFloat) { alert("歸還時間必須晚於借用時間！"); return; }
+            if (startFloat >= endFloat) { formProblem('endTime', "歸還時間必須晚於借用時間！"); return; }
+            if (name.length < 2) { formProblem('leaderName', "請填寫負責人姓名（至少 2 個字）。"); return; }
+            if (!/^\d{10}$/.test(phone)) {
+                formProblem('leaderPhone', "聯絡電話請填寫 10 碼數字，例如 0912345678。\n這組號碼是您日後查詢與歸還的唯一依據，請務必填正確。");
+                return;
+            }
+            if (!loc) { formProblem('location', "請選擇借用場地。"); return; }
+            if (!document.getElementById("agreeRules").checked) { formProblem('agreeRules', "請勾選「我已閱讀並同意設備借用守則」。"); return; }
 
             var speakerNode = document.querySelector('input[name="needSpeaker"]:checked');
             var reqSpeaker = (speakerNode && speakerNode.value === "是") ? 1 : 0;
@@ -1686,7 +1702,7 @@
                     resetAvailabilityLimits();
                     checkRules();
                     syncToggles();
-                    refreshAllDatePlaceholders();
+                    syncEndTimeOptions('startTime', 'endTime');   // 重設後歸還時間的選項全部恢復可選
                     showSection('homeMenu');
                 }, 100);
             }
@@ -1868,8 +1884,13 @@
     // 頁面剛載入時，先把預設選中的按鈕（否／不需要）畫成選中的樣子
     syncToggles();
 
-    // 頁面剛載入時，日期/時間欄位都是空的，先把假提示文字顯示出來（見 syncDatePlaceholder 說明）
-    refreshAllDatePlaceholders();
+    // 頁面剛載入時產生日期、時間下拉選單的選項（借用表單＋管理員編輯視窗）
+    fillDateOptions('borrowDate');
+    fillTimeOptions('startTime', 'start');
+    fillTimeOptions('endTime', 'end');
+    fillDateOptions('editDate');
+    fillTimeOptions('editStart', 'start');
+    fillTimeOptions('editEnd', 'end');
 
     // 頁面剛載入時就在瀏覽紀錄留一筆「首頁」，這樣之後每按一次上一頁都會準確退回前一個畫面
     history.replaceState({ section: 'homeMenu' }, '', location.pathname);
