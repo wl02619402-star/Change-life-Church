@@ -169,7 +169,11 @@
             .responsive-table td { border: none; border-bottom: 1px dashed #eee; padding: 9px 0; white-space: normal; text-align: right; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
             .responsive-table td:last-child { border-bottom: none; }
             .responsive-table td::before { content: attr(data-label); font-weight: bold; color: #7f8c8d; text-align: left; flex-shrink: 0; }
+            /* 查詢結果的備註：手機卡片上沒寫備註就不佔一行；有寫就靠左、完整顯示 */
+            .responsive-table td.note-empty { display: none; }
         }
+        /* 📝 會眾寫的備註（查詢頁、歸還頁共用） */
+        .note-pill { display: inline-block; max-width: 240px; background: #fff8e1; border: 1px solid #f3dfa2; color: #6e4b00; border-radius: 6px; padding: 4px 8px; font-size: 12.5px; font-weight: normal; line-height: 1.55; text-align: left; }
     </style>
 </head>
 <body>
@@ -1191,7 +1195,7 @@
             data.sort((a, b) => String(b.borrow_date).localeCompare(String(a.borrow_date)));
 
             let html = `<div style="color:#7f8c8d; font-size:12.5px; margin-bottom:8px;">共找到 <b style="color:#2471a3;">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
-            html += '<table class="responsive-table"><thead><tr><th>日期／時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr></thead><tbody>';
+            html += '<table class="responsive-table"><thead><tr><th>日期／時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>備註</th><th>狀態與領取位置</th></tr></thead><tbody>';
             // 每格內容各包一層 <div>：手機版卡片的每一列是左右兩端對齊（左邊欄名、右邊內容），
             // 內容如果有好幾段（例如「是」＋「等待分配」）沒包起來會被拆散到左右兩邊，看起來很零散。
             const cell = (html) => `<div>${html}</div>`;
@@ -1209,6 +1213,9 @@
                     <td data-label="喇叭" style="white-space:normal;">${cell(speakerCell(item))}</td>
                     <td data-label="譜架">${cell(standCell(item))}</td>
                     <td data-label="鋼琴">${cell(pianoCell(item))}</td>
+                    <td data-label="備註" class="${hasNote(item) ? 'note-td' : 'note-empty'}" style="white-space:normal;">${cell(hasNote(item)
+                        ? `<span class="note-pill">📝 ${noteHtml(item.notes)}</span>`
+                        : '<span style="color:#ccc;">—</span>')}</td>
                     <td data-label="狀態" style="white-space:normal;">${cell(st + pickup)}</td>
                 </tr>`;
             });
@@ -2114,8 +2121,12 @@
         }
         let stands = parseInt(item.music_stand) || 0;
         if (stands > 0) lines.push(`<div>🎼 譜架：<b>${stands} 個</b></div>`);
-        let body = lines.length > 0
-            ? lines.join('')
+        // 借用時寫在備註的其他設備（例如延長線），歸還時一起提醒
+        let note = hasNote(item)
+            ? `<div class="note-pill" style="display:block; max-width:none; margin-top:${lines.length ? 5 : 2}px;">📝 <b>備註：</b>${noteHtml(item.notes)}</div>`
+            : '';
+        let body = lines.length > 0 || note
+            ? lines.join('') + note
             : `<div style="color:#95a5a6;">這次沒有借用需要歸還的設備</div>`;
         return `<div style="margin-top:7px; background:#f4f8fb; border:1px solid #e1ebf2; border-radius:6px; padding:6px 9px; font-size:12.5px; color:#2c3e50; line-height:1.7;">
                     <div style="color:#7f8c8d; font-size:11.5px; font-weight:bold;">📦 借用設備（歸還時請確認都有帶回）</div>
