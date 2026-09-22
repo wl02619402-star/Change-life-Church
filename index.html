@@ -30,6 +30,10 @@
         input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; min-width: 0; background: #fff; color: #2c3e50; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
         input[type="text"]:focus, input[type="tel"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="password"]:focus, input[type="email"]:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
         input[type="text"]::placeholder, input[type="tel"]::placeholder, input[type="email"]::placeholder { color: #adb9c2; }
+        /* 📝 備註用多行輸入框，樣式跟文字欄位一致（同樣 16px，iPhone 才不會自動放大） */
+        textarea { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; line-height: 1.5; min-width: 0; background: #fff; color: #2c3e50; font-family: inherit; resize: vertical; transition: border-color .15s, box-shadow .15s; }
+        textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        textarea::placeholder { color: #adb9c2; }
 
 
         /* 🔽 下拉選單：換成自訂箭頭圖示，去掉瀏覽器預設的陽春樣式 */
@@ -104,13 +108,43 @@
         .bk-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11.5px; font-weight: bold; margin: 6px 6px 0 0; }
         .bk-badge.red { background: #e74c3c; color: #fff; }
         .bk-badge.pink { background: #fdecea; color: #c0392b; }
-        .bk-note { background: #f4f0fa; color: #6c5a8c; font-size: 12.5px; border-radius: 6px; padding: 5px 8px; margin-top: 7px; }
+        .bk-note { background: #fff8e1; border: 1px solid #f3dfa2; color: #6e4b00; font-size: 13px; line-height: 1.55; border-radius: 6px; padding: 6px 9px; margin-top: 7px; }
         .bk-equip { margin-top: 10px; border-top: 1px dashed #e5eaee; padding-top: 10px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: start; }
         .bk-equip .k { color: #7f8c8d; white-space: nowrap; font-size: 13px; padding-top: 1px; }
         .bk-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
         .bk-actions.two { grid-template-columns: 1fr 1fr; }
         .bk-actions button { padding: 11px 4px; font-size: 14px; border-radius: 8px; }
         .bk-returned { font-size: 13.5px; }
+        .ret-day { display: flex; justify-content: space-between; margin: 14px 2px 2px; padding: 6px 10px; background: #1e8449; color: #fff; border-radius: 8px; font-weight: bold; font-size: 14px; }
+        .ret-day span:last-child { font-weight: normal; font-size: 12.5px; }
+
+        /* 📦 設備總結算 */
+        .inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
+        .inv-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+        .inv-head b { font-size: 16px; color: #2c3e50; }
+        .inv-head span { font-size: 12px; color: #7f8c8d; }
+        .inv-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+        .inv-card { flex: 1 1 260px; background: #f8fafb; border: 1px solid #e3e9ee; border-radius: 10px; padding: 10px 12px; }
+        .inv-card .inv-title { display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; color: #34495e; font-size: 14px; }
+        .inv-card .inv-num { font-size: 13px; color: #7f8c8d; font-weight: normal; }
+        .inv-card .inv-num b { font-size: 26px; color: #27ae60; margin-right: 2px; }
+        .inv-card.some .inv-num b { color: #d35400; }
+        .inv-card.late .inv-num b { color: #c0392b; }
+        .inv-list { list-style: none; margin: 8px 0 0; padding: 0; }
+        .inv-list li { padding: 6px 0; border-top: 1px dashed #e3e9ee; font-size: 13px; line-height: 1.5; }
+        .inv-list li:first-child { border-top: none; }
+        .inv-list li .who { display: block; color: #5d6d7e; font-size: 12px; }
+        .inv-list li .who a { color: #2471a3; }
+        .inv-list li.ok { color: #1e8449; }
+        .inv-list li.use { color: #b9770e; }
+        .inv-list li.late { color: #c0392b; }
+        .inv-list li.nonum { color: #a04000; }
+        .inv-foot { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
+        .inv-foot.ok { background: #eafaf1; color: #1e8449; }
+        .inv-foot.use { background: #fef5e7; color: #9c640c; }
+        .inv-foot.late { background: #fdecea; color: #a02622; }
+        .inv-notes.other { background: #f0f6fb; border-color: #cfe0ee; color: #1f4e79; }
+        .inv-notes { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff8ec; border: 1px solid #f5d9a8; font-size: 12.5px; color: #7e5109; line-height: 1.6; }
         /* 已歸還清單（手機）：預設收起來，點綠色橫條才展開 */
         .returned-fold > summary { list-style: none; cursor: pointer; background: #eafaf1; color: #1e8449; border: 1px solid #c8e6d5; border-radius: 10px; padding: 12px 14px; font-weight: bold; font-size: 15px; }
         .returned-fold > summary::-webkit-details-marker { display: none; }
@@ -227,7 +261,7 @@
                     <label><input type="radio" name="editTech" value="否"> 否</label>
                 </div>
             </div>
-            <div class="form-group"><label>備註</label><input type="text" id="editNotes"></div>
+            <div class="form-group"><label>其他需求／備註</label><textarea id="editNotes" rows="2"></textarea></div>
             <div id="editHint" class="info-box" style="margin-bottom: 6px;"></div>
             <button class="btn-submit" onclick="saveEdit()">💾 儲存修改</button>
             <button class="btn-back" onclick="closeEdit()">取消</button>
@@ -296,7 +330,7 @@
                 <div class="form-card-sub">以下請依實際需求填寫，不需要的維持預設值即可</div>
 
                 <div class="form-group">
-                    <label>🔊 是否需要喇叭？</label>
+                    <label>🔊 是否需要喇叭？<span style="font-weight:normal; color:#7f8c8d; font-size:14px;">（附 2 支麥克風）</span></label>
                     <div class="toggle-group">
                         <label><input type="radio" name="needSpeaker" value="是"> 是</label>
                         <label><input type="radio" name="needSpeaker" value="否" checked> 否</label>
@@ -322,7 +356,13 @@
                 </div>
             </div>
 
-            <div class="form-group"><label>其他 (備註)</label><input type="text" id="notes" placeholder="無"></div>
+            <div class="form-card">
+                <div class="form-card-title">📝 其他需求／備註 <span style="font-weight:normal; color:#95a5a6; font-size:12.5px;">（選填）</span></div>
+                <div class="form-card-sub" style="color:#7f8c8d; line-height:1.6;">除了上面的喇叭、譜架、鋼琴，還需要<b>其他設備</b>，或有想提醒管理員的事，請寫在這裡。</div>
+                <div class="form-group">
+                    <textarea id="notes" rows="3" placeholder="例如：延長線 2 條、麥克風架 1 支"></textarea>
+                </div>
+            </div>
 
             <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;">
                 <label style="font-weight: normal; color: #d9534f; font-size: 15px; display: flex; align-items: center; gap: 8px;">
@@ -390,10 +430,12 @@
 
         <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
 
+        <div id="inventoryBox"></div>
+
         <h4>⚠️ 未歸還清單</h4>
         <div id="unreturnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
-        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單 <span style="font-size:12px; font-weight:normal; color:#7f8c8d;">(依歸還時間排序，最新在上)</span></h4>
+        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單 <span id="returnedSortHint" style="font-size:12px; font-weight:normal; color:#7f8c8d;">(依借用日期分組，新的日期在上)</span></h4>
         <div id="returnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
         <button class="btn-back" style="margin-top: 25px;" onclick="showSection('homeMenu')">返回首頁</button>
@@ -671,6 +713,15 @@
         return '<b style="color:#7f8c8d;">會使用</b><br><span style="color:#95a5a6; font-size:11px;">場地自有</span>';
     }
 
+    // 📝 會眾自己打的字（備註）放進畫面前先轉義，避免裡面有 < > 之類的符號把版面弄壞；換行照樣顯示
+    function escapeHtml(t) {
+        return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function noteHtml(t) { return escapeHtml(String(t || '').trim()).replace(/\n/g, '<br>'); }
+    // 清單裡一組只佔一行：多行備註用「、」接起來
+    function noteInline(t) { return escapeHtml(String(t || '').trim().split(/\s*\n+\s*/).join('、')); }
+    function hasNote(r) { return String(r.notes || '').trim() !== ''; }
+
     // 📋 某日的備品準備清單
     //    譜架算「同一時間最多幾個」而非全日加總——早上還回來的可以給下午用，
     //    所以尖峰用量才是實際要搬到櫃檯的數量。
@@ -708,8 +759,10 @@
                 if (n > peakStand) { peakStand = n; peakAt = floatToTimeStr(t); }
             }
         }
+        // 備註裡寫的其他需求：沒辦法算數量，但列出來讓管理員看到、自己決定要準備什麼
+        let notes = day.filter(hasNote).sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
         return {
-            units: [...units].sort(), pendingSpeakers, peakStand, peakAt,
+            units: [...units].sort(), pendingSpeakers, peakStand, peakAt, notes,
             鋼琴需架設: 需架設,
             鋼琴自有使用: [...new Set(自有使用)],
             groups: day.length
@@ -749,6 +802,12 @@
                 ? `<div style="margin-top:8px; color:#7f8c8d; font-size:11px;">
                      ${s.鋼琴自有使用.join('、')} 會使用自己的鋼琴，不需要準備。</div>`
                 : ''}
+            ${s.notes && s.notes.length > 0
+                ? `<div style="margin-top:10px; background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; padding:8px 10px; border-radius:4px; font-size:12.5px; line-height:1.6;">
+                     📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（沒有算進上面的數量，請看一下要不要另外準備）</span>
+                     ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}</div>`).join('')}
+                   </div>`
+                : ''}
             ${warn}
         </div>`;
     }
@@ -772,7 +831,7 @@
                 <input type="checkbox" id="${u[0]}_${item.id}" onchange="checkSpeakerCount(${item.id})" ${taken ? 'disabled' : ''}> ${u[2]}</label>`;
         }).join('');
         let noteHint = item.notes
-            ? `<div style="color:#8e44ad; margin-bottom:4px;">💬 會眾備註：${item.notes}</div>`
+            ? `<div style="color:#8e44ad; margin-bottom:4px;">💬 會眾備註：${noteHtml(item.notes)}</div>`
             : '';
         let allTaken = units.every(u => busy.has(u[1]));
         let takenHint = allTaken
@@ -1328,6 +1387,22 @@
         return a ? a.ts : 0;
     }
 
+    // 📅 已歸還清單依「借用日期」分組（人一多全部擠在一起會很亂）：
+    //    同一天借的放在一起，新的日期排上面；同一天裡最近歸還的在上面。
+    function groupReturned(list) {
+        let groups = {};
+        list.forEach(item => {
+            let key = String(item.borrow_date || '');
+            (groups[key] = groups[key] || []).push(item);
+        });
+        let keys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+        keys.forEach(k => groups[k].sort((a, b) => returnTimeOf(b) - returnTimeOf(a)));
+        return { keys, groups };
+    }
+    function returnedGroupTitle(key) {
+        return `📅 ${key ? formatDateLabel(key) : '日期不明'} 借用`;
+    }
+
     function recordLabel(item) {
         return item ? `${item.leader_name}｜${formatDateLabel(item.borrow_date)} ${item.start_time}-${item.end_time}｜${item.location}` : '';
     }
@@ -1490,6 +1565,126 @@
         }
     }
 
+    // ================= 📦 設備總結算 =================
+    //    管理員隔天進來，一眼看出「倉庫現在應該有幾台喇叭、幾個譜架」，拿去跟實際點到的數量比對，
+    //    數量對不上就知道有東西少了、該找誰。
+    //    「在外面」＝ 借用開始時間已經到了、但還沒歸還的紀錄；還沒開始的預約，設備還在倉庫裡。
+    //    不受上方「週次篩選」影響：設備現在在不在倉庫，跟正在看哪一週無關。
+    //    鋼琴固定放在各場地、不會被帶走，所以不列入。
+    const SPEAKER_UNITS = ['MA303 編號A', 'MA303 編號B', 'MA303 編號C', 'MA707'];
+    const INV_NOTE_DAYS = 3;   // 顯示最近幾天歸還時回報的狀況
+
+    function hasStarted(item) {
+        if (!item.borrow_date || !item.start_time) return false;
+        let dt = new Date(`${item.borrow_date}T${item.start_time}:00`);
+        return !isNaN(dt.getTime()) && dt.getTime() <= Date.now();
+    }
+
+    function taipeiDate(ts) {
+        return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Taipei' }).format(new Date(ts));
+    }
+
+    function inventoryStatus(records) {
+        let out = (records || []).filter(r => r.is_returned === false && hasStarted(r))
+            .sort((a, b) => `${a.borrow_date} ${a.start_time}`.localeCompare(`${b.borrow_date} ${b.start_time}`));
+        let unitHolders = {};
+        SPEAKER_UNITS.forEach(u => { unitHolders[u] = []; });
+        let noNumber = [], standHolders = [];
+        out.forEach(r => {
+            let assigned = normalizeAssignedList(r.ma303_assigned);
+            assigned.forEach(u => { if (unitHolders[u]) unitHolders[u].push(r); });
+            let missing = speakerUsage(r) - assigned.length;
+            if (missing > 0) noNumber.push({ r, n: missing });
+            let st = parseInt(r.music_stand) || 0;
+            if (st > 0) standHolders.push({ r, n: st });
+        });
+        let unitsOut = SPEAKER_UNITS.filter(u => unitHolders[u].length > 0).length;
+        let speakersOut = Math.min(SPEAKER_TOTAL, unitsOut + noNumber.reduce((a, x) => a + x.n, 0));
+        let standsOut = Math.min(STAND_TOTAL, standHolders.reduce((a, x) => a + x.n, 0));
+
+        // 最近幾天歸還時，小組長或管理員有寫下「不是正常」的狀況（例如「譜架少一個」）
+        let t = todayStr().split('-').map(Number);
+        let cutoff = new Date(Date.UTC(t[0], t[1] - 1, t[2] - (INV_NOTE_DAYS - 1))).toISOString().slice(0, 10);
+        let notes = (records || []).filter(r => r.is_returned).map(r => {
+            let byAdmin = parseAdminReturn(r.return_notes);
+            let note = byAdmin ? byAdmin.note : String(r.return_notes || '').trim();
+            let ts = returnTimeOf(r);
+            return { r, note, day: ts ? taipeiDate(ts) : String(r.return_date || '') };
+        }).filter(x => x.note && !x.note.includes('正常') && x.day >= cutoff)
+          .sort((a, b) => returnTimeOf(b.r) - returnTimeOf(a.r));
+
+        let usedBy = out.filter(r => speakerUsage(r) > 0 || (parseInt(r.music_stand) || 0) > 0);
+        return {
+            unitHolders, noNumber, standHolders, notes, otherNotes: out.filter(hasNote),
+            speakersIn: SPEAKER_TOTAL - speakersOut, standsIn: STAND_TOTAL - standsOut,
+            lateGroups: usedBy.filter(isOverdue).length,
+            usingGroups: usedBy.filter(r => !isOverdue(r)).length
+        };
+    }
+
+    function renderInventory(records) {
+        let s = inventoryStatus(records);
+        let phone = isPhoneAdmin();
+        const who = r => {
+            let tel = phone ? `<a href="tel:${r.leader_phone}">📞 ${r.leader_phone}</a>` : `📞 ${r.leader_phone}`;
+            let when = `${formatDateLabel(r.borrow_date)} ${r.start_time}–${r.end_time}`;
+            let state = isOverdue(r) ? '<b>已逾期</b>' : `使用中，${r.end_time} 歸還`;
+            return `<span class="who">👤 ${r.leader_name}・📍 ${r.location}　${tel}</span><span class="who">🕐 ${when}（${state}）</span>`;
+        };
+        const cls = (list) => list.some(isOverdue) ? 'late' : 'use';
+
+        // 🔊 喇叭：一台一台列出來
+        let spLis = SPEAKER_UNITS.map(u => {
+            let hs = s.unitHolders[u];
+            if (hs.length === 0) return `<li class="ok">✅ ${u}　在倉庫</li>`;
+            return `<li class="${cls(hs)}">${hs.some(isOverdue) ? '⚠️' : '🕐'} ${u}　<b>借出中</b>${hs.map(who).join('')}</li>`;
+        });
+        s.noNumber.forEach(x => spLis.push(
+            `<li class="nonum">❓ ${x.n} 台<b>沒登記是哪一台</b>（請在下方分配編號）${who(x.r)}</li>`));
+        let spOut = SPEAKER_UNITS.some(u => s.unitHolders[u].length > 0) || s.noNumber.length > 0;
+        let spLate = SPEAKER_UNITS.some(u => s.unitHolders[u].some(isOverdue)) || s.noNumber.some(x => isOverdue(x.r));
+
+        // 🎼 譜架：列出在誰那裡
+        let stLis = s.standHolders.map(x =>
+            `<li class="${isOverdue(x.r) ? 'late' : 'use'}">${isOverdue(x.r) ? '⚠️' : '🕐'} <b>${x.n} 個</b>借出中${who(x.r)}</li>`);
+        stLis.unshift(`<li class="ok">✅ ${s.standHolders.length ? '其餘 ' : '全部 '}${s.standsIn} 個　在倉庫</li>`);
+        let stLate = s.standHolders.some(x => isOverdue(x.r));
+
+        // 結論
+        let foot;
+        if (s.lateGroups > 0) {
+            foot = `<div class="inv-foot late">⚠️ 有 <b>${s.lateGroups}</b> 組已經過了歸還時間還沒還，設備還在他們那裡，請聯絡上面標紅色的小組長。</div>`;
+        } else if (s.usingGroups > 0) {
+            foot = `<div class="inv-foot use">🕐 有 ${s.usingGroups} 組正在使用中，還沒到歸還時間。他們歸還後這裡的數字會自動更新。</div>`;
+        } else {
+            foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還照片。</div>`;
+        }
+        let other = s.otherNotes.length === 0 ? '' :
+            `<div class="inv-notes other">📝 <b>還沒歸還的組別，備註裡寫了這些</b>（沒有算進上面的數量，點貨時請一起核對）` +
+            s.otherNotes.map(r => `<div>・${escapeHtml(r.leader_name)}（${formatDateLabel(r.borrow_date)} ${escapeHtml(r.location)}，${isOverdue(r) ? '<b>已逾期</b>' : '使用中'}）：${noteInline(r.notes)}</div>`).join('') +
+            `</div>`;
+        let notes = s.notes.length === 0 ? '' :
+            `<div class="inv-notes">📝 <b>最近 ${INV_NOTE_DAYS} 天歸還時回報的狀況</b>（請確認設備有沒有少或壞）` +
+            s.notes.map(x => `<div>・${escapeHtml(x.r.leader_name)}（${formatDateLabel(x.r.borrow_date)} ${escapeHtml(x.r.location)}）：「${noteInline(x.note)}」</div>`).join('') +
+            `</div>`;
+
+        let now = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
+        document.getElementById('inventoryBox').innerHTML = `<div class="inv-box">
+            <div class="inv-head"><b>📦 設備總結算</b><span>以現在 ${formatDateLabel(todayStr())} ${now} 計算；鋼琴固定在場地，不列入</span></div>
+            <div class="inv-grid">
+                <div class="inv-card${spLate ? ' late' : spOut ? ' some' : ''}">
+                    <div class="inv-title"><span>🔊 喇叭</span><span class="inv-num">倉庫應有 <b>${s.speakersIn}</b>/ ${SPEAKER_TOTAL} 台</span></div>
+                    <ul class="inv-list">${spLis.join('')}</ul>
+                </div>
+                <div class="inv-card${stLate ? ' late' : s.standHolders.length ? ' some' : ''}">
+                    <div class="inv-title"><span>🎼 譜架</span><span class="inv-num">倉庫應有 <b>${s.standsIn}</b>/ ${STAND_TOTAL} 個</span></div>
+                    <ul class="inv-list">${stLis.join('')}</ul>
+                </div>
+            </div>
+            ${foot}${other}${notes}
+        </div>`;
+    }
+
     // ================= 手機版後台：卡片式版面 =================
     //    螢幕寬度 700px 以下（手機）一筆借用一張卡片；電腦維持表格。
     //    手機轉橫向、或電腦視窗拉窄拉寬跨過 700px 時，後台自動換成對應的版面。
@@ -1526,7 +1721,7 @@
                     <div class="bk-top"><span class="bk-time">🕐 ${item.start_time}–${item.end_time}</span><span class="bk-venue">📍 ${item.location}</span></div>
                     <div class="bk-person"><span>👤 ${item.leader_name}</span><a href="tel:${item.leader_phone}">📞 ${item.leader_phone}</a></div>
                     ${badges ? `<div>${badges}</div>` : ''}
-                    ${item.notes ? `<div class="bk-note">💬 ${item.notes}</div>` : ''}
+                    ${hasNote(item) ? `<div class="bk-note">📝 <b>備註：</b>${noteHtml(item.notes)}</div>` : ''}
                     <div class="bk-equip">
                         <span class="k">🔊 喇叭</span><div>${needSpeaker ? speakerAssignUI(item, records) : '<span style="color:#bbb;">不需要</span>'}</div>
                         <span class="k">🎼 譜架</span><div>${standCell(item)}</div>
@@ -1543,10 +1738,12 @@
         });
         document.getElementById('unreturnedContainer').innerHTML = html;
 
-        // 已歸還：預設收起來，點開才看（最新的在上面）
-        returnedList.sort((a, b) => returnTimeOf(b) - returnTimeOf(a));
+        // 已歸還：預設收起來，點開才看；裡面依日期分組（見 groupReturned）
+        let rg = groupReturned(returnedList);
         let cards = '';
-        returnedList.forEach(item => {
+        rg.keys.forEach(key => {
+          cards += `<div class="ret-day"><span>${returnedGroupTitle(key)}</span><span>${rg.groups[key].length} 組</span></div>`;
+          rg.groups[key].forEach(item => {
             let ts = returnTimeOf(item);
             let byAdmin = parseAdminReturn(item.return_notes);
             let note = byAdmin ? byAdmin.note : (item.return_notes || '').trim();
@@ -1566,6 +1763,7 @@
                     <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
                 </div>
             </div>`;
+          });
         });
         document.getElementById('returnedContainer').innerHTML = returnedList.length === 0
             ? '<p style="color:#7f8c8d;">目前沒有資料</p>'
@@ -1583,6 +1781,7 @@
         if (error) return;
         adminRecordMap = {};
         records.forEach(r => { adminRecordMap[r.id] = r; });   // 給「編輯」「代為歸還」視窗查資料用
+        renderInventory(records);   // 📦 設備總結算：用全部資料，不受週次篩選影響
 
         function passFilter(item) {
             if (weekFilter === '' || !item.borrow_date) return true;
@@ -1670,8 +1869,8 @@
                         : '';
 
                     // 會眾備註單獨一個淺色小方塊，跟姓名分開，不會混在一起變成一整段字
-                    let noteBlock = item.notes
-                        ? `<div style="background:#f4f0fa; color:#6c5a8c; font-size:11px; border-radius:4px; padding:3px 6px; margin-top:4px;">💬 ${item.notes}</div>`
+                    let noteBlock = hasNote(item)
+                        ? `<div style="background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; font-size:12.5px; line-height:1.5; border-radius:4px; padding:4px 7px; margin-top:5px; min-width:140px;">📝 <b>備註：</b>${noteHtml(item.notes)}</div>`
                         : '';
 
                     let photoAction = item.pickup_photo_url
@@ -1704,64 +1903,67 @@
         }
         document.getElementById('unreturnedContainer').innerHTML = unreturnedHtml;
 
-        // 已歸還：依歸還時間排序（最新在上）。會眾歸還看照片檔名的時間，管理員代為歸還看備註裡記的時間
-        returnedList.sort((a, b) => returnTimeOf(b) - returnTimeOf(a));
-
+        // 已歸還：依日期分組（見 groupReturned），每組一個標題＋一張表格
+        let rg = groupReturned(returnedList);
         let returnedHtml = '';
         if (returnedList.length === 0) {
             returnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         } else {
-            returnedHtml += `<table class="grouped-table" style="border-radius:6px;"><tr>
-                    <th>🕒 歸還時間</th>
-                    <th>日期</th>
-                    <th>時段</th>
-                    <th>場地</th>
-                    <th>負責人</th>
-                    <th>喇叭</th>
-                    <th>譜架</th>
-                    <th>鋼琴</th>
-                    <th>歸還狀態</th>
-                    <th>📸 照片</th>
-                    <th>操作</th></tr>`;
-            returnedList.forEach(item => {
-                let ts = returnTimeOf(item);
-                let timeLabel = ts
-                    ? formatReturnTime(ts).replace(' ', '<br>')
-                    : `${item.return_date || '—'}<br><span style="color:#95a5a6; font-size:11px;">(無時間紀錄)</span>`;
-                let byAdmin = parseAdminReturn(item.return_notes);
-                let photo = item.return_photo_url
-                    ? `<a href="${item.return_photo_url}" target="_blank">檢視</a>`
-                    : `<span style="color:#95a5a6;">無${byAdmin ? '<br>（管理員代為歸還）' : ''}</span>`;
+            rg.keys.forEach(key => {
+                let list = rg.groups[key];
+                returnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
+                returnedHtml += `<div class="date-header" style="background:#1e8449; display:flex; justify-content:space-between;"><span>${returnedGroupTitle(key)}</span><span style="font-weight:normal; font-size:13px;">${list.length} 組</span></div>`;
+                // 借用日期已經寫在標題上，表格就不重複這一欄
+                returnedHtml += `<table class="grouped-table"><tr>
+                        <th>🕒 歸還時間</th>
+                        <th>時段</th>
+                        <th>場地</th>
+                        <th>負責人</th>
+                        <th>喇叭</th>
+                        <th>譜架</th>
+                        <th>鋼琴</th>
+                        <th>歸還狀態</th>
+                        <th>📸 照片</th>
+                        <th>操作</th></tr>`;
+                list.forEach(item => {
+                    let ts = returnTimeOf(item);
+                    let timeLabel = ts
+                        ? formatReturnTime(ts).replace(' ', '<br>')
+                        : `${item.return_date || '—'}<br><span style="color:#95a5a6; font-size:11px;">(無時間紀錄)</span>`;
+                    let byAdmin = parseAdminReturn(item.return_notes);
+                    let photo = item.return_photo_url
+                        ? `<a href="${item.return_photo_url}" target="_blank">檢視</a>`
+                        : `<span style="color:#95a5a6;">無${byAdmin ? '<br>（管理員代為歸還）' : ''}</span>`;
 
-                // 歸還狀態用顏色分流：留空，或會眾自己寫的字裡有「正常」兩個字（不管是「正常歸還」「設備正常」哪種寫法都算），
-                // 一律視為沒問題、用綠色勾勾；其他文字才代表真的有異常說明，用橘色凸顯，不用逐行讀文字
-                let noteText = byAdmin ? byAdmin.note : (item.return_notes || '').trim();
-                let looksNormal = !noteText || noteText.includes('正常');
-                let statusCell = looksNormal
-                    ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
-                    : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
-                if (byAdmin) {
-                    statusCell += `<br><span style="display:inline-block; background:#eef2f5; color:#5d6d7e; padding:1px 6px; border-radius:3px; font-size:10.5px; margin-top:3px;">👤 管理員代為歸還</span>`;
-                }
+                    // 歸還狀態用顏色分流：留空，或會眾自己寫的字裡有「正常」兩個字（不管是「正常歸還」「設備正常」哪種寫法都算），
+                    // 一律視為沒問題、用綠色勾勾；其他文字才代表真的有異常說明，用橘色凸顯，不用逐行讀文字
+                    let noteText = byAdmin ? byAdmin.note : (item.return_notes || '').trim();
+                    let looksNormal = !noteText || noteText.includes('正常');
+                    let statusCell = looksNormal
+                        ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
+                        : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
+                    if (byAdmin) {
+                        statusCell += `<br><span style="display:inline-block; background:#eef2f5; color:#5d6d7e; padding:1px 6px; border-radius:3px; font-size:10.5px; margin-top:3px;">👤 管理員代為歸還</span>`;
+                    }
 
-                returnedHtml += `<tr>
-                        <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
-                        <td style="white-space:nowrap;">📅 ${formatDateLabel(item.borrow_date)}</td>
-                        <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
-                        <td style="white-space:nowrap;">📍 ${item.location}</td>
-                        <td style="white-space:nowrap;">👤 ${item.leader_name}</td>
-                        <td style="white-space:normal;">${speakerCell(item)}</td>
-                        <td>${standCell(item)}</td>
-                        <td>${pianoCell(item)}</td>
-                        <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
-                        <td>${photo}</td>
-                        <td><div class="row-actions">
-                            <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
-                            <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
-                        </div></td>
-                    </tr>`;
+                    returnedHtml += `<tr>
+                            <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
+                            <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
+                            <td style="white-space:nowrap;">📍 ${item.location}</td>
+                            <td style="white-space:nowrap;">👤 ${item.leader_name}</td>
+                            <td style="white-space:normal;">${speakerCell(item)}</td>
+                            <td>${standCell(item)}</td>
+                            <td>${pianoCell(item)}</td>
+                            <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
+                            <td>${photo}</td>
+                            <td><div class="row-actions">
+                                <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
+                                <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
+                            </div></td>
+                        </tr>`;
+                });
+                returnedHtml += `</table></div>`;
             });
-            returnedHtml += `</table>`;
         }
         document.getElementById('returnedContainer').innerHTML = returnedHtml;
     }
@@ -1905,9 +2107,10 @@
         let speakerNeed = (parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0);
         if (speakerNeed > 0) {
             let assigned = normalizeAssignedList(item.ma303_assigned);
+            // 歸還時機台照理早就分配好了，直接寫出編號讓小組長對照；萬一還沒分配才請他聯絡管理員
             lines.push(assigned.length > 0
-                ? `<div>🔊 喇叭：<b>${assigned.join('、')}</b></div>`
-                : `<div>🔊 喇叭：<b>需要</b> <span style="color:#95a5a6; font-size:11.5px;">（管理員尚未指定機台）</span></div>`);
+                ? `<div>🔊 喇叭編號：<b style="color:#1e8449; font-size:14px;">${assigned.join('、')}</b></div>`
+                : `<div>🔊 喇叭編號：<b>尚未分配</b> <span style="color:#95a5a6; font-size:11.5px;">（請聯絡管理員）</span></div>`);
         }
         let stands = parseInt(item.music_stand) || 0;
         if (stands > 0) lines.push(`<div>🎼 譜架：<b>${stands} 個</b></div>`);
