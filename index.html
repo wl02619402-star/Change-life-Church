@@ -51,6 +51,9 @@
         .btn-ok { background-color: #27ae60; }
         .btn-undo { background-color: #7f8c8d; }
         .row-actions { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
+        /* 負責人／聯絡電話兩欄：電腦並排；手機上改上下排，電話欄的提示字「例：0912345678」才不會被切掉 */
+        .pair-row { display: flex; gap: 10px; }
+        @media (max-width: 600px) { .pair-row { flex-direction: column; gap: 0; } }
         hr { border: 0; border-top: 1px solid #eee; margin: 25px 0; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
@@ -130,9 +133,9 @@
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0;">設備借用守則</h3>
-            <p>1. 領取及歸還，<b>務必於「設備外借管理系統」的網頁填寫</b>。</p>
+            <p>1. 領取及歸還，務必於「<b>設備外借管理系統</b>」的網頁填寫。</p>
             <p>2. 請於預約時間<b>準時歸還</b>，讓後面租借的小組可以順利進行。</p>
-            <p>3. 領取設備時，請至系統<b>查詢您的「領取位置照片」</b>。</p>
+            <p>3. 領取設備時，請至系統查詢您的「<b>領取位置照片</b>」。</p>
             <button class="btn-submit" onclick="closeModal()">我瞭解了</button>
         </div>
     </div>
@@ -158,7 +161,7 @@
                     <option value="幼主">幼主</option><option value="教會外場地">教會外場地</option>
                 </select>
             </div>
-            <div style="display: flex; gap: 10px;">
+            <div class="pair-row">
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>負責人</label><input type="text" id="editName"></div>
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>聯絡電話</label><input type="tel" id="editPhone" inputmode="numeric" maxlength="10" oninput="digitsOnly(this)"></div>
             </div>
@@ -196,9 +199,9 @@
     <div id="rulesSection" class="form-section">
         <h3 style="text-align: center; color: #c0392b;">⚠️ 借用設備需知</h3>
         <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; line-height: 1.6; font-size: 15px;">
-            <p>1. 領取及歸還，<b>務必於「設備外借管理系統」的網頁填寫</b>。</p>
+            <p>1. 領取及歸還，務必於「<b>設備外借管理系統</b>」的網頁填寫。</p>
             <p>2. 請於預約時間<b>準時歸還</b>，讓後面租借的小組可以順利進行。</p>
-            <p>3. 領取設備時，請至系統<b>查詢您的「領取位置照片」</b>。</p>
+            <p>3. 領取設備時，請至系統查詢您的「<b>領取位置照片</b>」。</p>
         </div>
         <button class="btn-submit" onclick="showSection('borrowSection')">我同意，開始填寫</button>
         <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
@@ -232,7 +235,7 @@
 
             <div class="form-card">
                 <div class="form-card-title">📍 場地與聯絡資訊</div>
-                <div style="display: flex; gap: 10px;">
+                <div class="pair-row">
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>聯絡電話</label><input type="tel" id="leaderPhone" inputmode="numeric" maxlength="10" minlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" required></div>
                 </div>
@@ -397,6 +400,17 @@
 
     // 🔒 會眾端一律透過受限的資料庫函式讀取，讀不到別人的姓名與電話。
     //    若資料庫尚未建立函式，自動退回舊的直接查詢，方便新舊版本並存。
+    // 📱 記住這支手機上次用的電話：借用成功、或查到紀錄時記下來，
+    //    下次打開「查詢」「歸還」頁就自動帶入，不用每次重打。只存在這台手機的瀏覽器裡。
+    //    （無痕模式或瀏覽器擋掉儲存時會出錯，一律包 try/catch，出錯就當作沒記住，不影響其他功能）
+    const PHONE_KEY = 'xmas2026_last_phone';
+    function rememberPhone(phone) {
+        try { if (/^\d{10}$/.test(phone)) localStorage.setItem(PHONE_KEY, phone); } catch (e) {}
+    }
+    function recallPhone() {
+        try { return localStorage.getItem(PHONE_KEY) || ''; } catch (e) { return ''; }
+    }
+
     async function fetchMyRecords(phone) {
         const lookup = async (p) => {
             let r = await db.rpc('get_my_records', { p_phone: p });
@@ -766,6 +780,12 @@
         if (sectionId === 'homeMenu') document.getElementById('homeMenu').style.display = 'flex';
         else document.getElementById(sectionId).style.display = 'block';
 
+        // 查詢頁：打開時如果電話欄是空的，自動帶入這支手機上次用的電話
+        if (sectionId === 'querySection') {
+            let q = document.getElementById('searchPhone');
+            if (!q.value) q.value = recallPhone();
+        }
+
         // 後台畫面在寬螢幕時放寬容器（見上方 CSS），其他頁面維持原本手機優先的窄版面
         document.querySelector('.container').classList.toggle('admin-wide', sectionId === 'adminSection');
 
@@ -1007,8 +1027,8 @@
     //    日期只列 2026/12/1–12/31（附星期幾）；時間只列整點與半點。
     //    原本用 <input type="date"/"time">，但 iPhone 的日期選擇器不理會「只限 12 月」的設定、
     //    時間滾輪可以選到 11:25，選錯的值會讓瀏覽器悄悄擋下送出，使用者以為按了沒反應。
-    const TIME_FIRST = 6;      // 最早 06:00
-    const TIME_LAST = 23.5;    // 最晚 23:30（借用時間最晚 23:00，歸還時間最晚 23:30）
+    const TIME_FIRST = 8;      // 最早 08:00（使用者指定早上 8 點到晚上 10 點）
+    const TIME_LAST = 22;      // 最晚 22:00（借用時間最晚 21:30，歸還時間最晚 22:00）
 
     function fillDateOptions(selectId) {
         let sel = document.getElementById(selectId);
@@ -1021,7 +1041,7 @@
         sel.innerHTML = html;
     }
 
-    // kind = 'start'（06:00–23:00）或 'end'（06:30–23:30）
+    // kind = 'start'（08:00–21:30）或 'end'（08:30–22:00）
     function fillTimeOptions(selectId, kind) {
         let sel = document.getElementById(selectId);
         if (!sel) return;
@@ -1070,6 +1090,7 @@
             const { data, error } = await fetchMyRecords(phone);
             if(error) { document.getElementById('queryResult').innerHTML = "查詢失敗"; return; }
             if(data.length === 0) { document.getElementById('queryResult').innerHTML = "找不到此電話的借用紀錄。"; return; }
+            rememberPhone(normalizePhone(phone));
             data.sort((a, b) => String(b.borrow_date).localeCompare(String(a.borrow_date)));
 
             let html = `<div style="color:#7f8c8d; font-size:12.5px; margin-bottom:8px;">共找到 <b style="color:#2471a3;">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
@@ -1691,6 +1712,7 @@
             if (error) { alert("發生錯誤：" + error.message); }
             else {
                 // 先把剛剛填的內容記下來，表單重設之後還要拿來顯示在成功視窗裡
+                rememberPhone(phone);
                 let summary = {
                     date: date, start: startTime, end: endTime, loc: loc, name: name, phone: phone,
                     speaker: reqSpeaker > 0, stand: reqStand, piano: reqPiano, tech: techOption === '是'
@@ -1743,7 +1765,7 @@
     }
 
     function resetReturnForm() {
-        document.getElementById('returnSearchPhone').value = '';
+        document.getElementById('returnSearchPhone').value = recallPhone();
         document.getElementById('returnForm').classList.add('hidden');
         document.getElementById('returnForm').reset();
         document.getElementById('unreturnedList').innerHTML = '';
@@ -1784,6 +1806,7 @@
         try {
             const { data: all, error } = await fetchMyRecords(phone);
             if(error) { listContainer.innerHTML = "查詢失敗"; return; }
+            if ((all || []).length > 0) rememberPhone(normalizePhone(phone));
             let data = (all || []).filter(r => r.is_returned === false)
                                   .sort((a, b) => String(a.borrow_date).localeCompare(String(b.borrow_date)));
             // 照片、備註、送出鈕：有可以歸還的紀錄才顯示
