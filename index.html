@@ -169,11 +169,21 @@
             .responsive-table td { border: none; border-bottom: 1px dashed #eee; padding: 9px 0; white-space: normal; text-align: right; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
             .responsive-table td:last-child { border-bottom: none; }
             .responsive-table td::before { content: attr(data-label); font-weight: bold; color: #7f8c8d; text-align: left; flex-shrink: 0; }
-            /* 查詢結果的備註：手機卡片上沒寫備註就不佔一行；有寫就靠左、完整顯示 */
-            .responsive-table td.note-empty { display: none; }
+            /* 查詢結果的備註列：跟上面那筆接成同一張卡片（上面那張拿掉下緣，備註列拿掉上緣） */
+            .responsive-table tr.has-note { margin-bottom: 0; border-bottom: none; border-radius: 8px 8px 0 0; }
+            .responsive-table tr.has-note td:last-child { border-bottom: none; }
+            .responsive-table tr.note-row { border-top: none; border-radius: 0 0 8px 8px; padding: 0 10px 10px; background: #fff; }
+            .responsive-table tr.note-row td { display: block; border: none; border-radius: 8px; padding: 9px 11px; text-align: left; }
+            .responsive-table tr.note-row td::before { content: none; }
+            .responsive-table .note-label { display: block; margin: 0 0 2px; }
         }
-        /* 📝 會眾寫的備註（查詢頁、歸還頁共用） */
-        .note-pill { display: inline-block; max-width: 240px; background: #fff8e1; border: 1px solid #f3dfa2; color: #6e4b00; border-radius: 6px; padding: 4px 8px; font-size: 12.5px; font-weight: normal; line-height: 1.55; text-align: left; }
+        /* 📝 查詢頁：備註是紀錄下方一整條，跟上面那列連在一起 */
+        @media (min-width: 601px) {
+            .responsive-table tr.has-note td { border-bottom: none; }
+            .responsive-table tr.note-row td { border-top: 1px dashed #f0dfa8; }
+        }
+        .responsive-table tr.note-row td { background: #fffbea; padding: 8px 12px; white-space: normal; color: #6e4b00; font-size: 13.5px; line-height: 1.6; text-align: left; }
+        .responsive-table .note-label { font-weight: bold; margin-right: 8px; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -1195,7 +1205,7 @@
             data.sort((a, b) => String(b.borrow_date).localeCompare(String(a.borrow_date)));
 
             let html = `<div style="color:#7f8c8d; font-size:12.5px; margin-bottom:8px;">共找到 <b style="color:#2471a3;">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
-            html += '<table class="responsive-table"><thead><tr><th>日期／時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>備註</th><th>狀態與領取位置</th></tr></thead><tbody>';
+            html += '<table class="responsive-table"><thead><tr><th>日期／時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr></thead><tbody>';
             // 每格內容各包一層 <div>：手機版卡片的每一列是左右兩端對齊（左邊欄名、右邊內容），
             // 內容如果有好幾段（例如「是」＋「等待分配」）沒包起來會被拆散到左右兩邊，看起來很零散。
             const cell = (html) => `<div>${html}</div>`;
@@ -1207,17 +1217,18 @@
                     if (item.pickup_photo_url) { pickup = `<br><a href="${item.pickup_photo_url}" target="_blank" style="color:#e67e22; font-weight:bold;">📍 查看領取照片</a>`; }
                     else { pickup = `<br><span style="color:#95a5a6;">(管理員尚未上傳位置)</span>`; }
                 }
-                html += `<tr>
+                html += `<tr${hasNote(item) ? ' class="has-note"' : ''}>
                     <td data-label="日期／時間" style="white-space:normal;">${cell(dateTimeCell(item))}</td>
                     <td data-label="場地">${cell(item.location)}</td>
                     <td data-label="喇叭" style="white-space:normal;">${cell(speakerCell(item))}</td>
                     <td data-label="譜架">${cell(standCell(item))}</td>
                     <td data-label="鋼琴">${cell(pianoCell(item))}</td>
-                    <td data-label="備註" class="${hasNote(item) ? 'note-td' : 'note-empty'}" style="white-space:normal;">${cell(hasNote(item)
-                        ? `<span class="note-pill">📝 ${noteHtml(item.notes)}</span>`
-                        : '<span style="color:#ccc;">—</span>')}</td>
                     <td data-label="狀態" style="white-space:normal;">${cell(st + pickup)}</td>
                 </tr>`;
+                // 備註：不擠在窄窄的一欄裡，改成這筆紀錄下方一整條（電腦橫跨整張表、手機接在同一張卡片最下面）
+                if (hasNote(item)) {
+                    html += `<tr class="note-row"><td colspan="6"><span class="note-label">📝 備註</span><span class="note-text">${noteHtml(item.notes)}</span></td></tr>`;
+                }
             });
             html += '</tbody></table>';
             document.getElementById('queryResult').innerHTML = html;
@@ -2123,7 +2134,7 @@
         if (stands > 0) lines.push(`<div>🎼 譜架：<b>${stands} 個</b></div>`);
         // 借用時寫在備註的其他設備（例如延長線），歸還時一起提醒
         let note = hasNote(item)
-            ? `<div class="note-pill" style="display:block; max-width:none; margin-top:${lines.length ? 5 : 2}px;">📝 <b>備註：</b>${noteHtml(item.notes)}</div>`
+            ? `<div style="${lines.length ? 'margin-top:5px; padding-top:5px; border-top:1px dashed #d6e2ea; ' : ''}color:#7e5109;">📝 備註：<span style="font-weight:normal;">${noteHtml(item.notes)}</span></div>`
             : '';
         let body = lines.length > 0 || note
             ? lines.join('') + note
