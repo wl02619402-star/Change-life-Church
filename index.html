@@ -264,7 +264,7 @@
             <hr>
             <div class="form-group">
                 <label style="color: #c0392b;">請選擇要歸還的紀錄：</label>
-                <div id="unreturnedList" style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #ddd; max-height: 150px; overflow-y: auto;">
+                <div id="unreturnedList" style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
                 </div>
             </div>
 
@@ -1149,7 +1149,10 @@
                 // 三者會一起以表格的實際寬度為準（不夠寬時仍撐滿容器），捲動時顏色區塊也會跟著捲到底。
                 unreturnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
                 unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
-                unreturnedHtml += summaryBox(dailySummary(records, date));
+                // 備品清單只能算「還沒歸還」的這幾組，不能用 records（全部歷史資料都在裡面）：
+                // 否則已經歸還過的舊紀錄（哪怕是別的月份、已經用完還回來的機台）也會被算進「今天要準備」的清單，
+                // 導致清單顯示的機台數/編號比畫面上實際看得到的未歸還紀錄還多，兩邊對不起來。
+                unreturnedHtml += summaryBox(dailySummary(unreturnedGroups[date], date));
                 unreturnedHtml += `<table class="grouped-table"><tr>
                         <th>時間</th>
                         <th>場地</th>
@@ -1359,6 +1362,32 @@
         document.getElementById('unreturnedList').innerHTML = '';
     }
 
+    // 📦 歸還頁每筆紀錄底下列出「這次借了哪些設備」，讓小組長歸還前能對照、確認都有帶回來。
+    //    喇叭有指定機台就寫出編號（例如 MA303 編號A），還沒分配就寫「需要（管理員尚未指定機台）」；
+    //    鋼琴是場地本身的，不用搬回來，用灰色小字註明，避免小組長以為也要歸還。
+    function returnEquipmentBlock(item) {
+        let lines = [];
+        let speakerNeed = (parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0);
+        if (speakerNeed > 0) {
+            let assigned = normalizeAssignedList(item.ma303_assigned);
+            lines.push(assigned.length > 0
+                ? `<div>🔊 喇叭：<b>${assigned.join('、')}</b></div>`
+                : `<div>🔊 喇叭：<b>需要</b> <span style="color:#95a5a6; font-size:11.5px;">（管理員尚未指定機台）</span></div>`);
+        }
+        let stands = parseInt(item.music_stand) || 0;
+        if (stands > 0) lines.push(`<div>🎼 譜架：<b>${stands} 個</b></div>`);
+        if (item.piano === '是') {
+            lines.push(`<div style="color:#95a5a6; font-size:11.5px;">🎹 鋼琴：場地本身的鋼琴，不用歸還</div>`);
+        }
+        let body = lines.length > 0
+            ? lines.join('')
+            : `<div style="color:#95a5a6;">這次只借場地，沒有借用設備</div>`;
+        return `<div style="margin-top:7px; background:#f4f8fb; border:1px solid #e1ebf2; border-radius:6px; padding:6px 9px; font-size:12.5px; color:#2c3e50; line-height:1.7;">
+                    <div style="color:#7f8c8d; font-size:11.5px; font-weight:bold;">📦 借用設備（歸還時請確認都有帶回）</div>
+                    ${body}
+                </div>`;
+    }
+
     async function searchUnreturned() {
         if (!requireDb()) return;
         var phone = document.getElementById('returnSearchPhone').value;
@@ -1389,6 +1418,7 @@
                         <div style="font-weight:bold; color:#2c3e50;">📅 日期：${formatDateLabel(item.borrow_date)}</div>
                         <div style="color:#5d7a8c; font-size:12.5px; margin-top:2px;">🕐 時間：${item.start_time}–${item.end_time}</div>
                         <div style="color:#2c3e50; font-size:12.5px; margin-top:2px;">📍 場地：${item.location}</div>
+                        ${returnEquipmentBlock(item)}
                     </span>
                 </label>`;
             });
