@@ -84,6 +84,44 @@
         /* 載入動畫專用樣式 */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
+        /* 📱 手機版後台（螢幕寬度 700px 以下）：一筆借用一張卡片，不用左右滑表格；電腦寬度維持表格。
+           由 loadAdminData() 依 isPhoneAdmin() 決定畫哪一種（同一時間只畫一種，避免分配勾選框的 id 重複）。 */
+        .stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+        .stat-tiles .tile { background: #fff; border: 1px solid #e3e9ee; border-radius: 10px; padding: 8px 4px; text-align: center; }
+        .stat-tiles .tile b { display: block; font-size: 22px; line-height: 1.2; color: #2c3e50; }
+        .stat-tiles .tile span { font-size: 12px; color: #7f8c8d; }
+        .stat-tiles .tile.red b { color: #c0392b; }
+        .stat-tiles .tile.green b { color: #27ae60; }
+        .day-head { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: #fff; border-radius: 10px 10px 0 0; padding: 10px 14px; margin-top: 18px; font-weight: bold; font-size: 16px; }
+        .day-head span { font-size: 12.5px; font-weight: normal; opacity: .85; }
+        .bk-card { background: #fff; border: 1px solid #e3e9ee; border-radius: 12px; padding: 12px 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,.05); font-size: 14px; }
+        .bk-card.overdue { border-color: #f1b0a8; background: #fff8f7; }
+        .bk-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .bk-time { font-size: 18px; font-weight: bold; color: #2c3e50; }
+        .bk-venue { background: #eaf4fc; color: #2471a3; font-weight: bold; border-radius: 20px; padding: 3px 11px; font-size: 13px; white-space: nowrap; }
+        .bk-person { margin-top: 6px; color: #34495e; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .bk-person a { color: #2471a3; text-decoration: none; font-weight: bold; }
+        .bk-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11.5px; font-weight: bold; margin: 6px 6px 0 0; }
+        .bk-badge.red { background: #e74c3c; color: #fff; }
+        .bk-badge.pink { background: #fdecea; color: #c0392b; }
+        .bk-note { background: #f4f0fa; color: #6c5a8c; font-size: 12.5px; border-radius: 6px; padding: 5px 8px; margin-top: 7px; }
+        .bk-equip { margin-top: 10px; border-top: 1px dashed #e5eaee; padding-top: 10px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: start; }
+        .bk-equip .k { color: #7f8c8d; white-space: nowrap; font-size: 13px; padding-top: 1px; }
+        .bk-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+        .bk-actions.two { grid-template-columns: 1fr 1fr; }
+        .bk-actions button { padding: 11px 4px; font-size: 14px; border-radius: 8px; }
+        .bk-returned { font-size: 13.5px; }
+        /* 已歸還清單（手機）：預設收起來，點綠色橫條才展開 */
+        .returned-fold > summary { list-style: none; cursor: pointer; background: #eafaf1; color: #1e8449; border: 1px solid #c8e6d5; border-radius: 10px; padding: 12px 14px; font-weight: bold; font-size: 15px; }
+        .returned-fold > summary::-webkit-details-marker { display: none; }
+        .returned-fold > summary::after { content: ' ▾ 點開'; font-weight: normal; font-size: 13px; color: #27ae60; }
+        .returned-fold[open] > summary::after { content: ' ▴ 收起'; }
+        /* 卡片裡的機台分配框：手機上手指要點得到，字、勾選框、確認鈕都放大 */
+        .bk-equip > div > div[style*="font-size:11px"] { font-size: 13.5px !important; padding: 8px !important; line-height: 1.6; }
+        .bk-equip input[type="checkbox"] { width: 22px; height: 22px; vertical-align: middle; margin-right: 3px; }
+        .bk-equip label[title] { font-size: 16px; margin-right: 12px !important; }
+        .bk-equip button[onclick^="assignSpeaker"] { font-size: 14px !important; padding: 8px 16px !important; border-radius: 6px !important; }
+        .bk-equip button[onclick^="resetAssign"] { font-size: 13px !important; padding: 5px 10px !important; }
         /* 📱 手機版：查詢結果改成一筆一張卡片，不必左右滑動 */
         @media (max-width: 600px) {
             body { padding: 10px; }
@@ -1452,6 +1490,88 @@
         }
     }
 
+    // ================= 手機版後台：卡片式版面 =================
+    //    螢幕寬度 700px 以下（手機）一筆借用一張卡片；電腦維持表格。
+    //    手機轉橫向、或電腦視窗拉窄拉寬跨過 700px 時，後台自動換成對應的版面。
+    const phoneAdminMQ = window.matchMedia('(max-width: 700px)');
+    function isPhoneAdmin() { return phoneAdminMQ.matches; }
+    phoneAdminMQ.addEventListener('change', () => {
+        if (document.getElementById('adminSection').style.display === 'block') loadAdminData();
+    });
+
+    function renderAdminCards(dates, unreturnedGroups, returnedList, records, totalUnreturned, overdueCount) {
+        // 頂部三個數字方塊
+        document.getElementById('adminSummary').innerHTML = `<div class="stat-tiles">
+            <div class="tile"><b>${totalUnreturned}</b><span>未歸還</span></div>
+            <div class="tile ${overdueCount > 0 ? 'red' : ''}"><b>${overdueCount}</b><span>已逾期</span></div>
+            <div class="tile green"><b>${returnedList.length}</b><span>已歸還</span></div>
+        </div>`;
+
+        // 未歸還：每天一個深色標題＋備品清單，底下每組一張卡片
+        let html = '';
+        if (dates.length === 0) html = '<p style="color:#7f8c8d;">目前沒有資料</p>';
+        dates.forEach(date => {
+            let list = unreturnedGroups[date].slice().sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
+            html += `<div class="day-head">📅 ${formatDateLabel(date)}<span>${list.length} 組借用</span></div>`;
+            html += summaryBox(dailySummary(list, date)).replace('border-top:none;', 'border-top:none; border-radius:0 0 10px 10px;');
+            list.forEach(item => {
+                let overdue = isOverdue(item);
+                let needSpeaker = speakerUsage(item) > 0;
+                let badges = (overdue ? '<span class="bk-badge red">⚠️ 已逾期</span>' : '') +
+                             (item.need_tech === '是' ? '<span class="bk-badge pink">🎛️ 需音控</span>' : '');
+                let photo = item.pickup_photo_url
+                    ? `<a href="${item.pickup_photo_url}" target="_blank">查看</a>　<label class="upload-label">重傳<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`
+                    : `<label class="upload-label">上傳照片<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`;
+                html += `<div class="bk-card${overdue ? ' overdue' : ''}" data-id="${item.id}">
+                    <div class="bk-top"><span class="bk-time">🕐 ${item.start_time}–${item.end_time}</span><span class="bk-venue">📍 ${item.location}</span></div>
+                    <div class="bk-person"><span>👤 ${item.leader_name}</span><a href="tel:${item.leader_phone}">📞 ${item.leader_phone}</a></div>
+                    ${badges ? `<div>${badges}</div>` : ''}
+                    ${item.notes ? `<div class="bk-note">💬 ${item.notes}</div>` : ''}
+                    <div class="bk-equip">
+                        <span class="k">🔊 喇叭</span><div>${needSpeaker ? speakerAssignUI(item, records) : '<span style="color:#bbb;">不需要</span>'}</div>
+                        <span class="k">🎼 譜架</span><div>${standCell(item)}</div>
+                        <span class="k">🎹 鋼琴</span><div>${pianoCell(item)}</div>
+                        <span class="k">📍 領取照片</span><div>${photo}</div>
+                    </div>
+                    <div class="bk-actions">
+                        <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 編輯</button>
+                        <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 代為歸還</button>
+                        <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
+                    </div>
+                </div>`;
+            });
+        });
+        document.getElementById('unreturnedContainer').innerHTML = html;
+
+        // 已歸還：預設收起來，點開才看（最新的在上面）
+        returnedList.sort((a, b) => returnTimeOf(b) - returnTimeOf(a));
+        let cards = '';
+        returnedList.forEach(item => {
+            let ts = returnTimeOf(item);
+            let byAdmin = parseAdminReturn(item.return_notes);
+            let note = byAdmin ? byAdmin.note : (item.return_notes || '').trim();
+            let normal = !note || note.includes('正常');
+            let status = normal ? `<span style="color:#27ae60;">✅ ${note || '正常歸還'}</span>` : `<b style="color:#e67e22;">⚠️ ${note}</b>`;
+            let equip = [];
+            if (speakerUsage(item) > 0) equip.push('🔊 ' + (normalizeAssignedList(item.ma303_assigned).join('、') || '喇叭'));
+            if ((parseInt(item.music_stand) || 0) > 0) equip.push(`🎼 譜架 ${item.music_stand} 個`);
+            cards += `<div class="bk-card bk-returned" data-id="${item.id}">
+                <div class="bk-top"><b>📅 ${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}</b><span class="bk-venue">📍 ${item.location}</span></div>
+                <div class="bk-person"><span>👤 ${item.leader_name}</span><span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTime(ts) : (item.return_date || '—')}</span></div>
+                ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
+                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員代為歸還</span>' : ''}
+                    ${item.return_photo_url ? `　<a href="${item.return_photo_url}" target="_blank">📸 看照片</a>` : ''}</div>
+                <div class="bk-actions two">
+                    <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
+                    <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
+                </div>
+            </div>`;
+        });
+        document.getElementById('returnedContainer').innerHTML = returnedList.length === 0
+            ? '<p style="color:#7f8c8d;">目前沒有資料</p>'
+            : `<details class="returned-fold"><summary>✅ 已歸還 ${returnedList.length} 組</summary>${cards}</details>`;
+    }
+
     async function loadAdminData() {
         if (!db) return;
         // 表格一律拆成每個欄位各自獨立顯示（不再依螢幕寬度切換堆疊式版面）：
@@ -1503,6 +1623,12 @@
             `<span>📋 未歸還 <b style="color:#c0392b;">${totalUnreturned}</b> 組</span>` +
             (overdueCount > 0 ? `<span style="color:#e74c3c; font-weight:bold;">⚠️ 其中 ${overdueCount} 組已逾期</span>` : '') +
             `<span>✅ 已歸還 <b style="color:#27ae60;">${returnedList.length}</b> 組</span>`;
+
+        // 📱 手機寬度：改畫卡片版（下面的表格版是電腦寬度才用）
+        if (isPhoneAdmin()) {
+            renderAdminCards(dates, unreturnedGroups, returnedList, records, totalUnreturned, overdueCount);
+            return;
+        }
 
         let unreturnedHtml = '';
         if (dates.length === 0) {
