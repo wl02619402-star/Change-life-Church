@@ -136,6 +136,13 @@
         .extra-del { flex: none; width: 38px; height: 38px; border: none; background: #f4f6f8; color: #95a5a6; border-radius: 8px; font-size: 16px; cursor: pointer; }
         .extra-add { background: none; border: none; color: #2471a3; font-size: 14px; font-weight: bold; cursor: pointer; padding: 4px 0; }
         .reg-tag { display: inline-block; background: #eaf7ef; color: #1e8449; border-radius: 4px; padding: 0 5px; font-size: 11px; margin-left: 4px; }
+        .reg-tag.pending { background: #fdebd0; color: #b9770e; font-weight: bold; }
+        .reg-tag.none { background: #eef2f5; color: #7f8c8d; }
+        .extra-chip.none { background: #f4f6f8; border-color: #dfe6ea; color: #7f8c8d; }
+        .extra-more { display: flex; gap: 8px; margin-top: 10px; }
+        .extra-more button { flex: 1; background: #fff; border-radius: 6px; padding: 9px 6px; font-size: 13.5px; font-weight: bold; cursor: pointer; }
+        .btn-noneed { border: 1.5px solid #bdc3c7; color: #5d6d7e; }
+        .btn-unreg { border: 1.5px solid #e6b0aa; color: #c0392b; }
 
         /* 📦 設備總結算 */
         .inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
@@ -260,10 +267,14 @@
             <div id="extraRows"></div>
             <button type="button" class="extra-add" onclick="addExtraRow('', 1, true)">＋ 再加一樣</button>
             <datalist id="extraNames"></datalist>
-            <div style="color: #95a5a6; font-size: 12px; margin-top: 10px;">登記後會算進「設備總結算」和「本日備品準備清單」。全部清空再儲存就是取消登記。</div>
+            <div style="color: #95a5a6; font-size: 12px; margin-top: 10px;">登記後會算進「設備總結算」和「本日備品準備清單」。</div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn-submit" style="margin: 0; flex: 2;" onclick="saveExtraItems()">儲存</button>
-                <button type="button" class="btn-back" style="margin: 0; flex: 1;" onclick="closeExtra()">取消</button>
+                <button type="button" class="btn-back" style="margin: 0; flex: 1;" onclick="closeExtra()">關閉</button>
+            </div>
+            <div class="extra-more">
+                <button type="button" class="btn-noneed" onclick="saveExtraState('none')">➖ 不用登記<br><span style="font-weight: normal; font-size: 12px;">只是一般備註，沒借設備</span></button>
+                <button type="button" class="btn-unreg" id="btnUnreg" onclick="saveExtraState('pending')">↩️ 取消登記<br><span style="font-weight: normal; font-size: 12px;">改回「未登記」</span></button>
             </div>
         </div>
     </div>
@@ -785,6 +796,17 @@
                                         .map(x => ({ name: String(x.name).trim(), qty: parseInt(x.qty) })) : [];
         } catch (e) { return []; }
     }
+    // 登記狀態：'pending' 未登記（欄位是空的）／'registered' 已登記（有品項）／'none' 不用登記（存成空陣列 []，只是一般備註）
+    function extraStateOf(r) {
+        if (!r || r.extra_items === null || r.extra_items === undefined || r.extra_items === '') return 'pending';
+        return extraItemsOf(r).length > 0 ? 'registered' : 'none';
+    }
+    function extraStateTag(r) {
+        let st = extraStateOf(r);
+        if (st === 'registered') return '<span class="reg-tag">✅ 已登記</span>';
+        if (st === 'none') return '<span class="reg-tag none">➖ 不用登記</span>';
+        return '<span class="reg-tag pending">⏳ 未登記</span>';
+    }
     function extraItemsText(items) { return items.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('、'); }
     function sumExtraItems(list) {   // [{name, qty}, ...] → 同名加總，依名稱排序
         let m = {};
@@ -823,9 +845,12 @@
     }
 
     function extraBlock(item) {
-        let items = extraItemsOf(item);
-        if (items.length > 0) {
-            return `<div class="extra-chip">📦 已登記：${extraItemsText(items)}<a onclick="openExtra(${item.id})">✏️ 修改</a></div>`;
+        let st = extraStateOf(item);
+        if (st === 'registered') {
+            return `<div class="extra-chip">📦 已登記：${extraItemsText(extraItemsOf(item))}<a onclick="openExtra(${item.id})">✏️ 修改</a></div>`;
+        }
+        if (st === 'none') {
+            return `<div class="extra-chip none">➖ 不用登記（只是備註）<a onclick="openExtra(${item.id})">✏️ 修改</a></div>`;
         }
         return hasNote(item) ? `<button type="button" class="btn-extra" onclick="openExtra(${item.id})">➕ 登記備註設備</button>` : '';
     }
@@ -856,10 +881,16 @@
         let rows = document.getElementById('extraRows');
         rows.innerHTML = '';
         let saved = extraItemsOf(item);
+        let st = extraStateOf(item);
         let hint = document.getElementById('extraHint');
-        if (saved.length > 0) {
+        document.getElementById('btnUnreg').style.display = st === 'pending' ? 'none' : '';   // 未登記的不用顯示「取消登記」
+        if (st === 'registered') {
             hint.textContent = '目前登記的品項：';
             saved.forEach(x => addExtraRow(x.name, x.qty));
+        } else if (st === 'none') {
+            hint.innerHTML = '目前標記為「<b>不用登記</b>」。如果其實有借設備，填好品項按儲存：';
+            let guess = guessItemsFromNote(item.notes);
+            if (guess.length > 0) guess.forEach(x => addExtraRow(x.name, x.qty)); else addExtraRow('', 1);
         } else {
             let guess = guessItemsFromNote(item.notes);
             hint.innerHTML = guess.length > 0
@@ -881,8 +912,23 @@
             if (name && qty > 0) list.push({ name, qty });
         });
         list = sumExtraItems(list);
+        if (list.length === 0) {
+            alert('還沒有填品項。\n如果這筆只是一般備註、沒有借設備，請按下面的「➖ 不用登記」。');
+            return;
+        }
+        await writeExtraItems(id, JSON.stringify(list));
+    }
+
+    // 「不用登記」存成空陣列 []；「取消登記」清空，回到未登記
+    async function saveExtraState(state) {
+        if (!requireDb()) return;
+        let id = parseInt(document.getElementById('extraModal').dataset.id);
+        await writeExtraItems(id, state === 'none' ? '[]' : null);
+    }
+
+    async function writeExtraItems(id, value) {
         showLoading("儲存中...");
-        const { error } = await db.from('borrow_records').update({ extra_items: list.length ? JSON.stringify(list) : null }).eq('id', id);
+        const { error } = await db.from('borrow_records').update({ extra_items: value }).eq('id', id);
         hideLoading();
         if (error) {
             if (/extra_items/.test(error.message || '')) {
@@ -984,7 +1030,7 @@
             ${s.notes && s.notes.length > 0
                 ? `<div style="margin-top:10px; background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; padding:8px 10px; border-radius:4px; font-size:12.5px; line-height:1.6;">
                      📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（還沒登記的不會算進數量，請在下方該組按「➕ 登記備註設備」）</span>
-                     ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}${extraItemsOf(r).length ? '<span class="reg-tag">✅ 已登記</span>' : ''}</div>`).join('')}
+                     ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}${extraStateTag(r)}</div>`).join('')}
                    </div>`
                 : ''}
             ${warn}
@@ -1799,11 +1845,16 @@
         // 📦 管理員登記的備註設備：依品項列出借出幾個、在誰那裡
         let extraHolders = {};
         out.forEach(r => extraItemsOf(r).forEach(x => { (extraHolders[x.name] = extraHolders[x.name] || []).push({ r, n: x.qty }); }));
+        // 還沒到借用時間、但已經登記好的：東西還在倉庫，也列出來（不然 12 月前登記了卻看不到，會以為沒存到）
+        let extraUpcoming = {};
+        (records || []).filter(r => r.is_returned === false && !hasStarted(r))
+            .sort((a, b) => `${a.borrow_date} ${a.start_time}`.localeCompare(`${b.borrow_date} ${b.start_time}`))
+            .forEach(r => extraItemsOf(r).forEach(x => { (extraUpcoming[x.name] = extraUpcoming[x.name] || []).push({ r, n: x.qty }); }));
 
         let usedBy = out.filter(r => speakerUsage(r) > 0 || (parseInt(r.music_stand) || 0) > 0 || extraItemsOf(r).length > 0);
         return {
-            unitHolders, noNumber, standHolders, notes, extraHolders,
-            otherNotes: out.filter(r => hasNote(r) && extraItemsOf(r).length === 0),   // 有寫備註、但還沒登記的
+            unitHolders, noNumber, standHolders, notes, extraHolders, extraUpcoming,
+            otherNotes: out.filter(r => hasNote(r) && extraStateOf(r) === 'pending'),   // 有寫備註、但還沒登記（也沒標「不用登記」）的
             speakersIn: SPEAKER_TOTAL - speakersOut, standsIn: STAND_TOTAL - standsOut,
             lateGroups: usedBy.filter(isOverdue).length,
             usingGroups: usedBy.filter(r => !isOverdue(r)).length
@@ -1838,19 +1889,28 @@
         stLis.unshift(`<li class="ok">✅ ${s.standHolders.length ? '其餘 ' : '全部 '}${s.standsIn} 個　在倉庫</li>`);
         let stLate = s.standHolders.some(x => isOverdue(x.r));
 
-        // 📦 其他設備（管理員從備註登記的）：有借出才顯示這張卡片
+        // 📦 其他設備（管理員從備註登記的）：只要有登記、還沒歸還的就顯示這張卡片
+        //    上半部：已經借出的（在誰那裡、有沒有逾期）；下半部：還沒到借用時間的（東西還在倉庫，列出哪天誰要借）
         let exNames = Object.keys(s.extraHolders).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        let upNames = Object.keys(s.extraUpcoming).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
         let exAll = [].concat(...exNames.map(n => s.extraHolders[n]));
         let exLate = exAll.some(x => isOverdue(x.r));
-        let exCard = exNames.length === 0 ? '' : `<div class="inv-card${exLate ? ' late' : ' some'}">
-                    <div class="inv-title"><span>📦 其他設備</span><span class="inv-num">借出中 <b>${exAll.reduce((a, x) => a + x.n, 0)}</b> 件</span></div>
-                    <ul class="inv-list">${exNames.map(n => {
-                        let hs = s.extraHolders[n], late = hs.some(x => isOverdue(x.r));
-                        let total = hs.reduce((a, x) => a + x.n, 0);
-                        // 同一樣東西合在一起：標題寫總數，下面列出各在誰那裡（不只一組時標出各幾件）
-                        return `<li class="${late ? 'late' : 'use'}">${late ? '⚠️' : '🕐'} <b>${escapeHtml(n)} ×${total}</b>　借出中` +
-                            hs.map(x => (hs.length > 1 ? `<span class="who" style="margin-top:4px; font-weight:bold;">・${x.n} 件：</span>` : '') + who(x.r)).join('') + `</li>`;
-                    }).join('')}</ul>
+        const sumN = list => list.reduce((a, x) => a + x.n, 0);
+        let outLis = exNames.map(n => {
+            let hs = s.extraHolders[n], late = hs.some(x => isOverdue(x.r));
+            // 同一樣東西合在一起：標題寫總數，下面列出各在誰那裡（不只一組時標出各幾件）
+            return `<li class="${late ? 'late' : 'use'}">${late ? '⚠️' : '🕐'} <b>${escapeHtml(n)} ×${sumN(hs)}</b>　借出中` +
+                hs.map(x => (hs.length > 1 ? `<span class="who" style="margin-top:4px; font-weight:bold;">・${x.n} 件：</span>` : '') + who(x.r)).join('') + `</li>`;
+        });
+        let upLis = upNames.map(n => {
+            let hs = s.extraUpcoming[n];
+            // 還沒借出的不加總（不同天借的不會同時用到），每一筆各自寫要借幾個
+            return `<li class="ok">✅ <b>${escapeHtml(n)}</b>　在倉庫` +
+                hs.map(x => `<span class="who">📅 ${formatDateLabel(x.r.borrow_date)} ${x.r.start_time}　👤 ${escapeHtml(x.r.leader_name)} 要借 ×${x.n}</span>`).join('') + `</li>`;
+        });
+        let exCard = (exNames.length + upNames.length) === 0 ? '' : `<div class="inv-card${exLate ? ' late' : exNames.length ? ' some' : ''}">
+                    <div class="inv-title"><span>📦 其他設備</span><span class="inv-num">${exNames.length ? `借出中 <b>${sumN(exAll)}</b> 件` : '<span style="color:#1e8449;">目前都在倉庫</span>'}</span></div>
+                    <ul class="inv-list">${outLis.join('')}${upLis.length ? `${outLis.length ? '<li style="color:#7f8c8d; font-size:12px; padding-bottom:0;">還沒到借用時間（東西還在倉庫）：</li>' : ''}${upLis.join('')}` : ''}</ul>
                 </div>`;
 
         // 結論
@@ -1860,7 +1920,7 @@
         } else if (s.usingGroups > 0) {
             foot = `<div class="inv-foot use">🕐 有 ${s.usingGroups} 組正在使用中，還沒到歸還時間。他們歸還後這裡的數字會自動更新。</div>`;
         } else {
-            foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還照片。</div>`;
+            foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>${upNames.length ? '，還有上面列的其他設備' : ''}。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還照片。</div>`;
         }
         let other = s.otherNotes.length === 0 ? '' :
             `<div class="inv-notes other">📝 <b>還沒歸還、備註還沒登記的組別</b>（沒有算進上面的數量，請在下方該組按「➕ 登記備註設備」）` +
