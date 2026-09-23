@@ -162,6 +162,7 @@
         .fold-badges span { background: rgba(255,255,255,.16); border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: normal; }
         .fold-badges span.red { background: #e74c3c; }
         .fold-badges span.amber { background: #f39c12; }
+        .fold-badges span.tech { background: #8e44ad; }
         .fold-tools { display: flex; justify-content: flex-end; gap: 14px; font-size: 13px; margin: 4px 2px -6px; }
         .fold-tools a { color: #2471a3; cursor: pointer; }
 
@@ -303,6 +304,47 @@
         .day-tool-btn.photo { background: #3498db; color: #fff; }
         .day-tool-btn.auto { background: #34495e; color: #fff; }
         @media (max-width: 700px) { .day-tool-btn { font-size: 14px; padding: 9px 14px; } }
+
+        /* 🎛️ 備品清單的音控協助：哪個場地、幾點、誰 */
+        .tech-line { color: #c0392b; font-size: 13px; line-height: 1.55; font-weight: normal; }
+        .tech-line b { font-weight: bold; }
+        .tech-line span { color: #7f8c8d; }
+        .sum-v .tech-line { font-size: 14px; }
+
+        /* 🔍 後台「找借用紀錄」 */
+        .search-box { background: #fff; border: 1px solid #d6e4ee; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
+        .search-title { font-weight: bold; color: #2471a3; font-size: 15px; margin-bottom: 8px; }
+        .search-title span { font-weight: normal; color: #7f8c8d; font-size: 12px; margin-left: 4px; }
+        .search-row { display: flex; gap: 8px; }
+        .search-row input { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border: 2px solid #d6e4ee; border-radius: 8px; }
+        .search-row input:focus { border-color: #3498db; outline: none; }
+        .search-clear { flex: 0 0 auto; background: #ecf0f1; color: #5d6d7e; border: none; border-radius: 8px; padding: 0 14px; font-size: 14px; cursor: pointer; }
+        .search-row input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }   /* 只留自己的「清除」鈕 */
+        @media (max-width: 700px) { .search-title span { display: block; margin: 2px 0 0; } }
+        #adminSearchResult:empty { display: none; }
+        #adminSearchResult { margin-top: 10px; }
+        .sr-hint { color: #7f8c8d; font-size: 13px; }
+        .sr-item { border: 1px solid #e3e9ee; border-radius: 10px; padding: 9px 12px; margin-top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .sr-main { flex: 1; min-width: 220px; line-height: 1.6; font-size: 14px; color: #2c3e50; }
+        .sr-main mark { background: #fdebd0; color: inherit; padding: 0 1px; border-radius: 3px; }
+        .sr-tag { display: inline-block; font-size: 11.5px; font-weight: bold; padding: 1px 7px; border-radius: 10px; margin-left: 4px; vertical-align: 1px; }
+        .sr-tag.out { background: #eaf2f8; color: #2471a3; }
+        .sr-tag.late { background: #e74c3c; color: #fff; }
+        .sr-tag.done { background: #e9f7ef; color: #1e8449; }
+        .sr-tag.fuzzy { background: #f4ecf7; color: #7d3c98; font-weight: normal; }
+        .sr-actions { display: flex; gap: 6px; }
+        .sr-actions button { border: none; border-radius: 6px; padding: 7px 10px; font-size: 13px; cursor: pointer; color: #fff; white-space: nowrap; }
+        .sr-actions .go { background: #34495e; }
+        .sr-actions .ed { background: #3498db; }
+        @media (max-width: 700px) {
+            .sr-actions { width: 100%; }
+            .sr-actions button { flex: 1; padding: 10px; font-size: 14px; }
+        }
+        /* 從搜尋結果跳過去的那一筆：閃兩下 */
+        @keyframes recFlash { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 4px #f5b041; } }
+        @keyframes recFlashBg { 0%, 100% { background-color: transparent; } 30%, 70% { background-color: #fdebd0; } }
+        .bk-card.rec-flash { animation: recFlash 1.4s ease 2; }
+        tr.rec-flash > td { animation: recFlashBg 1.4s ease 2; }
 
         /* ✏️ 編輯視窗最下面的「刪除這筆紀錄」：從卡片上移進來，平常不會誤按 */
         .edit-danger-zone { margin-top: 18px; padding-top: 12px; border-top: 1px dashed #e6b0aa; text-align: center; }
@@ -604,6 +646,17 @@
         </div>
 
         <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
+
+        <!-- 🔍 找借用紀錄：輸入電話（可以只打一部分）或名字（有兩個字對得上就列出來），點「跳到這筆」直接捲過去 -->
+        <div class="search-box">
+            <div class="search-title">🔍 找借用紀錄 <span>輸入電話或名字，名字只要有兩個字對就找得到</span></div>
+            <div class="search-row">
+                <input type="search" id="adminSearchInput" placeholder="例：0912345678、王大明" autocomplete="off"
+                       oninput="refreshAdminSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault(); refreshAdminSearch(); this.blur();}">
+                <button type="button" class="search-clear" onclick="clearAdminSearch()">清除</button>
+            </div>
+            <div id="adminSearchResult"></div>
+        </div>
 
         <div id="todoBox"></div>
 
@@ -1112,8 +1165,13 @@
         let notes = day.filter(hasNote).sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
         // 管理員已經登記的備註設備：當天全部加總（這些東西數量少，不像譜架算尖峰，直接加總最保險）
         let extras = sumExtraItems([].concat(...day.map(extraItemsOf)));
+        // 🎛️ 需要音控同工協助開設備的組（只有兒主、幼主會問這題），依時間排好，管理員才知道要安排誰、幾點到
+        let tech = day.filter(r => r.need_tech === '是')
+            .sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time))
+            .map(r => ({ loc: r.location, time: `${r.start_time}–${r.end_time}`, name: r.leader_name }));
         return {
             date: String(date),
+            tech,
             photoDone: day.filter(r => r.pickup_photo_url).length,   // 已經有領取照片的組數
             units: [...units].sort(), pendingSpeakers, peakStand, peakAt, notes, extras,
             鋼琴需架設: 需架設,
@@ -1148,7 +1206,11 @@
         let rows = [
             row('🔊 喇叭', s.units.length ? chips(s.units, 'sp') : dash, s.units.length ? '把這幾台搬到櫃檯' : ''),
             row('🎼 譜架', s.peakStand > 0 ? `<b>${s.peakStand} 個</b>` : dash, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : ''),
-            row('🎹 鋼琴', s.鋼琴需架設.length ? s.鋼琴需架設.map(t => `<div style="color:#8e44ad; font-weight:bold;">${t}</div>`).join('') : '<span style="color:#95a5a6;">今天不用架設</span>', pianoHint)
+            row('🎹 鋼琴', s.鋼琴需架設.length ? s.鋼琴需架設.map(t => `<div style="color:#8e44ad; font-weight:bold;">${t}</div>`).join('') : '<span style="color:#95a5a6;">今天不用架設</span>', pianoHint),
+            row('🎛️ 音控', s.tech.length
+                ? s.tech.map(t => `<div class="tech-line"><b>${escapeHtml(t.loc)} ${t.time}</b><span>｜${escapeHtml(t.name)}</span></div>`).join('')
+                : '<span style="color:#95a5a6;">今天不用</span>',
+                s.tech.length ? '請安排音控同工，在開始時間前到場幫忙開設備' : '')
         ];
         if (s.extras && s.extras.length > 0) {
             rows.push(row('📦 其他', chips(s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`), 'ex'), '備註登記的，照這個數量準備'));
@@ -1204,6 +1266,10 @@
                 ${cell('喇叭（機台）', speakerVal, s.units.length > 0 ? '把這幾台搬到櫃檯' : '')}
                 ${cell('譜架', standVal, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : '')}
                 ${cell('鋼琴架設', pianoVal, s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '今天不用架設')}
+                ${cell('🎛️ 音控協助', s.tech.length
+                    ? s.tech.map(t => `<div class="tech-line"><b>${escapeHtml(t.loc)} ${t.time}</b><span>｜${escapeHtml(t.name)}</span></div>`).join('')
+                    : '<span style="color:#ccc;">—</span>',
+                    s.tech.length ? '請安排音控同工，開始前到場開設備' : '今天不用')}
                 ${s.extras && s.extras.length > 0
                     ? cell('📦 其他設備（備註登記）', `<span style="color:#9a6a00; font-size:14px;">${s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('<br>')}</span>`, '照登記的數量準備')
                     : ''}
@@ -1630,7 +1696,7 @@
                 let pickup = "";
                 if (!item.is_returned) {
                     if (item.pickup_photo_url) { pickup = `<br><a href="${item.pickup_photo_url}" target="_blank" style="color:#e67e22; font-weight:bold;">📍 查看設備位置照片</a>`; }
-                    else { pickup = `<br><span style="color:#7f8c8d; font-size:12px;">📸 借用當天會上傳設備位置照片</span>`; }
+                    else if (!isOverdue(item)) { pickup = `<br><span style="color:#7f8c8d; font-size:12px;">📸 借用當天會上傳設備位置照片</span>`; }   // 已經逾期就不用再提位置照片
                 }
                 let justNow = isJustBooked(item);
                 let rowCls = [hasNote(item) ? 'has-note' : '', justNow ? 'just-booked' : ''].filter(Boolean).join(' ');
@@ -1992,6 +2058,121 @@
         void el.offsetWidth;
         el.classList.add('flash');
         setTimeout(() => el.classList.remove('flash'), 3200);
+    }
+
+    // ================= 🔍 找借用紀錄（後台） =================
+    //    電話：打 3 碼以上就找「電話裡有這幾個數字」的紀錄（可以只打末幾碼）。
+    //    名字：打 2 個字以上，名字裡有其中 2 個字就算找到（順序不用對，例如打「王小明」也找得到「王大明」），
+    //          完全一樣的排最前面，其次是名字裡整段包含，最後是「相近」的（標紫色小標籤）。
+    //    全形半形、英文大小寫、空白都不影響（「ＲＲＲ」打 rrr 也找得到）。
+    function normText(s) {
+        return String(s == null ? '' : s)
+            .replace(/[！-～]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+            .replace(/[\s　]+/g, '')
+            .toLowerCase();
+    }
+    // 兩個字串有幾個字對得上（同一個字要兩邊都有才算兩次）
+    function commonChars(a, b) {
+        let pool = [...b], hit = 0;
+        [...a].forEach(c => { let i = pool.indexOf(c); if (i >= 0) { hit++; pool.splice(i, 1); } });
+        return hit;
+    }
+    function searchRecords(raw) {
+        let q = normText(raw).replace(/-/g, '');
+        if (!q) return { list: [] };
+        let recs = Object.values(adminRecordMap);
+        let found;
+        if (/^\d+$/.test(q)) {
+            if (q.length < 3) return { list: [], hint: '電話請至少輸入 3 個數字' };
+            found = recs.filter(r => String(r.leader_phone || '').includes(q))
+                        .map(r => ({ r, rank: r.leader_phone === q ? 0 : 1, hit: 0 }));
+        } else {
+            if ([...q].length < 2) return { list: [], hint: '名字請至少輸入 2 個字' };
+            found = recs.map(r => {
+                let n = normText(r.leader_name);
+                let hit = commonChars(q, n);
+                let rank = n === q ? 0 : (n.includes(q) ? 1 : (hit >= 2 ? 2 : 9));
+                return { r, rank, hit };
+            }).filter(x => x.rank < 9);
+        }
+        found.sort((a, b) => a.rank - b.rank || b.hit - a.hit
+            || String(a.r.borrow_date).localeCompare(String(b.r.borrow_date))
+            || timeToFloat(a.r.start_time) - timeToFloat(b.r.start_time));
+        return { list: found, phone: /^\d+$/.test(q), q };
+    }
+    // 把搜尋字在結果裡標出來
+    function markMatch(text, q, isPhone) {
+        let s = String(text || '');
+        if (isPhone) {
+            let i = s.indexOf(q);
+            return i < 0 ? escapeHtml(s) : escapeHtml(s.slice(0, i)) + `<mark>${escapeHtml(q)}</mark>` + escapeHtml(s.slice(i + q.length));
+        }
+        let pool = [...q];
+        return [...s].map(c => {
+            let i = pool.indexOf(normText(c));
+            if (i >= 0) { pool.splice(i, 1); return `<mark>${escapeHtml(c)}</mark>`; }
+            return escapeHtml(c);
+        }).join('');
+    }
+    function refreshAdminSearch() {
+        let input = document.getElementById('adminSearchInput');
+        let box = document.getElementById('adminSearchResult');
+        if (!input || !box) return;
+        let res = searchRecords(input.value);
+        if (!normText(input.value)) { box.innerHTML = ''; return; }
+        if (res.hint) { box.innerHTML = `<div class="sr-hint">${res.hint}</div>`; return; }
+        if (res.list.length === 0) { box.innerHTML = `<div class="sr-hint">找不到符合的借用紀錄。</div>`; return; }
+        const MAX = 20;
+        let html = `<div class="sr-hint">找到 <b>${res.list.length}</b> 筆${res.list.length > MAX ? `，先列出前 ${MAX} 筆（打完整一點可以縮小範圍）` : ''}</div>`;
+        res.list.slice(0, MAX).forEach(({ r, rank }) => {
+            let status = r.is_returned
+                ? '<span class="sr-tag done">✅ 已歸還</span>'
+                : (isOverdue(r) ? '<span class="sr-tag late">⚠️ 逾期未還</span>' : '<span class="sr-tag out">未歸還</span>');
+            let fuzzy = (!res.phone && rank === 2) ? '<span class="sr-tag fuzzy">名字相近</span>' : '';
+            html += `<div class="sr-item">
+                <div class="sr-main">
+                    <div><b>📅 ${formatDateLabel(r.borrow_date)} ${r.start_time}–${r.end_time}</b>　📍 ${escapeHtml(r.location)} ${status}</div>
+                    <div>👤 ${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　📞 ${res.phone ? markMatch(r.leader_phone, res.q, true) : escapeHtml(r.leader_phone)}</div>
+                </div>
+                <div class="sr-actions">
+                    <button type="button" class="go" onclick="jumpToRecord(${r.id})">📍 跳到這筆</button>
+                    ${r.is_returned ? '' : `<button type="button" class="ed" onclick="openEdit(${r.id})">✏️ 編輯／刪除</button>`}
+                </div>
+            </div>`;
+        });
+        box.innerHTML = html;
+    }
+    function clearAdminSearch() {
+        document.getElementById('adminSearchInput').value = '';
+        document.getElementById('adminSearchResult').innerHTML = '';
+    }
+    // 跳到某一筆：未歸還的打開那一天、捲到那一筆；已歸還的打開已歸還清單再捲過去。那一筆閃兩下。
+    async function jumpToRecord(id) {
+        let r = adminRecordMap[id];
+        if (!r) return;
+        const find = () => r.is_returned
+            ? document.querySelector(`#returnedContainer [data-id="${id}"]`)
+            : document.querySelector(`#unreturnedContainer [data-id="${id}"]`);
+        let el = find();
+        let filter = document.getElementById('adminWeekFilter');
+        if (!el && filter && filter.value !== '') {   // 被週次篩選藏起來了 → 切回所有紀錄
+            filter.value = '';
+            await loadAdminData();
+            el = find();
+        }
+        if (!el) return;
+        if (!r.is_returned) {
+            let day = el.closest('details.day-fold');
+            if (day) { day.open = true; dayFoldState[day.dataset.date] = true; }
+        } else {
+            let fold = el.closest('details');
+            if (fold) fold.open = true;
+        }
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('rec-flash');
+        void el.offsetWidth;
+        el.classList.add('rec-flash');
+        setTimeout(() => el.classList.remove('rec-flash'), 3200);
     }
 
     // ================= 管理員：代為歸還／改回未歸還 =================
@@ -2362,9 +2543,11 @@
         let late = list.filter(isOverdue).length;
         let pendSp = list.filter(r => speakerUsage(r) > 0 && normalizeAssignedList(r.ma303_assigned).length === 0).length;
         let pendEx = list.filter(r => hasNote(r) && extraStateOf(r) === 'pending').length;
+        let tech = list.filter(r => r.need_tech === '是').length;   // 收起來也看得到這天要安排音控同工
         return (late ? `<span class="red">⚠️ ${late} 組逾期</span>` : '') +
                (pendSp ? `<span class="amber">🔊 ${pendSp} 組喇叭待分配</span>` : '') +
-               (pendEx ? `<span class="amber">⏳ ${pendEx} 筆備註未登記</span>` : '');
+               (pendEx ? `<span class="amber">⏳ ${pendEx} 筆備註未登記</span>` : '') +
+               (tech ? `<span class="tech">🎛️ ${tech} 組需音控</span>` : '');
     }
     function dayFoldSummary(date, list, cls) {
         return `<summary class="${cls}"><div class="fold-title"><span>📅 ${formatDateLabel(date)}</span>
@@ -2476,6 +2659,7 @@
         adminRecordMap = {};
         records.forEach(r => { adminRecordMap[r.id] = r; });   // 給「編輯」「代為歸還」視窗查資料用
         renderTodo(records);        // 📌 待辦事項：用全部資料，不受週次篩選影響
+        refreshAdminSearch();       // 🔍 搜尋框有字的話，用最新資料重新找一次（例如剛編輯完）
         renderInventory(records);   // 📦 設備總結算：用全部資料，不受週次篩選影響
 
         function passFilter(item) {
@@ -2581,7 +2765,7 @@
                         ? speakerAssignUI(item, records)
                         : '<span style="color:#ccc;">—</span>';
 
-                    unreturnedHtml += `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
+                    unreturnedHtml += `<tr data-id="${item.id}"${overdue ? ' style="background:#fdf1ef;"' : ''}>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
                             <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}${extraBlock(item)}</td>
@@ -2648,7 +2832,7 @@
                         statusCell += `<br><span style="display:inline-block; background:#eef2f5; color:#5d6d7e; padding:1px 6px; border-radius:3px; font-size:10.5px; margin-top:3px;">👤 管理員代為歸還</span>`;
                     }
 
-                    returnedHtml += `<tr>
+                    returnedHtml += `<tr data-id="${item.id}">
                             <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
