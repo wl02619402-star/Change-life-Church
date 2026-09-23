@@ -123,6 +123,20 @@
         .ret-day { display: flex; justify-content: space-between; margin: 14px 2px 2px; padding: 6px 10px; background: #1e8449; color: #fff; border-radius: 8px; font-weight: bold; font-size: 14px; }
         .ret-day span:last-child { font-weight: normal; font-size: 12.5px; }
 
+        /* 📦 登記備註設備 */
+        .btn-extra { display: inline-block; margin-top: 6px; background: #fff; color: #9a6a00; border: 1.5px dashed #e0b84f; border-radius: 6px; padding: 4px 10px; font-size: 12.5px; font-weight: bold; cursor: pointer; }
+        .btn-extra:hover { background: #fff8e1; }
+        .extra-chip { margin-top: 6px; background: #eaf7ef; border: 1px solid #bfe3cc; color: #1e8449; border-radius: 6px; padding: 4px 8px; font-size: 12.5px; line-height: 1.5; }
+        .extra-chip a { color: #2471a3; cursor: pointer; margin-left: 6px; font-weight: normal; white-space: nowrap; }
+        .extra-note { background: #fff8e1; border: 1px solid #f3dfa2; color: #6e4b00; border-radius: 8px; padding: 8px 10px; font-size: 14px; line-height: 1.6; }
+        .extra-hint { color: #7f8c8d; font-size: 12.5px; margin: 12px 0 6px; }
+        .extra-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .extra-row input { flex: 1; }
+        .extra-row select { width: 90px; flex: none; }
+        .extra-del { flex: none; width: 38px; height: 38px; border: none; background: #f4f6f8; color: #95a5a6; border-radius: 8px; font-size: 16px; cursor: pointer; }
+        .extra-add { background: none; border: none; color: #2471a3; font-size: 14px; font-weight: bold; cursor: pointer; padding: 4px 0; }
+        .reg-tag { display: inline-block; background: #eaf7ef; color: #1e8449; border-radius: 4px; padding: 0 5px; font-size: 11px; margin-left: 4px; }
+
         /* 📦 設備總結算 */
         .inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
         .inv-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
@@ -237,6 +251,23 @@
     </div>
 
     <!-- ✏️ 管理員編輯借用紀錄的視窗（由 openEdit() 開啟、saveEdit() 儲存） -->
+    <div id="extraModal" class="modal">
+        <div class="modal-content" style="max-width: 460px;">
+            <h3 style="margin-top: 0; color: #34495e;">📦 登記備註設備</h3>
+            <div id="extraWho" style="color: #5d6d7e; font-size: 13px; margin-bottom: 8px;"></div>
+            <div id="extraNote" class="extra-note"></div>
+            <div id="extraHint" class="extra-hint"></div>
+            <div id="extraRows"></div>
+            <button type="button" class="extra-add" onclick="addExtraRow('', 1, true)">＋ 再加一樣</button>
+            <datalist id="extraNames"></datalist>
+            <div style="color: #95a5a6; font-size: 12px; margin-top: 10px;">登記後會算進「設備總結算」和「本日備品準備清單」。全部清空再儲存就是取消登記。</div>
+            <div style="display: flex; gap: 10px; margin-top: 14px;">
+                <button type="button" class="btn-submit" style="margin: 0; flex: 2;" onclick="saveExtraItems()">儲存</button>
+                <button type="button" class="btn-back" style="margin: 0; flex: 1;" onclick="closeExtra()">取消</button>
+            </div>
+        </div>
+    </div>
+
     <div id="editModal" class="modal">
         <div class="modal-content" style="max-width: 520px;">
             <h3 style="margin-top: 0; color: #34495e;">✏️ 編輯借用紀錄</h3>
@@ -741,6 +772,130 @@
     function noteInline(t) { return escapeHtml(String(t || '').trim().split(/\s*\n+\s*/).join('、')); }
     function hasNote(r) { return String(r.notes || '').trim() !== ''; }
 
+    // ================= 📦 登記備註設備 =================
+    //    小組長把喇叭、譜架以外要借的東西寫在備註；網站看不懂自由打字的內容，
+    //    所以由管理員在後台按「➕ 登記備註設備」確認品項與數量，存到 extra_items 欄位（JSON 陣列 [{name, qty}]），
+    //    登記後才算進「設備總結算」和「本日備品準備清單」。
+    //    開視窗時網站會先從備註「猜」品項與數量幫忙填好，但一定要管理員看過按儲存才算數（備註寫法太多種，自動抓一定有錯）。
+    function extraItemsOf(r) {
+        if (!r || !r.extra_items) return [];
+        try {
+            let a = typeof r.extra_items === 'string' ? JSON.parse(r.extra_items) : r.extra_items;
+            return Array.isArray(a) ? a.filter(x => x && String(x.name || '').trim() && (parseInt(x.qty) || 0) > 0)
+                                        .map(x => ({ name: String(x.name).trim(), qty: parseInt(x.qty) })) : [];
+        } catch (e) { return []; }
+    }
+    function extraItemsText(items) { return items.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('、'); }
+    function sumExtraItems(list) {   // [{name, qty}, ...] → 同名加總，依名稱排序
+        let m = {};
+        list.forEach(x => { m[x.name] = (m[x.name] || 0) + x.qty; });
+        return Object.keys(m).sort((a, b) => a.localeCompare(b, 'zh-Hant')).map(name => ({ name, qty: m[name] }));
+    }
+
+    const 中文數字 = { '一': 1, '二': 2, '兩': 2, '倆': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10 };
+    const 量詞 = '個|支|隻|條|張|台|臺|組|把|顆|盒|捲|卷|包|套|座|片|箱|袋|件|頂|副|罐|瓶|本';
+    // 從備註猜「品項＋數量」：只認「東西＋數字＋量詞」或「數字＋量詞＋東西」這兩種寫法，
+    // 像「會提早 15 分鐘來領」這種不是設備的句子不會被抓進來。猜的結果只是先幫忙填，管理員要確認。
+    function guessItemsFromNote(note) {
+        let text = String(note || '').replace(/[\r\n]+/g, '，').replace(/[ \t\u3000]+/g, '');
+        text = text.replace(new RegExp(`([一二兩倆三四五六七八九十])(?=(${量詞}))`, 'g'), d => 中文數字[d]);
+        let found = [];
+        const 開頭動詞 = /^(我們|我|也|還|再|請|麻煩|幫忙)*(需要|想要|想借|要借|要|借|多|準備|加|帶)*/;
+        const add = (name, qty) => {
+            name = String(name || '').replace(/[<>＜＞《》「」『』()（）\[\]【】"'“”~～:：]/g, '').replace(開頭動詞, '');
+            let cut = name.search(/[放用給來當做讓]/);
+            if (cut >= 2) name = name.slice(0, cut);
+            name = name.replace(/的$/, '');
+            qty = parseInt(qty);
+            if (!name || name.length > 10 || /\d|分鐘|小時|點鐘|人|位|次|號/.test(name) || !(qty > 0) || qty > 50) return;
+            found.push({ name, qty });
+        };
+        text.split(/[，,、；;。！!？?]|以及|還有|另外|和|及|跟/).forEach(seg => {
+            seg = seg.replace(開頭動詞, '');
+            if (!seg) return;
+            let m;
+            if ((m = seg.match(new RegExp(`^(\\d+)(${量詞})(.+)$`)))) { add(m[3], m[1]); return; }        // 2支麥克風架
+            let hits = [...seg.matchAll(new RegExp(`([^\\d]+?)[x×X*＊]?(\\d+)(${量詞})`, 'g'))];          // 延長線2條、桌子2張椅子10張
+            if (hits.length) { hits.forEach(h => add(h[1], h[2])); return; }
+            if ((m = seg.match(/^([^\d]+?)[x×X*＊]?(\d+)$/))) add(m[1], m[2]);                              // 麥架x2（沒有量詞時數字要在最後）
+        });
+        return sumExtraItems(found);
+    }
+
+    function extraBlock(item) {
+        let items = extraItemsOf(item);
+        if (items.length > 0) {
+            return `<div class="extra-chip">📦 已登記：${extraItemsText(items)}<a onclick="openExtra(${item.id})">✏️ 修改</a></div>`;
+        }
+        return hasNote(item) ? `<button type="button" class="btn-extra" onclick="openExtra(${item.id})">➕ 登記備註設備</button>` : '';
+    }
+
+    function addExtraRow(name, qty, focus) {
+        let row = document.createElement('div');
+        row.className = 'extra-row';
+        let opts = '';
+        for (let i = 1; i <= 20; i++) opts += `<option value="${i}"${i === qty ? ' selected' : ''}>${i}</option>`;
+        row.innerHTML = `<input type="text" list="extraNames" placeholder="品項，例如：延長線" value="${escapeHtml(name)}">
+            <select>${opts}</select>
+            <button type="button" class="extra-del" title="刪除這一樣" onclick="this.parentNode.remove()">✕</button>`;
+        document.getElementById('extraRows').appendChild(row);
+        if (focus) row.querySelector('input').focus();
+    }
+
+    function openExtra(id) {
+        let item = adminRecordMap[id];
+        if (!item) { alert('找不到這筆資料，請先按「🔄 重新整理」'); return; }
+        document.getElementById('extraModal').dataset.id = id;
+        document.getElementById('extraWho').textContent = `${item.leader_name}｜${formatDateLabel(item.borrow_date)} ${item.start_time}-${item.end_time}｜${item.location}`;
+        document.getElementById('extraNote').innerHTML = hasNote(item) ? `📝 <b>備註：</b>${noteHtml(item.notes)}` : '📝 （沒有寫備註）';
+        // 品項名稱可以從以前登記過的挑，避免同一樣東西寫成兩種名字（例如「麥架」「麥克風架」）
+        let names = new Set();
+        Object.values(adminRecordMap).forEach(r => extraItemsOf(r).forEach(x => names.add(x.name)));
+        document.getElementById('extraNames').innerHTML = [...names].sort().map(n => `<option value="${escapeHtml(n)}">`).join('');
+
+        let rows = document.getElementById('extraRows');
+        rows.innerHTML = '';
+        let saved = extraItemsOf(item);
+        let hint = document.getElementById('extraHint');
+        if (saved.length > 0) {
+            hint.textContent = '目前登記的品項：';
+            saved.forEach(x => addExtraRow(x.name, x.qty));
+        } else {
+            let guess = guessItemsFromNote(item.notes);
+            hint.innerHTML = guess.length > 0
+                ? '💡 網站從備註猜的，<b>請確認品項和數量對不對</b>，不對直接改：'
+                : '網站從備註找不到品項，請自己填：';
+            if (guess.length > 0) guess.forEach(x => addExtraRow(x.name, x.qty)); else addExtraRow('', 1);
+        }
+        document.getElementById('extraModal').style.display = 'flex';
+    }
+    function closeExtra() { document.getElementById('extraModal').style.display = 'none'; }
+
+    async function saveExtraItems() {
+        if (!requireDb()) return;
+        let id = parseInt(document.getElementById('extraModal').dataset.id);
+        let list = [];
+        document.querySelectorAll('#extraRows .extra-row').forEach(row => {
+            let name = row.querySelector('input').value.trim();
+            let qty = parseInt(row.querySelector('select').value) || 0;
+            if (name && qty > 0) list.push({ name, qty });
+        });
+        list = sumExtraItems(list);
+        showLoading("儲存中...");
+        const { error } = await db.from('borrow_records').update({ extra_items: list.length ? JSON.stringify(list) : null }).eq('id', id);
+        hideLoading();
+        if (error) {
+            if (/extra_items/.test(error.message || '')) {
+                alert('資料庫還沒有「extra_items」這個欄位，所以存不進去。\n請先到 Supabase 的 SQL Editor 執行加欄位的指令（只要做一次）。');
+            } else {
+                alert('儲存失敗：' + error.message);
+            }
+            return;
+        }
+        closeExtra();
+        loadAdminData();
+    }
+
     // 📋 某日的備品準備清單
     //    譜架算「同一時間最多幾個」而非全日加總——早上還回來的可以給下午用，
     //    所以尖峰用量才是實際要搬到櫃檯的數量。
@@ -780,8 +935,10 @@
         }
         // 備註裡寫的其他需求：沒辦法算數量，但列出來讓管理員看到、自己決定要準備什麼
         let notes = day.filter(hasNote).sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
+        // 管理員已經登記的備註設備：當天全部加總（這些東西數量少，不像譜架算尖峰，直接加總最保險）
+        let extras = sumExtraItems([].concat(...day.map(extraItemsOf)));
         return {
-            units: [...units].sort(), pendingSpeakers, peakStand, peakAt, notes,
+            units: [...units].sort(), pendingSpeakers, peakStand, peakAt, notes, extras,
             鋼琴需架設: 需架設,
             鋼琴自有使用: [...new Set(自有使用)],
             groups: day.length
@@ -816,6 +973,9 @@
                 ${cell('喇叭（機台）', speakerVal, s.units.length > 0 ? '把這幾台搬到櫃檯' : '')}
                 ${cell('譜架', standVal, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : '')}
                 ${cell('鋼琴架設', pianoVal, s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '今天不用架設')}
+                ${s.extras && s.extras.length > 0
+                    ? cell('📦 其他設備（備註登記）', `<span style="color:#9a6a00; font-size:14px;">${s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('<br>')}</span>`, '照登記的數量準備')
+                    : ''}
             </div>
             ${s.鋼琴自有使用.length > 0
                 ? `<div style="margin-top:8px; color:#7f8c8d; font-size:11px;">
@@ -823,8 +983,8 @@
                 : ''}
             ${s.notes && s.notes.length > 0
                 ? `<div style="margin-top:10px; background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; padding:8px 10px; border-radius:4px; font-size:12.5px; line-height:1.6;">
-                     📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（沒有算進上面的數量，請看一下要不要另外準備）</span>
-                     ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}</div>`).join('')}
+                     📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（還沒登記的不會算進數量，請在下方該組按「➕ 登記備註設備」）</span>
+                     ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}${extraItemsOf(r).length ? '<span class="reg-tag">✅ 已登記</span>' : ''}</div>`).join('')}
                    </div>`
                 : ''}
             ${warn}
@@ -1636,9 +1796,14 @@
         }).filter(x => x.note && !x.note.includes('正常') && x.day >= cutoff)
           .sort((a, b) => returnTimeOf(b.r) - returnTimeOf(a.r));
 
-        let usedBy = out.filter(r => speakerUsage(r) > 0 || (parseInt(r.music_stand) || 0) > 0);
+        // 📦 管理員登記的備註設備：依品項列出借出幾個、在誰那裡
+        let extraHolders = {};
+        out.forEach(r => extraItemsOf(r).forEach(x => { (extraHolders[x.name] = extraHolders[x.name] || []).push({ r, n: x.qty }); }));
+
+        let usedBy = out.filter(r => speakerUsage(r) > 0 || (parseInt(r.music_stand) || 0) > 0 || extraItemsOf(r).length > 0);
         return {
-            unitHolders, noNumber, standHolders, notes, otherNotes: out.filter(hasNote),
+            unitHolders, noNumber, standHolders, notes, extraHolders,
+            otherNotes: out.filter(r => hasNote(r) && extraItemsOf(r).length === 0),   // 有寫備註、但還沒登記的
             speakersIn: SPEAKER_TOTAL - speakersOut, standsIn: STAND_TOTAL - standsOut,
             lateGroups: usedBy.filter(isOverdue).length,
             usingGroups: usedBy.filter(r => !isOverdue(r)).length
@@ -1673,6 +1838,21 @@
         stLis.unshift(`<li class="ok">✅ ${s.standHolders.length ? '其餘 ' : '全部 '}${s.standsIn} 個　在倉庫</li>`);
         let stLate = s.standHolders.some(x => isOverdue(x.r));
 
+        // 📦 其他設備（管理員從備註登記的）：有借出才顯示這張卡片
+        let exNames = Object.keys(s.extraHolders).sort((a, b) => a.localeCompare(b, 'zh-Hant'));
+        let exAll = [].concat(...exNames.map(n => s.extraHolders[n]));
+        let exLate = exAll.some(x => isOverdue(x.r));
+        let exCard = exNames.length === 0 ? '' : `<div class="inv-card${exLate ? ' late' : ' some'}">
+                    <div class="inv-title"><span>📦 其他設備</span><span class="inv-num">借出中 <b>${exAll.reduce((a, x) => a + x.n, 0)}</b> 件</span></div>
+                    <ul class="inv-list">${exNames.map(n => {
+                        let hs = s.extraHolders[n], late = hs.some(x => isOverdue(x.r));
+                        let total = hs.reduce((a, x) => a + x.n, 0);
+                        // 同一樣東西合在一起：標題寫總數，下面列出各在誰那裡（不只一組時標出各幾件）
+                        return `<li class="${late ? 'late' : 'use'}">${late ? '⚠️' : '🕐'} <b>${escapeHtml(n)} ×${total}</b>　借出中` +
+                            hs.map(x => (hs.length > 1 ? `<span class="who" style="margin-top:4px; font-weight:bold;">・${x.n} 件：</span>` : '') + who(x.r)).join('') + `</li>`;
+                    }).join('')}</ul>
+                </div>`;
+
         // 結論
         let foot;
         if (s.lateGroups > 0) {
@@ -1683,7 +1863,7 @@
             foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還照片。</div>`;
         }
         let other = s.otherNotes.length === 0 ? '' :
-            `<div class="inv-notes other">📝 <b>還沒歸還的組別，備註裡寫了這些</b>（沒有算進上面的數量，點貨時請一起核對）` +
+            `<div class="inv-notes other">📝 <b>還沒歸還、備註還沒登記的組別</b>（沒有算進上面的數量，請在下方該組按「➕ 登記備註設備」）` +
             s.otherNotes.map(r => `<div>・${escapeHtml(r.leader_name)}（${formatDateLabel(r.borrow_date)} ${escapeHtml(r.location)}，${isOverdue(r) ? '<b>已逾期</b>' : '使用中'}）：${noteInline(r.notes)}</div>`).join('') +
             `</div>`;
         let notes = s.notes.length === 0 ? '' :
@@ -1703,6 +1883,7 @@
                     <div class="inv-title"><span>🎼 譜架</span><span class="inv-num">倉庫應有 <b>${s.standsIn}</b>/ ${STAND_TOTAL} 個</span></div>
                     <ul class="inv-list">${stLis.join('')}</ul>
                 </div>
+                ${exCard}
             </div>
             ${foot}${other}${notes}
         </div>`;
@@ -1745,6 +1926,7 @@
                     <div class="bk-person"><span>👤 ${item.leader_name}</span><a href="tel:${item.leader_phone}">📞 ${item.leader_phone}</a></div>
                     ${badges ? `<div>${badges}</div>` : ''}
                     ${hasNote(item) ? `<div class="bk-note">📝 <b>備註：</b>${noteHtml(item.notes)}</div>` : ''}
+                    ${extraBlock(item)}
                     <div class="bk-equip">
                         <span class="k">🔊 喇叭</span><div>${needSpeaker ? speakerAssignUI(item, records) : '<span style="color:#bbb;">不需要</span>'}</div>
                         <span class="k">🎼 譜架</span><div>${standCell(item)}</div>
@@ -1911,7 +2093,7 @@
                     unreturnedHtml += `<tr${overdue ? ' style="background:#fdf1ef;"' : ''}>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
-                            <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}</td>
+                            <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}${extraBlock(item)}</td>
                             <td style="white-space:nowrap;">📞 ${item.leader_phone}</td>
                             <td style="white-space:normal;">${speakerAdmin}</td>
                             <td>${standCell(item)}</td>
@@ -2143,6 +2325,8 @@
         }
         let stands = parseInt(item.music_stand) || 0;
         if (stands > 0) lines.push(`<div>🎼 譜架：<b>${stands} 個</b></div>`);
+        let extras = extraItemsOf(item);   // 管理員從備註登記的設備（資料庫有回傳這個欄位時才會有）
+        if (extras.length > 0) lines.push(`<div>📦 其他設備：<b>${extraItemsText(extras)}</b></div>`);
         // 借用時寫在備註的其他設備（例如延長線），歸還時一起提醒
         let note = hasNote(item)
             ? `<div style="${lines.length ? 'margin-top:5px; padding-top:5px; border-top:1px dashed #d6e2ea; ' : ''}color:#7e5109;">📝 備註：<span style="font-weight:normal;">${noteHtml(item.notes)}</span></div>`
