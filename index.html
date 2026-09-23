@@ -186,6 +186,11 @@
         .inv-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
         .inv-head b { font-size: 16px; color: #2c3e50; }
         .inv-head span { font-size: 12px; color: #7f8c8d; }
+        .inv-week { display: inline-block; background: #eaf2f8; color: #2471a3; border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: bold; margin-top: 6px; }
+        .inv-week span { font-weight: normal; color: #5d7a8c; font-size: 12px; }
+        /* 已歸還清單：登記過的其他設備 */
+        .ret-extra { margin-top: 6px; background: #fff8e1; color: #6e4b00; border-radius: 6px; padding: 5px 9px; font-size: 13.5px; }
+        tr.ret-extra-row td { background: #fffbea; color: #6e4b00; font-size: 13px; text-align: left; padding: 6px 12px; border-top: none; }
         .inv-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
         .inv-card { flex: 1 1 260px; background: #f8fafb; border: 1px solid #e3e9ee; border-radius: 10px; padding: 10px 12px; }
         .inv-card .inv-title { display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; color: #34495e; font-size: 14px; }
@@ -2379,7 +2384,7 @@
     //    管理員隔天進來，一眼看出「倉庫現在應該有幾台喇叭、幾個譜架」，拿去跟實際點到的數量比對，
     //    數量對不上就知道有東西少了、該找誰。
     //    「在外面」＝ 借用開始時間已經到了、但還沒歸還的紀錄；還沒開始的預約，設備還在倉庫裡。
-    //    不受上方「週次篩選」影響：設備現在在不在倉庫，跟正在看哪一週無關。
+    //    跟著上方「週次篩選」走（第二十六輪使用者要求）：選某一週就只算那一週的借用，選「所有紀錄」就算全部。
     //    鋼琴固定放在各場地、不會被帶走，所以不列入。
     const SPEAKER_UNITS = ['MA303 編號A', 'MA303 編號B', 'MA303 編號C', 'MA707'];
     const INV_NOTE_DAYS = 3;   // 顯示最近幾天歸還時回報的狀況
@@ -2442,7 +2447,8 @@
         };
     }
 
-    function renderInventory(records) {
+    // weekLabel：上面選了某一週時傳進來（例如「第一週 (12/1 - 12/7)」），這時 records 只有那一週的借用
+    function renderInventory(records, weekLabel) {
         let s = inventoryStatus(records);
         let phone = isPhoneAdmin();
         const who = r => {
@@ -2515,6 +2521,7 @@
         let now = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
         document.getElementById('inventoryBox').innerHTML = `<div class="inv-box">
             <div class="inv-head"><b>📦 設備總結算</b><span>以現在 ${formatDateLabel(todayStr())} ${now} 計算；鋼琴固定在場地，不列入</span></div>
+            ${weekLabel ? `<div class="inv-week">📅 只算 ${escapeHtml(weekLabel)} 的借用<span>（其他週的不算在內；要看全部請在上面選「所有紀錄」）</span></div>` : ''}
             <div class="inv-grid">
                 <div class="inv-card${spLate ? ' late' : spOut ? ' some' : ''}">
                     <div class="inv-title"><span>🔊 喇叭</span><span class="inv-num">倉庫應有 <b>${s.speakersIn}</b>/ ${SPEAKER_TOTAL} 台</span></div>
@@ -2633,6 +2640,7 @@
                 <div class="bk-top"><b>📅 ${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}</b><span class="bk-venue">📍 ${item.location}</span></div>
                 <div class="bk-person"><span>👤 ${item.leader_name}</span><span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</span></div>
                 ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
+                ${extraItemsOf(item).length ? `<div class="ret-extra">📦 其他設備：<b>${extraItemsText(extraItemsOf(item))}</b></div>` : ''}
                 <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員代為歸還</span>' : ''}
                     ${item.return_photo_url ? `　<a href="${item.return_photo_url}" target="_blank">📸 看照片</a>` : ''}</div>
                 <div class="bk-actions two">
@@ -2660,7 +2668,10 @@
         records.forEach(r => { adminRecordMap[r.id] = r; });   // 給「編輯」「代為歸還」視窗查資料用
         renderTodo(records);        // 📌 待辦事項：用全部資料，不受週次篩選影響
         refreshAdminSearch();       // 🔍 搜尋框有字的話，用最新資料重新找一次（例如剛編輯完）
-        renderInventory(records);   // 📦 設備總結算：用全部資料，不受週次篩選影響
+        // 📦 設備總結算：跟著上面的週次篩選走（選第一週就只算第一週的借用；「所有紀錄」就算全部）
+        let weekSel = document.getElementById("adminWeekFilter");
+        renderInventory(weekFilter ? records.filter(passFilter) : records,
+                        weekFilter ? weekSel.options[weekSel.selectedIndex].text : '');
 
         function passFilter(item) {
             if (weekFilter === '' || !item.borrow_date) return true;
@@ -2847,6 +2858,10 @@
                                 <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
                             </div></td>
                         </tr>`;
+                    // 📦 管理員登記的其他設備（延長線、HDMI…）：歸還後也看得到，方便核對有沒有還回來
+                    if (extraItemsOf(item).length) {
+                        returnedHtml += `<tr class="ret-extra-row"><td colspan="10">📦 其他設備：<b>${extraItemsText(extraItemsOf(item))}</b></td></tr>`;
+                    }
                 });
                 returnedHtml += `</table></div>`;
             });
