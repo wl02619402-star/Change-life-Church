@@ -310,6 +310,12 @@
         .day-tool-btn.auto { background: #34495e; color: #fff; }
         @media (max-width: 700px) { .day-tool-btn { font-size: 14px; padding: 9px 14px; } }
 
+        /* 🎼 借用表單譜架旁的小字：兒主已有譜架／已借完 */
+        .stand-note { font-weight: normal; font-size: 13px; color: #7f8c8d; margin-left: 4px; }
+        .stand-note.out { color: #c0392b; font-weight: bold; }
+        .stand-day-note { font-size: 12px; margin-top: 3px; color: #8e44ad; font-weight: normal; }
+        .stand-day-note.warn { color: #c0392b; font-weight: bold; }
+
         /* 🎛️ 備品清單的音控協助：哪個場地、幾點、誰 */
         .tech-line { color: #c0392b; font-size: 13px; line-height: 1.55; font-weight: normal; }
         .tech-line b { font-weight: bold; }
@@ -431,7 +437,7 @@
             <div class="form-group"><label>場地</label>
                 <select id="editLocation" onchange="syncEditVenueFields()">
                     <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
-                    <option value="幼主">幼主</option><option value="教會外場地">教會外場地</option>
+                    <option value="幼主">幼主</option><option value="圖書室">圖書室</option><option value="教會外場地">教會外場地</option>
                 </select>
             </div>
             <div class="pair-row">
@@ -444,7 +450,7 @@
                     <label><input type="radio" name="editSpeaker" value="否"> 不需要</label>
                 </div>
             </div>
-            <div class="form-group"><label>🎼 譜架</label>
+            <div class="form-group"><label>🎼 譜架 <span id="editStandNote" style="font-weight:normal; color:#7f8c8d; font-size:12.5px;"></span></label>
                 <select id="editStand">
                     <option value="0">不需要</option><option value="1">1 個</option><option value="2">2 個</option>
                     <option value="3">3 個</option><option value="4">4 個</option><option value="5">5 個</option><option value="6">6 個</option>
@@ -520,7 +526,7 @@
                     <select id="location" onchange="checkRules()" required>
                         <option value="">請選擇場地...</option>
                         <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
-                        <option value="幼主">幼主</option><option value="教會外場地">教會外場地</option>
+                        <option value="幼主">幼主</option><option value="圖書室">圖書室</option><option value="教會外場地">教會外場地</option>
                     </select>
                 </div>
                 <div class="form-group hidden" id="soundTechSection">
@@ -546,7 +552,7 @@
                 </div>
 
                 <div class="form-group">
-                    <label>🎼 譜架</label>
+                    <label>🎼 譜架 <span id="standNote" class="stand-note"></span></label>
                     <div class="toggle-group">
                         <label><input type="radio" name="musicStand" value="0" checked> 不需要</label>
                         <label><input type="radio" name="musicStand" value="1"> 1 個</label>
@@ -769,6 +775,21 @@
 
     const SPEAKER_TOTAL = 4;   // 喇叭總數
     const STAND_TOTAL = 6;     // 譜架總數
+    // 🎼 譜架的特殊日期（使用者交代，第二十七輪）：
+    //    不外借：12/13「聖誕總彩日」、12/19「聖誕特會」一整天譜架都不外借。
+    //    預留：12/11「校園教會」一整天先預留 2 個，小組只能借剩下的 4 個。
+    //    會眾那邊不解釋原因，只顯示「已借完」。
+    const 譜架不外借日期 = { '2026-12-13': '聖誕總彩日', '2026-12-19': '聖誕特會' };
+    const 譜架預留 = { '2026-12-11': { n: 2, why: '校園教會' } };
+    // 這天整天最多可以借出幾個譜架
+    function standCapacity(date) {
+        date = String(date || '');
+        if (譜架不外借日期[date]) return 0;
+        let r = 譜架預留[date];
+        return Math.max(0, STAND_TOTAL - (r ? r.n : 0));
+    }
+    // 🏠 場地本來就有譜架，選這個場地就不外借譜架
+    const 自有譜架場地 = ['兒主'];
 
     // 🔥 顯示與隱藏載入動畫工具
     function showLoading(text) {
@@ -1185,6 +1206,20 @@
         };
     }
 
+    // 🎼 備品清單的譜架旁邊：這天是不是不外借日／有沒有預留（只給管理員看，會眾端只顯示「已借完」）
+    function standDayNote(s) {
+        let block = 譜架不外借日期[s.date], rsv = 譜架預留[s.date];
+        if (block) return s.peakStand > 0
+            ? `<div class="stand-day-note warn">⚠️ ${block}譜架不外借，但這天有組別借了譜架</div>`
+            : `<div class="stand-day-note">📌 ${block}：譜架整天不外借</div>`;
+        if (rsv) return `<div class="stand-day-note">📌 ${rsv.why}另外預留 ${rsv.n} 個</div>`;
+        return '';
+    }
+    // 借了不該借的譜架：不外借日、或場地本來就有譜架（規則訂之前就送出的舊資料）
+    function standRuleBroken(r) {
+        return (parseInt(r.music_stand) || 0) > 0 && (!!譜架不外借日期[String(r.borrow_date)] || 自有譜架場地.indexOf(r.location) >= 0);
+    }
+
     // 📸 備品清單裡的「領取照片」：這天幾組已經上傳了
     function dayPhotoStatus(s) {
         let all = s.groups > 0 && s.photoDone >= s.groups;
@@ -1210,7 +1245,7 @@
         if (s.鋼琴自有使用.length > 0) pianoHint += `${pianoHint ? '；' : ''}${s.鋼琴自有使用.join('、')}用自己的鋼琴`;
         let rows = [
             row('🔊 喇叭', s.units.length ? chips(s.units, 'sp') : dash, s.units.length ? '把這幾台搬到櫃檯' : ''),
-            row('🎼 譜架', s.peakStand > 0 ? `<b>${s.peakStand} 個</b>` : dash, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : ''),
+            row('🎼 譜架', (s.peakStand > 0 ? `<b>${s.peakStand} 個</b>` : dash) + standDayNote(s), s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : ''),
             row('🎹 鋼琴', s.鋼琴需架設.length ? s.鋼琴需架設.map(t => `<div style="color:#8e44ad; font-weight:bold;">${t}</div>`).join('') : '<span style="color:#95a5a6;">今天不用架設</span>', pianoHint),
             row('🎛️ 音控', s.tech.length
                 ? s.tech.map(t => `<div class="tech-line"><b>${escapeHtml(t.loc)} ${t.time}</b><span>｜${escapeHtml(t.name)}</span></div>`).join('')
@@ -1269,7 +1304,7 @@
             <span style="color:#7f8c8d; font-size:11px;">（當日共 ${s.groups} 組借用）</span>
             <div style="display:flex; gap:26px; flex-wrap:wrap; margin-top:10px;">
                 ${cell('喇叭（機台）', speakerVal, s.units.length > 0 ? '把這幾台搬到櫃檯' : '')}
-                ${cell('譜架', standVal, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : '')}
+                ${cell('譜架', standVal + standDayNote(s), s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : '')}
                 ${cell('鋼琴架設', pianoVal, s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '今天不用架設')}
                 ${cell('🎛️ 音控協助', s.tech.length
                     ? s.tech.map(t => `<div class="tech-line"><b>${escapeHtml(t.loc)} ${t.time}</b><span>｜${escapeHtml(t.name)}</span></div>`).join('')
@@ -1425,6 +1460,7 @@
         }
 
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
+        applyStandLimit();   // 換場地時譜架跟著鎖／開（兒主本來就有譜架）
         syncToggles();
     }
 
@@ -1437,7 +1473,8 @@
     //    取整段期間的最大使用量，因為只要其中一刻不夠，整段就借不了。
     //    注意：鋼琴不列入計算。每個場地各有自己的鋼琴，而場地本身已經是排他的，
     //    所以只要訂得到場地就一定有那台鋼琴，不可能被別組搶走。
-    function windowAvailability(records, startFloat, endFloat) {
+    function windowAvailability(records, startFloat, endFloat, date) {
+        let standCap = date ? standCapacity(date) : STAND_TOTAL;
         let maxSpeaker = 0, maxStand = 0;
         let busyVenues = new Set();
 
@@ -1456,7 +1493,7 @@
         }
         return {
             speakerLeft: Math.max(0, SPEAKER_TOTAL - maxSpeaker),
-            standLeft: Math.max(0, STAND_TOTAL - maxStand),
+            standLeft: Math.max(0, standCap - maxStand),
             busyVenues: [...busyVenues]
         };
     }
@@ -1464,7 +1501,10 @@
     // 🚦 送出前的最後把關：這段時間借這個場地、這些設備會不會跟別組衝突。
     //    回傳錯誤訊息，沒問題回傳 null。records 是當天「其他」紀錄（呼叫端要先排除正在編輯的那筆）。
     //    會眾送出借用、管理員編輯紀錄都用這一個函式，規則才不會兩邊不一致。
-    function findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand) {
+    function findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date) {
+        let standCap = date ? standCapacity(date) : STAND_TOTAL;
+        if (reqStand > 0 && 自有譜架場地.indexOf(loc) >= 0) return `⛔ ${loc}場地已有譜架，不另外借譜架。`;
+        if (reqStand > 0 && standCap === 0) return `⛔ 這天譜架已借完！`;
         for (let t = startFloat; t < endFloat; t += 0.5) {
             let timeStr = `${floatToTimeStr(t)}-${floatToTimeStr(t + 0.5)}`;
             let usedSpeaker = 0, usedStand = 0;
@@ -1478,7 +1518,7 @@
             }
             // 鋼琴不檢查：每個場地各有一台，場地訂到就有
             if (reqSpeaker > 0 && reqSpeaker + usedSpeaker > SPEAKER_TOTAL) return `⛔ ${timeStr} 喇叭已全部借出！`;
-            if (reqStand > 0 && reqStand + usedStand > STAND_TOTAL) return `⛔ ${timeStr} 譜架 庫存不足！`;
+            if (reqStand > 0 && reqStand + usedStand > standCap) return `⛔ ${timeStr} 譜架已借完！`;
         }
         return null;
     }
@@ -1532,7 +1572,7 @@
         if (my !== availToken) return;               // 使用者又改了條件，捨棄這次結果
         if (res.error) { panel.classList.add('hidden'); resetAvailabilityLimits(); return; }
 
-        let a = windowAvailability(res.data, timeToFloat(s), timeToFloat(e));
+        let a = windowAvailability(res.data, timeToFloat(s), timeToFloat(e), date);
         applyAvailabilityLimits(a);
 
         const line = (label, value, ok) =>
@@ -1547,16 +1587,36 @@
              <div style="margin-top:8px;">
                 ${venueMsg}
                 ${line('喇叭', a.speakerLeft > 0 ? `還有 ${a.speakerLeft} 台` : '已全部借出', a.speakerLeft > 0)}
-                ${line('譜架', a.standLeft > 0 ? `還有 ${a.standLeft} 個` : '已全部借出', a.standLeft > 0)}
+                ${line('譜架', a.standLeft > 0 ? `還有 ${a.standLeft} 個` : '已借完', a.standLeft > 0)}
              </div>
              <div style="margin-top:8px; color:#7f8c8d; font-size:11px;">借不到的選項已自動鎖住，改時段就會重新計算。<br>鋼琴每個場地各有一台，選到場地就有，不會被別組借走。</div>`;
+    }
+
+    // 🎼 譜架按鈕能選到幾個：這個時段剩幾個（還沒查就看這天的上限）、場地本身有沒有譜架，取最嚴的
+    let availStandLeft = null;   // 最近一次查到的剩餘譜架；null＝還沒選好時段
+    function applyStandLimit() {
+        let dateEl = document.getElementById('borrowDate'), locEl = document.getElementById('location');
+        if (!dateEl || !locEl) return;
+        let date = dateEl.value, loc = locEl.value;
+        let max = 2;
+        if (availStandLeft !== null) max = Math.min(max, availStandLeft);
+        else if (date) max = Math.min(max, standCapacity(date));
+        let venueHas = 自有譜架場地.indexOf(loc) >= 0;
+        if (venueHas) max = 0;
+        rebuildStandOptions(max);
+        let note = document.getElementById('standNote');
+        if (note) {
+            note.textContent = venueHas ? `${loc}場地已有譜架` : (max === 0 ? '已借完' : '');
+            note.classList.toggle('out', !venueHas && max === 0);
+        }
     }
 
     // 還原成沒有限制的狀態
     function resetAvailabilityLimits() {
         let yes = document.querySelector('input[name="needSpeaker"][value="是"]');
         if (yes) setOptionEnabled(yes, true);
-        rebuildStandOptions(2);
+        availStandLeft = null;
+        applyStandLimit();
         restoreVenueOptions([]);
         syncToggles();
     }
@@ -1568,8 +1628,9 @@
         setOptionEnabled(yes, a.speakerLeft > 0);
         if (a.speakerLeft === 0 && yes.checked) no.checked = true;
 
-        // 譜架：選項只留得到的數量
-        rebuildStandOptions(Math.min(2, a.standLeft));
+        // 譜架：選項只留得到的數量（場地本身有譜架的也鎖住）
+        availStandLeft = a.standLeft;
+        applyStandLimit();
 
         // 場地：已被預約的直接不能選
         restoreVenueOptions(a.busyVenues);
@@ -2025,6 +2086,7 @@
             { cls: 'red', label: '⚠️ 逾期還沒歸還', unit: '組', list: un.filter(isOverdue) },
             { cls: 'amber', label: '🔊 喇叭待分配', unit: '組', list: un.filter(r => speakerUsage(r) > 0 && normalizeAssignedList(r.ma303_assigned).length === 0) },
             { cls: 'amber', label: '⏳ 備註未登記', unit: '筆', list: un.filter(r => hasNote(r) && extraStateOf(r) === 'pending') },
+            { cls: 'red', label: '🎼 借了不外借的譜架', unit: '組', list: un.filter(standRuleBroken) },
             { cls: 'amber', label: '📸 今明兩天還沒放領取照片', unit: '組',
               list: un.filter(r => !r.pickup_photo_url && !hasStarted(r) && (r.borrow_date === today || r.borrow_date === tomorrow)) }
         ].filter(x => x.list.length > 0);
@@ -2304,6 +2366,11 @@
         if (!hasPiano) setRadio('editPiano', '無');
         let hasTech = (loc === '兒主' || loc === '幼主');
         document.getElementById('editTechGroup').style.display = hasTech ? '' : 'none';
+        let standSel = document.getElementById('editStand');
+        let venueHasStand = 自有譜架場地.indexOf(loc) >= 0;
+        if (venueHasStand) standSel.value = '0';
+        standSel.disabled = venueHasStand;
+        document.getElementById('editStandNote').textContent = venueHasStand ? `（${loc}場地已有譜架，不外借）` : '';
         if (!hasTech) setRadio('editTech', '否');
         syncToggles();
     }
@@ -2343,7 +2410,7 @@
 
             let assigned = normalizeAssignedList(old.ma303_assigned);
             let reqSpeaker = wantSpeaker ? Math.max(1, assigned.length) : 0;
-            let conflict = findSlotConflict(others, loc, s, e, reqSpeaker, stand);
+            let conflict = findSlotConflict(others, loc, s, e, reqSpeaker, stand, date);
             if (conflict) { hideLoading(); alert(conflict + '\n\n請改其他時段或場地。'); return; }
 
             // 機台分配：不需要喇叭就清掉；改了日期/時間，要確認原本分配的機台在新時段沒被別組用走
@@ -2923,7 +2990,7 @@
             const { data: records, error: fetchError } = await fetchDayRecords(date);
             if (fetchError) { hideLoading(); alert("系統連線失敗"); return; }
 
-            let conflict = findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand);
+            let conflict = findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date);
             if (conflict) { hideLoading(); alert(conflict); return; }
 
             document.getElementById('loadingText').innerText = "資料傳送中...";
