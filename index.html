@@ -136,6 +136,8 @@
         .extra-del { flex: none; width: 38px; height: 38px; border: none; background: #f4f6f8; color: #95a5a6; border-radius: 8px; font-size: 16px; cursor: pointer; }
         .extra-add { background: none; border: none; color: #2471a3; font-size: 14px; font-weight: bold; cursor: pointer; padding: 4px 0; }
         .reg-tag { display: inline-block; background: #eaf7ef; color: #1e8449; border-radius: 4px; padding: 0 5px; font-size: 11px; margin-left: 4px; }
+        a.reg-tag { cursor: pointer; text-decoration: none; border: 1px solid transparent; }
+        a.reg-tag:hover { border-color: currentColor; }
         .reg-tag.pending { background: #fdebd0; color: #b9770e; font-weight: bold; }
         .reg-tag.none { background: #eef2f5; color: #7f8c8d; }
         .extra-chip.none { background: #f4f6f8; border-color: #dfe6ea; color: #7f8c8d; }
@@ -801,11 +803,13 @@
         if (!r || r.extra_items === null || r.extra_items === undefined || r.extra_items === '') return 'pending';
         return extraItemsOf(r).length > 0 ? 'registered' : 'none';
     }
+    // 標籤可以直接點：點了就打開這一組的登記視窗（未登記的寫「去登記」，讓人知道可以點）
     function extraStateTag(r) {
         let st = extraStateOf(r);
-        if (st === 'registered') return '<span class="reg-tag">✅ 已登記</span>';
-        if (st === 'none') return '<span class="reg-tag none">➖ 不用登記</span>';
-        return '<span class="reg-tag pending">⏳ 未登記</span>';
+        let click = `onclick="openExtra(${r.id})" title="點一下打開登記視窗"`;
+        if (st === 'registered') return `<a class="reg-tag" ${click}>✅ 已登記 ›</a>`;
+        if (st === 'none') return `<a class="reg-tag none" ${click}>➖ 不用登記 ›</a>`;
+        return `<a class="reg-tag pending" ${click}>⏳ 未登記・去登記 ›</a>`;
     }
     function extraItemsText(items) { return items.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('、'); }
     function sumExtraItems(list) {   // [{name, qty}, ...] → 同名加總，依名稱排序
@@ -1029,7 +1033,7 @@
                 : ''}
             ${s.notes && s.notes.length > 0
                 ? `<div style="margin-top:10px; background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; padding:8px 10px; border-radius:4px; font-size:12.5px; line-height:1.6;">
-                     📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（還沒登記的不會算進數量，請在下方該組按「➕ 登記備註設備」）</span>
+                     📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（還沒登記的不會算進數量，點後面的標籤就可以直接登記）</span>
                      ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}${extraStateTag(r)}</div>`).join('')}
                    </div>`
                 : ''}
@@ -1923,8 +1927,8 @@
             foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>${upNames.length ? '，還有上面列的其他設備' : ''}。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還照片。</div>`;
         }
         let other = s.otherNotes.length === 0 ? '' :
-            `<div class="inv-notes other">📝 <b>還沒歸還、備註還沒登記的組別</b>（沒有算進上面的數量，請在下方該組按「➕ 登記備註設備」）` +
-            s.otherNotes.map(r => `<div>・${escapeHtml(r.leader_name)}（${formatDateLabel(r.borrow_date)} ${escapeHtml(r.location)}，${isOverdue(r) ? '<b>已逾期</b>' : '使用中'}）：${noteInline(r.notes)}</div>`).join('') +
+            `<div class="inv-notes other">📝 <b>還沒歸還、備註還沒登記的組別</b>（沒有算進上面的數量，點後面的「去登記」就可以登記）` +
+            s.otherNotes.map(r => `<div>・${escapeHtml(r.leader_name)}（${formatDateLabel(r.borrow_date)} ${escapeHtml(r.location)}，${isOverdue(r) ? '<b>已逾期</b>' : '使用中'}）：${noteInline(r.notes)}${extraStateTag(r)}</div>`).join('') +
             `</div>`;
         let notes = s.notes.length === 0 ? '' :
             `<div class="inv-notes">📝 <b>最近 ${INV_NOTE_DAYS} 天歸還時回報的狀況</b>（請確認設備有沒有少或壞）` +
