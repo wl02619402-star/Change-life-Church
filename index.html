@@ -102,7 +102,9 @@
         .stat-tiles .tile.red b { color: #c0392b; }
         .stat-tiles .tile.green b { color: #27ae60; }
         .day-head { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: #fff; border-radius: 10px 10px 0 0; padding: 10px 14px; margin-top: 18px; font-weight: bold; font-size: 16px; }
-        .day-head span { font-size: 12.5px; font-weight: normal; opacity: .85; }
+        .day-head > span { font-size: 12.5px; font-weight: normal; opacity: .85; }
+        summary.day-head { display: block; }
+        summary.date-header.flex-head { display: block; }
         .bk-card { background: #fff; border: 1px solid #e3e9ee; border-radius: 12px; padding: 12px 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,.05); font-size: 14px; }
         .bk-card.overdue { border-color: #f1b0a8; background: #fff8f7; }
         .bk-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
@@ -145,6 +147,38 @@
         .extra-more button { flex: 1; background: #fff; border-radius: 6px; padding: 9px 6px; font-size: 13.5px; font-weight: bold; cursor: pointer; }
         .btn-noneed { border: 1.5px solid #bdc3c7; color: #5d6d7e; }
         .btn-unreg { border: 1.5px solid #e6b0aa; color: #c0392b; }
+
+        /* 📂 未歸還清單：每一天可以點開／收合 */
+        details.day-fold > summary { list-style: none; cursor: pointer; }
+        details.day-fold > summary::-webkit-details-marker { display: none; }
+        details.day-fold:not([open]) > summary { border-radius: 10px; }
+        details.day-fold:not([open]) > summary.date-header { border-radius: 6px; }
+        .fold-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; }
+        .fold-right { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: normal; opacity: .95; white-space: nowrap; }
+        .fold-chev { display: inline-block; font-size: 18px; line-height: 1; transition: transform .15s; }
+        details.day-fold[open] .fold-chev { transform: rotate(90deg); }
+        .fold-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+        .fold-badges:empty { display: none; }
+        .fold-badges span { background: rgba(255,255,255,.16); border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: normal; }
+        .fold-badges span.red { background: #e74c3c; }
+        .fold-badges span.amber { background: #f39c12; }
+        .fold-tools { display: flex; justify-content: flex-end; gap: 14px; font-size: 13px; margin: 4px 2px -6px; }
+        .fold-tools a { color: #2471a3; cursor: pointer; }
+
+        /* 📱 手機版備品準備清單 */
+        .sum-row { display: flex; gap: 10px; padding: 9px 0; border-top: 1px dashed #cfe5d8; }
+        .sum-row:first-child { border-top: none; padding-top: 4px; }
+        .sum-k { flex: 0 0 70px; color: #5d6d7e; font-size: 13px; font-weight: bold; padding-top: 2px; }
+        .sum-v { flex: 1; min-width: 0; font-size: 14.5px; color: #2c3e50; }
+        .sum-hint { color: #95a5a6; font-size: 11.5px; margin-top: 3px; font-weight: normal; }
+        .sum-chip { display: inline-block; margin: 0 5px 5px 0; padding: 3px 9px; border-radius: 12px; font-size: 13px; font-weight: bold; }
+        .sum-chip.sp { background: #e3f4ee; color: #138d75; }
+        .sum-chip.ex { background: #fdf2d9; color: #9a6a00; }
+        .sum-notes { margin-top: 10px; background: #fff8e1; border: 1px solid #f3dfa2; border-radius: 8px; padding: 9px 10px; font-size: 13px; }
+        .sum-note { background: #fff; border: 1px solid #f3e3b5; border-radius: 6px; padding: 7px 9px; margin-top: 6px; }
+        .sum-note-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12px; color: #8a6d3b; }
+        .sum-note-top .reg-tag { margin-left: 0; white-space: nowrap; flex: none; }
+        .sum-note-text { font-size: 14px; color: #4d3800; margin-top: 3px; line-height: 1.5; }
 
         /* 📦 設備總結算 */
         .inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
@@ -995,7 +1029,43 @@
         };
     }
 
+    // 📱 手機版的備品準備清單：一行一個項目（左邊項目名、右邊內容），備註一筆一張小卡，標籤不會被擠到下一行
+    function summaryBoxPhone(s) {
+        const row = (label, value, hint) => `<div class="sum-row"><div class="sum-k">${label}</div>
+            <div class="sum-v">${value}${hint ? `<div class="sum-hint">${hint}</div>` : ''}</div></div>`;
+        const dash = '<span style="color:#bbb;">—</span>';
+        const chips = (arr, cls) => arr.map(x => `<span class="sum-chip ${cls}">${x}</span>`).join('');
+        let pianoHint = s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '';
+        if (s.鋼琴自有使用.length > 0) pianoHint += `${pianoHint ? '；' : ''}${s.鋼琴自有使用.join('、')}用自己的鋼琴`;
+        let rows = [
+            row('🔊 喇叭', s.units.length ? chips(s.units, 'sp') : dash, s.units.length ? '把這幾台搬到櫃檯' : ''),
+            row('🎼 譜架', s.peakStand > 0 ? `<b>${s.peakStand} 個</b>` : dash, s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : ''),
+            row('🎹 鋼琴', s.鋼琴需架設.length ? s.鋼琴需架設.map(t => `<div style="color:#8e44ad; font-weight:bold;">${t}</div>`).join('') : '<span style="color:#95a5a6;">今天不用架設</span>', pianoHint)
+        ];
+        if (s.extras && s.extras.length > 0) {
+            rows.push(row('📦 其他', chips(s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`), 'ex'), '備註登記的，照這個數量準備'));
+        }
+        let notes = s.notes && s.notes.length > 0
+            ? `<div class="sum-notes"><div style="font-weight:bold; color:#6e4b00;">📝 備註裡的其他需求</div>
+                 <div class="sum-hint" style="margin:2px 0 4px;">還沒登記的不會算進數量，點標籤就可以登記</div>
+                 ${s.notes.map(r => `<div class="sum-note">
+                     <div class="sum-note-top"><span>${r.start_time}｜${escapeHtml(r.leader_name)}</span>${extraStateTag(r)}</div>
+                     <div class="sum-note-text">${noteInline(r.notes)}</div></div>`).join('')}
+               </div>`
+            : '';
+        let warn = s.pendingSpeakers > 0
+            ? `<div style="margin-top:10px; background:#fdecea; color:#a02622; padding:8px 10px; border-radius:6px; font-size:13px;">
+                 ⚠️ 還有 <b>${s.pendingSpeakers}</b> 組需要喇叭但還沒分配機台，請在下方分配。</div>`
+            : '';
+        return `<div style="background:#f4faf7; border:1px solid #c8e6d5; border-top:none; padding:12px 14px;">
+            <div><b style="color:#1e8449; font-size:14px;">📋 本日備品準備清單</b></div>
+            <div style="margin-top:6px;">${rows.join('')}</div>
+            ${notes}${warn}
+        </div>`;
+    }
+
     function summaryBox(s) {
+        if (isPhoneAdmin()) return summaryBoxPhone(s);
         const cell = (label, value, hint) =>
             `<div style="min-width:96px;">
                 <div style="color:#7f8c8d; font-size:11px;">${label}</div>
@@ -1953,6 +2023,34 @@
         </div>`;
     }
 
+    // ================= 📂 未歸還清單每天可以收合 =================
+    //    預設：今天、或有逾期的那天展開，其他收起來（畫面才不會一長串）。
+    //    管理員自己點開／收起後會記住（dayFoldState），按任何按鈕重新整理清單時不會又跳回去。
+    let dayFoldState = {};
+    function dayFoldOpen(date, list) {
+        if (date in dayFoldState) return dayFoldState[date];
+        return String(date) === todayStr() || list.some(isOverdue);
+    }
+    // 收起來時標題列也看得到重點：幾組、逾期、喇叭待分配、備註未登記
+    function dayFoldBadges(list) {
+        let late = list.filter(isOverdue).length;
+        let pendSp = list.filter(r => speakerUsage(r) > 0 && normalizeAssignedList(r.ma303_assigned).length === 0).length;
+        let pendEx = list.filter(r => hasNote(r) && extraStateOf(r) === 'pending').length;
+        return (late ? `<span class="red">⚠️ ${late} 組逾期</span>` : '') +
+               (pendSp ? `<span class="amber">🔊 ${pendSp} 組喇叭待分配</span>` : '') +
+               (pendEx ? `<span class="amber">⏳ ${pendEx} 筆備註未登記</span>` : '');
+    }
+    function dayFoldSummary(date, list, cls) {
+        return `<summary class="${cls}"><div class="fold-title"><span>📅 ${formatDateLabel(date)}</span>
+            <span class="fold-right">${list.length} 組借用<span class="fold-chev">›</span></span></div>
+            <div class="fold-badges">${dayFoldBadges(list)}</div></summary>`;
+    }
+    function onDayFoldToggle(el) { dayFoldState[el.dataset.date] = el.open; }
+    function setAllDayFolds(open) {
+        document.querySelectorAll('#unreturnedContainer details.day-fold').forEach(d => { d.open = open; dayFoldState[d.dataset.date] = open; });
+    }
+    const dayFoldTools = () => `<div class="fold-tools"><a onclick="setAllDayFolds(true)">全部展開</a><a onclick="setAllDayFolds(false)">全部收合</a></div>`;
+
     // ================= 手機版後台：卡片式版面 =================
     //    螢幕寬度 700px 以下（手機）一筆借用一張卡片；電腦維持表格。
     //    手機轉橫向、或電腦視窗拉窄拉寬跨過 700px 時，後台自動換成對應的版面。
@@ -1971,11 +2069,12 @@
         </div>`;
 
         // 未歸還：每天一個深色標題＋備品清單，底下每組一張卡片
-        let html = '';
+        let html = dates.length > 1 ? dayFoldTools() : '';
         if (dates.length === 0) html = '<p style="color:#7f8c8d;">目前沒有資料</p>';
         dates.forEach(date => {
             let list = unreturnedGroups[date].slice().sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
-            html += `<div class="day-head">📅 ${formatDateLabel(date)}<span>${list.length} 組借用</span></div>`;
+            html += `<details class="day-fold" data-date="${date}" ontoggle="onDayFoldToggle(this)"${dayFoldOpen(date, list) ? ' open' : ''}>`;
+            html += dayFoldSummary(date, list, 'day-head');
             html += summaryBox(dailySummary(list, date)).replace('border-top:none;', 'border-top:none; border-radius:0 0 10px 10px;');
             list.forEach(item => {
                 let overdue = isOverdue(item);
@@ -2004,6 +2103,7 @@
                     </div>
                 </div>`;
             });
+            html += `</details>`;
         });
         document.getElementById('unreturnedContainer').innerHTML = html;
 
@@ -2110,7 +2210,8 @@
                 // 捲到後面就會看到它們沒跟著延伸、露出一塊空白，跟表格對不齊。包成一組後，
                 // 三者會一起以表格的實際寬度為準（不夠寬時仍撐滿容器），捲動時顏色區塊也會跟著捲到底。
                 unreturnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
-                unreturnedHtml += `<div class="date-header flex-head"><span>📅 ${formatDateLabel(date)}</span><span>${unreturnedGroups[date].length} 組借用</span></div>`;
+                unreturnedHtml += `<details class="day-fold" data-date="${date}" ontoggle="onDayFoldToggle(this)"${dayFoldOpen(date, unreturnedGroups[date]) ? ' open' : ''}>`;
+                unreturnedHtml += dayFoldSummary(date, unreturnedGroups[date], 'date-header flex-head');
                 // 備品清單只能算「還沒歸還」的這幾組，不能用 records（全部歷史資料都在裡面）：
                 // 否則已經歸還過的舊紀錄（哪怕是別的月份、已經用完還回來的機台）也會被算進「今天要準備」的清單，
                 // 導致清單顯示的機台數/編號比畫面上實際看得到的未歸還紀錄還多，兩邊對不起來。
@@ -2170,8 +2271,9 @@
                             </div></td>
                         </tr>`;
                 });
-                unreturnedHtml += `</table></div>`;
+                unreturnedHtml += `</table></details></div>`;
             });
+            if (dates.length > 1) unreturnedHtml = dayFoldTools() + unreturnedHtml;
         }
         document.getElementById('unreturnedContainer').innerHTML = unreturnedHtml;
 
