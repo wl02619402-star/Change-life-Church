@@ -68,6 +68,11 @@
         .rules-link { color: #3498db; text-decoration: underline; cursor: pointer; font-weight: bold; }
         .date-header { background: #34495e; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-weight: bold; margin-top: 15px; font-size: 15px; }
         .grouped-table { margin-top: 0; border-radius: 0 0 6px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        /* 後台電腦版：每一天各一張表，用固定欄寬讓上下每一天的欄位對齊（不然每張表各自依內容算欄寬，會歪來歪去） */
+        .fixed-cols { table-layout: fixed; width: 100%; min-width: 1100px; }
+        .fixed-cols td, .fixed-cols th { overflow-wrap: break-word; vertical-align: middle; }
+        .date-header.flex-head { display: flex; justify-content: space-between; align-items: baseline; }
+        .date-header.flex-head span:last-child { font-weight: normal; font-size: 13px; }
 
         /* 🗂️ 借用表單：把相關欄位框在同一張卡片裡，讓頁面分區更清楚 */
         .form-card { background: #f8fafc; border: 1px solid #e8edf2; border-radius: 10px; padding: 16px 16px 4px; margin-bottom: 18px; }
@@ -449,7 +454,7 @@
         <h4>⚠️ 未歸還清單</h4>
         <div id="unreturnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
-        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單 <span id="returnedSortHint" style="font-size:12px; font-weight:normal; color:#7f8c8d;">(依借用日期分組，新的日期在上)</span></h4>
+        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單 <span id="returnedSortHint" style="font-size:12px; font-weight:normal; color:#7f8c8d;">(依借用日期分組，日期早的在上)</span></h4>
         <div id="returnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
         <button class="btn-back" style="margin-top: 25px;" onclick="showSection('homeMenu')">返回首頁</button>
@@ -1406,15 +1411,15 @@
     }
 
     // 📅 已歸還清單依「借用日期」分組（人一多全部擠在一起會很亂）：
-    //    同一天借的放在一起，新的日期排上面；同一天裡最近歸還的在上面。
+    //    同一天借的放在一起，日期早的排上面（跟未歸還清單一樣）；同一天裡依借用時段先後排。
     function groupReturned(list) {
         let groups = {};
         list.forEach(item => {
             let key = String(item.borrow_date || '');
             (groups[key] = groups[key] || []).push(item);
         });
-        let keys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
-        keys.forEach(k => groups[k].sort((a, b) => returnTimeOf(b) - returnTimeOf(a)));
+        let keys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+        keys.forEach(k => groups[k].sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time)));
         return { keys, groups };
     }
     function returnedGroupTitle(key) {
@@ -1859,17 +1864,20 @@
                 // 捲到後面就會看到它們沒跟著延伸、露出一塊空白，跟表格對不齊。包成一組後，
                 // 三者會一起以表格的實際寬度為準（不夠寬時仍撐滿容器），捲動時顏色區塊也會跟著捲到底。
                 unreturnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
-                unreturnedHtml += `<div class="date-header">📅 日期：${date}</div>`;
+                unreturnedHtml += `<div class="date-header flex-head"><span>📅 ${formatDateLabel(date)}</span><span>${unreturnedGroups[date].length} 組借用</span></div>`;
                 // 備品清單只能算「還沒歸還」的這幾組，不能用 records（全部歷史資料都在裡面）：
                 // 否則已經歸還過的舊紀錄（哪怕是別的月份、已經用完還回來的機台）也會被算進「今天要準備」的清單，
                 // 導致清單顯示的機台數/編號比畫面上實際看得到的未歸還紀錄還多，兩邊對不起來。
                 unreturnedHtml += summaryBox(dailySummary(unreturnedGroups[date], date));
-                unreturnedHtml += `<table class="grouped-table"><tr>
+                unreturnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
+                        <col style="width:11%"><col style="width:10%"><col style="width:14%"><col style="width:12%">
+                        <col style="width:16%"><col style="width:6%"><col style="width:8%"><col style="width:11%"><col style="width:12%">
+                    </colgroup><tr>
                         <th>時間</th>
                         <th>場地</th>
                         <th>聯絡人</th>
                         <th>電話</th>
-                        <th style="min-width:150px;">喇叭</th>
+                        <th>喇叭</th>
                         <th>譜架</th>
                         <th>鋼琴</th>
                         <th>📍 領取照片</th>
@@ -1930,9 +1938,12 @@
             rg.keys.forEach(key => {
                 let list = rg.groups[key];
                 returnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
-                returnedHtml += `<div class="date-header" style="background:#1e8449; display:flex; justify-content:space-between;"><span>${returnedGroupTitle(key)}</span><span style="font-weight:normal; font-size:13px;">${list.length} 組</span></div>`;
+                returnedHtml += `<div class="date-header flex-head" style="background:#1e8449;"><span>${returnedGroupTitle(key)}</span><span>${list.length} 組</span></div>`;
                 // 借用日期已經寫在標題上，表格就不重複這一欄
-                returnedHtml += `<table class="grouped-table"><tr>
+                returnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
+                        <col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:11%"><col style="width:12%">
+                        <col style="width:6%"><col style="width:8%"><col style="width:13%"><col style="width:6%"><col style="width:11%">
+                    </colgroup><tr>
                         <th>🕒 歸還時間</th>
                         <th>時段</th>
                         <th>場地</th>
@@ -1951,7 +1962,7 @@
                     let byAdmin = parseAdminReturn(item.return_notes);
                     let photo = item.return_photo_url
                         ? `<a href="${item.return_photo_url}" target="_blank">檢視</a>`
-                        : `<span style="color:#95a5a6;">無${byAdmin ? '<br>（管理員代為歸還）' : ''}</span>`;
+                        : '<span style="color:#ccc;">—</span>';
 
                     // 歸還狀態用顏色分流：留空，或會眾自己寫的字裡有「正常」兩個字（不管是「正常歸還」「設備正常」哪種寫法都算），
                     // 一律視為沒問題、用綠色勾勾；其他文字才代表真的有異常說明，用橘色凸顯，不用逐行讀文字
