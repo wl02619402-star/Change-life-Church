@@ -182,10 +182,14 @@
         .sum-note-text { font-size: 14px; color: #4d3800; margin-top: 3px; line-height: 1.5; }
 
         /* 📦 設備總結算 */
-        .inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
+        details.inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
+        details.inv-box > summary { list-style: none; cursor: pointer; }
+        details.inv-box > summary::-webkit-details-marker { display: none; }
+        details.inv-box[open] .fold-chev { transform: rotate(90deg); }
         .inv-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
         .inv-head b { font-size: 16px; color: #2c3e50; }
-        .inv-head span { font-size: 12px; color: #7f8c8d; }
+        .inv-head span { font-size: 12px; color: #7f8c8d; display: inline-flex; align-items: center; gap: 6px; }
+        .inv-head .fold-chev { font-size: 18px; color: #34495e; }
         .inv-week { display: inline-block; background: #eaf2f8; color: #2471a3; border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: bold; margin-top: 6px; }
         .inv-week span { font-weight: normal; color: #5d7a8c; font-size: 12px; }
         /* 已歸還清單：登記過的其他設備 */
@@ -2595,9 +2599,11 @@
             `</div>`;
 
         let now = new Intl.DateTimeFormat('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
-        document.getElementById('inventoryBox').innerHTML = `<div class="inv-box">
-            <div class="inv-head"><b>📦 設備總結算</b><span>以現在 ${formatDateLabel(todayStr())} ${now} 計算；鋼琴固定在場地，不列入</span></div>
-            ${weekLabel ? `<div class="inv-week">📅 只算 ${escapeHtml(weekLabel)} 的借用<span>（其他週的不算在內；要看全部請在上面選「所有紀錄」）</span></div>` : ''}
+        document.getElementById('inventoryBox').innerHTML = `<details class="inv-box"${invBoxOpen ? ' open' : ''} ontoggle="onInvBoxToggle(this)">
+            <summary>
+                <div class="inv-head"><b>📦 設備總結算</b><span>以現在 ${formatDateLabel(todayStr())} ${now} 計算；鋼琴固定在場地，不列入<span class="fold-chev">›</span></span></div>
+                ${weekLabel ? `<div class="inv-week">📅 只算 ${escapeHtml(weekLabel)} 的借用<span>（其他週的不算在內；要看全部請在上面選「所有紀錄」）</span></div>` : ''}
+            </summary>
             <div class="inv-grid">
                 <div class="inv-card${spLate ? ' late' : spOut ? ' some' : ''}">
                     <div class="inv-title"><span>🔊 喇叭</span><span class="inv-num">倉庫應有 <b>${s.speakersIn}</b>/ ${SPEAKER_TOTAL} 台</span></div>
@@ -2610,8 +2616,11 @@
                 ${exCard}
             </div>
             ${foot}${other}${notes}
-        </div>`;
+        </details>`;
     }
+    // 📦 設備總結算可以收起來；管理員自己點開／收起後會記住（跟未歸還清單每天收合是同一種做法）
+    let invBoxOpen = true;
+    function onInvBoxToggle(el) { invBoxOpen = el.open; }
 
     // ================= 📂 未歸還清單每天可以收合 =================
     //    預設：今天、或有逾期的那天展開，其他收起來（畫面才不會一長串）。
