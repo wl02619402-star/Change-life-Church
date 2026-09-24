@@ -2540,20 +2540,27 @@
         const cls = (list) => list.some(isOverdue) ? 'late' : 'use';
 
         // 🔊 喇叭：一台一台列出來
+        //    篩選週次時（weekLabel 有值）：這週沒借的機台不列「在倉庫」那行，總清單只顯示這週真的有借的
         let spLis = SPEAKER_UNITS.map(u => {
             let hs = s.unitHolders[u];
-            if (hs.length === 0) return `<li class="ok">✅ ${u}　在倉庫</li>`;
+            if (hs.length === 0) return weekLabel ? null : `<li class="ok">✅ ${u}　在倉庫</li>`;
             return `<li class="${cls(hs)}">${hs.some(isOverdue) ? '⚠️' : '🕐'} ${u}　<b>借出中</b>${hs.map(who).join('')}</li>`;
-        });
+        }).filter(Boolean);
         s.noNumber.forEach(x => spLis.push(
             `<li class="nonum">❓ ${x.n} 台<b>沒登記是哪一台</b>（請在下方分配編號）${who(x.r)}</li>`));
         let spOut = SPEAKER_UNITS.some(u => s.unitHolders[u].length > 0) || s.noNumber.length > 0;
         let spLate = SPEAKER_UNITS.some(u => s.unitHolders[u].some(isOverdue)) || s.noNumber.some(x => isOverdue(x.r));
+        if (weekLabel && spLis.length === 0) spLis.push(`<li class="ok">✅ 這週沒有人借喇叭</li>`);
 
         // 🎼 譜架：列出在誰那裡
+        //    篩選週次時：不列「在倉庫」那行，沒人借就顯示一行「這週沒有人借」
         let stLis = s.standHolders.map(x =>
             `<li class="${isOverdue(x.r) ? 'late' : 'use'}">${isOverdue(x.r) ? '⚠️' : '🕐'} <b>${x.n} 個</b>借出中${who(x.r)}</li>`);
-        stLis.unshift(`<li class="ok">✅ ${s.standHolders.length ? '其餘 ' : '全部 '}${s.standsIn} 個　在倉庫</li>`);
+        if (weekLabel) {
+            if (stLis.length === 0) stLis.push(`<li class="ok">✅ 這週沒有人借譜架</li>`);
+        } else {
+            stLis.unshift(`<li class="ok">✅ ${s.standHolders.length ? '其餘 ' : '全部 '}${s.standsIn} 個　在倉庫</li>`);
+        }
         let stLate = s.standHolders.some(x => isOverdue(x.r));
 
         // 📦 其他設備（管理員從備註登記的）：只要有登記、還沒歸還的就顯示這張卡片
