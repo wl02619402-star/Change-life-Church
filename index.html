@@ -387,7 +387,8 @@
     <!-- 🔁 第三十三輪：改成「管理員（值班同工）代為登記」，會眾不再自己填借用單，
          首頁只留兩個入口：登入後台、借用設備（借用設備也要先登入，是後台功能的一部分）。 -->
     <div id="homeMenu" class="home-menu">
-        <button class="btn-main btn-borrow" onclick="requireLoginThen('rulesSection')">📦 借用設備</button>
+        <!-- 使用者確認後拿掉：改成後台代填後，需知頁這道手續就不需要了，登入後直接進借用表單。 -->
+        <button class="btn-main btn-borrow" onclick="requireLoginThen('borrowSection')">📦 借用設備</button>
         <!-- 文字刻意跟登入視窗裡的「登入後台」按鈕不同（後台登入 vs 登入後台），
              避免自動化測試／文字選取器同時選到兩顆按鈕 -->
         <button class="btn-main btn-query" onclick="checkAdminAccess()">🔐 後台登入</button>
@@ -691,8 +692,9 @@
                 <option value="4">12 月第四週 (12/22 以後)</option>
             </select>
         </div>
-        <!-- 📦 第三十三輪：借用改成由管理員（值班同工）在後台幫小組登記，這裡直接進借用表單 -->
-        <button class="btn-submit" style="margin-bottom:15px;" onclick="showSection('rulesSection')">📦 新增借用（幫小組登記）</button>
+        <!-- 📦 第三十三輪：借用改成由管理員（值班同工）在後台幫小組登記，直接進借用表單，
+             不用再經過需知頁（使用者確認後拿掉這道手續）。 -->
+        <button class="btn-submit" style="margin-bottom:15px;" onclick="showSection('borrowSection')">📦 新增借用（幫小組登記）</button>
         <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
             <button class="btn-back" style="width: 48%; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
             <button class="btn-back" style="width: 48%; margin:0; background-color: #c0392b;" onclick="adminLogout()">登出管理員</button>
