@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2026聖誕餐會 設備外借管理系統</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 📊 第三十三輪：匯出 Excel 簽到簿用的程式庫（SheetJS）。跟 supabase-js 一樣走外部 CDN，
+         載入失敗時 exportExcel() 會檢查 window.XLSX 存不存在，跳出清楚的提示，不會讓整頁壞掉。 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
         .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; transition: max-width .15s; }
@@ -381,11 +384,13 @@
 
     <div id="connBanner" style="display:none; background:#fdecea; border:1px solid #f5c6cb; color:#a02622; padding:12px 15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;"></div>
 
+    <!-- 🔁 第三十三輪：改成「管理員（值班同工）代為登記」，會眾不再自己填借用單，
+         首頁只留兩個入口：登入後台、借用設備（借用設備也要先登入，是後台功能的一部分）。 -->
     <div id="homeMenu" class="home-menu">
-        <button class="btn-main btn-borrow" onclick="showSection('rulesSection')">📦 我要借設備</button>
-        <button class="btn-main btn-query" onclick="showSection('querySection')">🔍 查詢我的借用狀況</button>
-        <button class="btn-main btn-return" onclick="showSection('returnSection'); resetReturnForm();">🔄 我要歸還設備</button>
-        <button class="btn-main btn-speaker" onclick="window.open('https://drive.google.com/file/d/1oHQoinOaArzRL0UxMvJP6zYvX3sx_S7h/view?usp=drive_link', '_blank')">🔊 音箱使用教學</button>
+        <button class="btn-main btn-borrow" onclick="requireLoginThen('rulesSection')">📦 借用設備</button>
+        <!-- 文字刻意跟登入視窗裡的「登入後台」按鈕不同（後台登入 vs 登入後台），
+             避免自動化測試／文字選取器同時選到兩顆按鈕 -->
+        <button class="btn-main btn-query" onclick="checkAdminAccess()">🔐 後台登入</button>
     </div>
 
     <div id="loginModal" class="modal">
@@ -434,20 +439,24 @@
         <div class="modal-content" style="max-width: 520px;">
             <h3 style="margin-top: 0; color: #34495e;">✏️ 編輯借用紀錄</h3>
             <input type="hidden" id="editId">
-            <div class="form-group"><label>日期</label><select id="editDate"></select></div>
+            <div class="form-group"><label>借用日期</label><select id="editDate" onchange="syncEditReturnDueDate()"></select></div>
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label><select id="editStart" onchange="syncEndTimeOptions('editStart', 'editEnd')"></select></div>
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label><select id="editEnd"></select></div>
             </div>
+            <div class="form-group"><label>歸還日期 <span style="font-weight:normal; color:#7f8c8d; font-size:12.5px;">（跨日借用才需要改）</span></label><select id="editReturnDueDate"></select></div>
             <div class="form-group"><label>場地</label>
                 <select id="editLocation" onchange="syncEditVenueFields()">
                     <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
                     <option value="幼主">幼主</option><option value="圖書室">圖書室</option><option value="教會外場地">教會外場地</option>
                 </select>
             </div>
+            <div class="form-group"><label>負責人</label><input type="text" id="editName"></div>
             <div class="pair-row">
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>負責人</label><input type="text" id="editName"></div>
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>聯絡電話</label><input type="tel" id="editPhone" inputmode="numeric" maxlength="10" oninput="digitsOnly(this)"></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>小組</label><input type="text" id="editGroup"></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>設備組負責人</label>
+                    <select id="editLead"><option value="">請選擇...</option></select>
+                </div>
             </div>
             <div class="form-group"><label>🔊 喇叭</label>
                 <div class="toggle-group">
@@ -465,6 +474,10 @@
                 <div class="toggle-group">
                     <label><input type="radio" name="editPiano" value="是"> <span id="editPianoYes">會使用</span></label>
                     <label><input type="radio" name="editPiano" value="無"> <span id="editPianoNo">不使用</span></label>
+                </div>
+                <!-- 🔁 第三十三輪（用戶確認後追加）：鋼琴型號，選填 -->
+                <div class="hidden" id="editPianoModelGroup" style="margin-top:8px;">
+                    <input type="text" id="editPianoModel" maxlength="40" placeholder="鋼琴型號（選填，例：Roland FP-30X）">
                 </div>
             </div>
             <div class="form-group" id="editTechGroup"><label>🎛️ 需要音控同工協助</label>
@@ -492,8 +505,8 @@
             <p>2. 請於預約時間<b>準時歸還</b>，讓後面租借的小組可以順利進行。</p>
             <p>3. 領取設備時，請至系統查詢您的「<b>領取位置照片</b>」。</p>
         </div>
-        <button class="btn-submit" onclick="showSection('borrowSection')">我同意，開始填寫</button>
-        <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
+        <button class="btn-submit" onclick="showSection('borrowSection')">了解，開始填寫</button>
+        <button class="btn-back" onclick="showSection('adminSection')">返回後台</button>
     </div>
 
     <div id="borrowSection" class="form-section">
@@ -505,11 +518,12 @@
 
             <div class="form-card">
                 <div class="form-card-title">🕐 借用時間</div>
-                <!-- 日期、時間都用下拉選單：iPhone 內建的日期選擇器不理會「只限 12 月」的設定，
+                <!-- 日期、時間都用下拉選單：iPhone 內建的日期選擇器不理會「只限這幾個月」的設定，
                      時間滾輪也能選到 11:25 這種非半點時間；下拉選單只列出允許的選項，從根本上選不錯。
-                     選項由 fillDateOptions()／fillTimeOptions() 在頁面載入時產生。 -->
-                <div class="form-group"><label>日期（限 2026 年 12 月）</label>
-                    <select id="borrowDate" onchange="refreshAvailability()"></select>
+                     選項由 fillDateOptions()／fillTimeOptions() 在頁面載入時產生。
+                     第三十三輪：開放 11 月＋12 月（原本只有 12 月），見 ALLOWED_MONTHS。 -->
+                <div class="form-group"><label>借用日期（限 2026 年 11–12 月）</label>
+                    <select id="borrowDate" onchange="refreshAvailability(); syncReturnDueDate();"></select>
                 </div>
                 <div style="display: flex; gap: 10px;">
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label>
@@ -519,13 +533,18 @@
                         <select id="endTime" onchange="refreshAvailability()"></select>
                     </div>
                 </div>
+                <!-- 📅 第三十三輪：歸還日期跟借用日期分開存，讓「借今天、隔天才還」這種跨日借用可以正確記錄。
+                     選好借用日期會自動帶入同一天，需要跨日歸還時再自己改成之後的日期（syncReturnDueDate()）。 -->
+                <div class="form-group"><label>歸還日期 <span style="font-weight:normal; color:#7f8c8d; font-size:12.5px;">（跨日借用才需要改成之後的日期）</span></label>
+                    <select id="returnDueDate"></select>
+                </div>
                 <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13px; line-height:1.7;"></div>
             </div>
 
             <div class="form-card">
-                <div class="form-card-title">📍 場地與聯絡資訊</div>
+                <div class="form-card-title">📍 場地與登記資訊</div>
                 <!-- 場地放在最上面、緊接在「剩餘設備」框下面：框裡會寫哪些場地已被預約，
-                     小組長看完馬上就能選場地，不用先填完姓名電話再往下找。 -->
+                     管理員看完馬上就能選場地，不用先填完負責人資料再往下找。 -->
                 <div class="form-group">
                     <label>借用場地</label>
                     <select id="location" onchange="checkRules()" required>
@@ -538,9 +557,15 @@
                     <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
                     <div class="toggle-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
                 </div>
+                <div class="form-group"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
+                <!-- 🔁 第三十三輪：拿掉聯絡電話，改成「小組」＋「設備組負責人」（值班同工從固定名單選，見 EQUIPMENT_LEADS） -->
                 <div class="pair-row">
-                    <div class="form-group" style="flex: 1; min-width: 0;"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
-                    <div class="form-group" style="flex: 1; min-width: 0;"><label>聯絡電話</label><input type="tel" id="leaderPhone" inputmode="numeric" maxlength="10" minlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" required></div>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>小組</label><input type="text" id="groupName" placeholder="例：青年小組" required></div>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>設備組負責人</label>
+                        <select id="equipmentLead" required>
+                            <option value="">請選擇...</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
@@ -571,6 +596,11 @@
                         <label><input type="radio" name="piano" value="需要"> <span id="pianoYesText">需要</span></label>
                         <label><input type="radio" name="piano" value="不需要" checked> <span id="pianoNoText">不需要</span></label>
                     </div>
+                    <!-- 🔁 第三十三輪（用戶確認後追加）：選「需要」才出現的鋼琴型號欄位，選填即可，
+                         不填也沒關係——Excel 匯出時型號有填就顯示型號文字，沒填只打勾。 -->
+                    <div class="hidden" id="pianoModelGroup" style="margin-top:8px;">
+                        <input type="text" id="pianoModel" maxlength="40" placeholder="鋼琴型號（選填，例：Roland FP-30X）">
+                    </div>
                     <div id="pianoHint" class="info-box"></div>
                 </div>
             </div>
@@ -583,21 +613,16 @@
                 </div>
             </div>
 
-            <div class="form-group" style="background: #f8f9fa; padding: 15px; border-radius: 6px; margin-top: 20px;">
-                <label style="font-weight: normal; color: #d9534f; font-size: 15px; display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="agreeRules" required>
-                    我已閱讀並同意 <span class="rules-link" onclick="event.preventDefault(); event.stopPropagation(); openModal();">設備借用守則</span>
-                </label>
-            </div>
-
-            <button type="submit" class="btn-submit">送出借用申請</button>
-            <button type="button" class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
+            <button type="submit" class="btn-submit">送出借用登記</button>
+            <button type="button" class="btn-back" onclick="showSection('adminSection')">返回後台</button>
         </form>
     </div>
 
     <div id="querySection" class="form-section">
         <h3 style="text-align: center; color: #9b59b6;">🔍 查詢借用與領取狀況</h3>
-        <div class="form-group"><label>請輸入當時填寫的聯絡電話</label><input type="tel" id="searchPhone" inputmode="numeric" maxlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" onkeydown="if(event.key==='Enter'){event.preventDefault(); queryRecords();}"></div>
+        <!-- 🔁 第三十三輪（用戶確認後追加）：改用「借用人姓名」查詢，不再比對電話——
+             新登記的借用單已經不收電話了，用電話查一定查不到。同名有好幾筆的話全部列出來，讓使用者自己挑。 -->
+        <div class="form-group"><label>請輸入借用人姓名查詢</label><input type="text" id="searchName" maxlength="30" placeholder="例：王小明" onkeydown="if(event.key==='Enter'){event.preventDefault(); queryRecords();}"></div>
         <button class="btn-submit" onclick="queryRecords()">查詢</button>
         <div id="queryResult" style="margin-top: 20px; overflow-x: auto;"></div>
         <button class="btn-back" onclick="showSection('homeMenu')">返回首頁</button>
@@ -607,9 +632,9 @@
         <h3 style="text-align: center; color: #e67e22;">🔄 填寫歸還單</h3>
 
         <div class="form-group" id="returnSearchBlock">
-            <label>請輸入借用時填寫的聯絡電話</label>
+            <label>請輸入借用人姓名查詢</label>
             <div style="display: flex; gap: 10px;">
-                <input type="tel" id="returnSearchPhone" inputmode="numeric" maxlength="10" placeholder="例：0912345678" oninput="digitsOnly(this)" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchUnreturned();}" style="flex: 1;">
+                <input type="text" id="returnSearchName" maxlength="30" placeholder="例：王小明" onkeydown="if(event.key==='Enter'){event.preventDefault(); searchUnreturned();}" style="flex: 1;">
                 <button type="button" class="btn-submit" style="margin-top: 0; width: auto; padding: 12px 20px;" onclick="searchUnreturned()">搜尋</button>
             </div>
         </div>
@@ -647,27 +672,33 @@
     <div id="adminSection" class="admin-section">
         <h3 style="color: #34495e; text-align: center;">📊 設備借還後台管理</h3>
         <div class="form-group" style="background: #eaf2f8; padding: 15px; border-radius: 8px;">
-            <label style="color: #2980b9;">📅 12月資料篩選</label>
+            <label style="color: #2980b9;">📅 資料篩選</label>
+            <!-- 第三十三輪：開放 11 月後多一個「11 月」整月篩選；12 月維持原本的四週篩選 -->
             <select id="adminWeekFilter" onchange="loadAdminData()">
                 <option value="">所有紀錄</option>
-                <option value="1">第一週 (12/1 - 12/7)</option>
-                <option value="2">第二週 (12/8 - 12/14)</option>
-                <option value="3">第三週 (12/15 - 12/21)</option>
-                <option value="4">第四週 (12/22 以後)</option>
+                <option value="nov">11 月</option>
+                <option value="1">12 月第一週 (12/1 - 12/7)</option>
+                <option value="2">12 月第二週 (12/8 - 12/14)</option>
+                <option value="3">12 月第三週 (12/15 - 12/21)</option>
+                <option value="4">12 月第四週 (12/22 以後)</option>
             </select>
         </div>
+        <!-- 📦 第三十三輪：借用改成由管理員（值班同工）在後台幫小組登記，這裡直接進借用表單 -->
+        <button class="btn-submit" style="margin-bottom:15px;" onclick="showSection('rulesSection')">📦 新增借用（幫小組登記）</button>
         <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
             <button class="btn-back" style="width: 48%; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
             <button class="btn-back" style="width: 48%; margin:0; background-color: #c0392b;" onclick="adminLogout()">登出管理員</button>
         </div>
+        <!-- 📊 第三十三輪：匯出 Excel 簽到簿（一週一個標題區，欄位對照紙本簽到單） -->
+        <button class="btn-back" id="btnExportExcel" style="margin-bottom:15px; background-color:#217346;" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
 
         <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
 
         <!-- 🔍 找借用紀錄：輸入電話（可以只打一部分）或名字（有兩個字對得上就列出來），點「跳到這筆」直接捲過去 -->
         <div class="search-box">
-            <div class="search-title">🔍 找借用紀錄 <span>輸入電話或名字，名字只要有兩個字對就找得到</span></div>
+            <div class="search-title">🔍 找借用紀錄 <span>輸入負責人姓名或小組名稱，兩個字對得上就找得到</span></div>
             <div class="search-row">
-                <input type="search" id="adminSearchInput" placeholder="例：0912345678、王大明" autocomplete="off"
+                <input type="search" id="adminSearchInput" placeholder="例：王大明、青年小組" autocomplete="off"
                        oninput="refreshAdminSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault(); refreshAdminSearch(); this.blur();}">
                 <button type="button" class="search-clear" onclick="clearAdminSearch()">清除</button>
             </div>
@@ -675,8 +706,6 @@
         </div>
 
         <div id="todoBox"></div>
-
-        <div id="inventoryBox"></div>
 
         <h4>⚠️ 未歸還清單</h4>
         <div id="unreturnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
@@ -713,44 +742,29 @@
         b.style.display = 'block';
     }
 
-    // 📞 電話統一去掉空白、括號與連字號，避免「0912-345-678」和「0912345678」查不到彼此
-    function normalizePhone(s) {
-        return String(s || '').replace(/[\s\-()+]/g, '');
+    // 🔁 第三十三輪（用戶確認後追加）：自助查詢／歸還改成用「借用人姓名」比對，不再收電話、
+    //    也不再比對電話——原本的電話比對邏輯（normalizePhone／digitsOnly／fetchMyRecords）整段拿掉。
+
+    // 🔒 會眾端一律透過受限的資料庫函式讀取，讀不到別人的完整紀錄。
+    //    若資料庫尚未建立 get_my_records_by_name 這支函式，自動退回舊的直接查詢，方便新舊版本並存
+    //    （正式環境要達到跟原本電話查詢一樣的保護效果，建議之後在 Supabase 也建立這支函式，
+    //    做法可以參考原本的 get_my_records(p_phone)，把比對條件換成 leader_name）。
+    // 📱 記住這台手機上次查詢用的姓名：查到紀錄時記下來，下次打開「查詢」「歸還」頁就自動帶入。
+    //    只存在這台手機的瀏覽器裡（無痕模式或瀏覽器擋掉儲存時會出錯，一律包 try/catch，不影響其他功能）。
+    const NAME_KEY = 'xmas2026_last_name';
+    function rememberName(name) {
+        try { if (String(name || '').trim()) localStorage.setItem(NAME_KEY, name.trim()); } catch (e) {}
+    }
+    function recallName() {
+        try { return localStorage.getItem(NAME_KEY) || ''; } catch (e) { return ''; }
     }
 
-    // 🔒 電話欄位防呆：邊打字邊過濾，只能輸入數字，最多 10 碼（台灣手機號碼位數）
-    function digitsOnly(input) {
-        let v = input.value.replace(/\D/g, '').slice(0, 10);
-        if (v !== input.value) input.value = v;
-    }
-
-    // 🔒 會眾端一律透過受限的資料庫函式讀取，讀不到別人的姓名與電話。
-    //    若資料庫尚未建立函式，自動退回舊的直接查詢，方便新舊版本並存。
-    // 📱 記住這支手機上次用的電話：借用成功、或查到紀錄時記下來，
-    //    下次打開「查詢」「歸還」頁就自動帶入，不用每次重打。只存在這台手機的瀏覽器裡。
-    //    （無痕模式或瀏覽器擋掉儲存時會出錯，一律包 try/catch，出錯就當作沒記住，不影響其他功能）
-    const PHONE_KEY = 'xmas2026_last_phone';
-    function rememberPhone(phone) {
-        try { if (/^\d{10}$/.test(phone)) localStorage.setItem(PHONE_KEY, phone); } catch (e) {}
-    }
-    function recallPhone() {
-        try { return localStorage.getItem(PHONE_KEY) || ''; } catch (e) { return ''; }
-    }
-
-    async function fetchMyRecords(phone) {
-        const lookup = async (p) => {
-            let r = await db.rpc('get_my_records', { p_phone: p });
-            if (!r.error) return { data: r.data || [], error: null };
-            return await db.from('borrow_records').select('*').eq('leader_phone', p);
-        };
-        let clean = normalizePhone(phone);
-        let res = await lookup(clean);
-        // 舊資料可能存成「0912-345-678」這種格式，正規化後查無資料時再用原字串試一次
-        if (!res.error && res.data.length === 0 && clean !== phone) {
-            let alt = await lookup(phone);
-            if (!alt.error && alt.data.length > 0) return alt;
-        }
-        return res;
+    async function fetchMyRecordsByName(name) {
+        let clean = String(name || '').trim();
+        let r = await db.rpc('get_my_records_by_name', { p_name: clean });
+        if (!r.error) return { data: r.data || [], error: null };
+        // 資料庫還沒有 get_my_records_by_name 這支函式時，退回直接查表（相容用）
+        return await db.from('borrow_records').select('*').eq('leader_name', clean);
     }
 
     async function fetchDayRecords(date) {
@@ -777,6 +791,10 @@
             showBanner('連線被瀏覽器或預覽環境封鎖：' + (e && e.message ? e.message : e));
         }
     });
+
+    // 🔧 設備組值班同工名單（第三十三輪）：借用表單「設備組負責人」下拉選單就是這份清單。
+    //    以後值班的人變動，只要改這一行陣列即可，不用改別的地方。
+    const EQUIPMENT_LEADS = ['小橘', '苡捷', '承燁'];
 
     const SPEAKER_TOTAL = 4;   // 喇叭總數
     const STAND_TOTAL = 6;     // 譜架總數
@@ -1346,54 +1364,59 @@
         </div>`;
     }
 
-    // 管理員的喇叭分配介面
-    //    每組理論上只借 1 台（前端申請表只有是/否，沒有數量欄位），
-    //    所以這裡不硬性限制勾選數量（保留真的需要 2 台以上的彈性），
-    //    但會把會眾備註搬到勾選框正上方、並在勾超過 1 台時跳出提醒，
-    //    讓管理員在分配的當下就能核對，而不是分配完才發現不對。
+    // 管理員的喇叭分配介面（第三十三輪：拿掉手動勾選 A/B/C/MA707，改成系統自動分配）
+    //    新的借用單在送出時（submitBorrow）就已經自動分配過一次，這裡主要用在：
+    //    1) 分配好的機台顯示＋「重新分配」；2) 送出當下剛好沒有空機台、留白待分配的補救；
+    //    3) 第三十三輪之前建立、還沒有機台編號的舊資料。
+    //    找不到空機台時清楚標「❓ 沒有空的機台」，不會讓管理員以為系統壞掉、什麼都沒發生。
     function speakerAssignUI(item, allRecords) {
         let assigned = normalizeAssignedList(item.ma303_assigned);
         if (assigned.length > 0) {
             return `<b style="color:#27ae60;">${assigned.join('、')}</b><br>
-                <button onclick="resetAssign(${item.id})" style="font-size:11px; padding:2px 6px; margin-top:4px; cursor:pointer; border:1px solid #ccc; border-radius:4px; background:#f9f9f9;">重新分配</button>`;
+                <button onclick="autoAssignSpeakerFor(${item.id})" style="font-size:11px; padding:2px 6px; margin-top:4px; cursor:pointer; border:1px solid #ccc; border-radius:4px; background:#f9f9f9;">🔄 重新分配</button>`;
         }
         let busy = busyUnits(allRecords, item);
-        const units = [['sp_A', 'MA303 編號A', 'A'], ['sp_B', 'MA303 編號B', 'B'], ['sp_C', 'MA303 編號C', 'C'], ['sp_707', 'MA707', '707']];
-        let boxes = units.map(u => {
-            let taken = busy.has(u[1]);
-            return `<label style="font-weight:normal; display:inline-block; margin-right:8px; ${taken ? 'color:#c0392b; text-decoration:line-through;' : ''}" title="${taken ? '此時段已被其他小組使用' : ''}">
-                <input type="checkbox" id="${u[0]}_${item.id}" onchange="checkSpeakerCount(${item.id})" ${taken ? 'disabled' : ''}> ${u[2]}</label>`;
-        }).join('');
+        let free = SPEAKER_UNITS.filter(u => !busy.has(u));
         let noteHint = item.notes
-            ? `<div style="color:#8e44ad; margin-bottom:4px;">💬 會眾備註：${noteHtml(item.notes)}</div>`
+            ? `<div style="color:#8e44ad; margin-bottom:4px;">💬 備註：${noteHtml(item.notes)}</div>`
             : '';
-        let allTaken = units.every(u => busy.has(u[1]));
-        let takenHint = allTaken
-            ? `<div style="color:#c0392b; background:#fdecea; border-radius:4px; padding:4px 6px; margin:4px 0;">⛔ 這個時段 4 台都已分配給其他小組。請先到重疊時段的小組按「重新分配」少分一台，或用「✏️ 編輯」幫這組改時間。</div>`
-            : '';
+        if (free.length === 0) {
+            // ❓ 這個時段四台都被佔走了：不是系統壞掉，是真的沒機台可分配，請管理員人工協調
+            return `<div style="font-size:11px; background:#fdecea; padding:6px; border-radius:4px; border:1px solid #f1b0a8; margin-top:2px; color:#a02622;">
+                ${noteHint}<b>❓ 沒有空的機台</b><br>
+                <span style="font-weight:normal;">這個時段 4 台都已分配給其他小組，請調整時段或請其他組換機台後再試。</span>
+            </div>`;
+        }
         return `<div style="font-size:11px; background:#fff; padding:6px; border-radius:4px; border:1px solid #ddd; margin-top:2px;">
-            <span style="color:#e74c3c; font-weight:bold;">待分配機台</span> <span style="color:#95a5a6;">（一般每組 1 台）</span><br>
-            ${noteHint}${takenHint}${boxes}
-            <div id="speakerWarn_${item.id}" style="display:none; color:#e67e22; font-weight:bold; margin-top:4px;">⚠️ 已勾選 <span id="speakerCount_${item.id}"></span> 台，請確認會眾是否真的需要這麼多</div>
-            <button onclick="assignSpeaker(${item.id}, '${item.borrow_date}', '${item.start_time}', '${item.end_time}')" style="margin-top:5px; cursor:pointer; font-size:11px; background:#34495e; color:white; border:none; padding:4px 8px; border-radius:3px;">確認分配</button>
+            <span style="color:#e74c3c; font-weight:bold;">⏳ 尚未分配</span><br>
+            ${noteHint}
+            <button onclick="autoAssignSpeakerFor(${item.id})" style="margin-top:5px; cursor:pointer; font-size:11px; background:#34495e; color:white; border:none; padding:4px 8px; border-radius:3px;">⚡ 自動分配（${free[0].replace('MA303 編號', 'A/B/C ').replace('MA707', 'MA707')}）</button>
         </div>`;
     }
 
-    // 勾選框數量即時檢查：超過 1 台就跳出提醒（不阻擋送出，只是提醒管理員多看一眼）
-    function checkSpeakerCount(id) {
-        const prefixes = ['sp_A', 'sp_B', 'sp_C', 'sp_707'];
-        let count = prefixes.filter(p => {
-            let el = document.getElementById(`${p}_${id}`);
-            return el && el.checked;
-        }).length;
-        let warn = document.getElementById(`speakerWarn_${id}`);
-        if (!warn) return;
-        if (count > 1) {
-            document.getElementById(`speakerCount_${id}`).textContent = count;
-            warn.style.display = 'block';
-        } else {
-            warn.style.display = 'none';
+    // ⚡ 系統自動分配下一台空著的機台（依 SPEAKER_UNITS 順序：MA303 編號A→B→C→MA707），
+    //    用在「重新分配」與送出時沒分配到、之後補分配的情況；找不到空機台會清楚提醒。
+    async function autoAssignSpeakerFor(id) {
+        if (!requireDb()) return;
+        let item = adminRecordMap[id];
+        if (!item) { alert('找不到這筆資料，請先按「🔄 重新整理」'); return; }
+        showLoading('計算可用機台中...');
+        const { data: fetched, error } = await db.from('borrow_records').select('*').eq('borrow_date', item.borrow_date).neq('id', id);
+        if (error) { hideLoading(); alert('系統連線失敗'); return; }
+        let others = (fetched || []).filter(r => r.id !== id && String(r.borrow_date) === String(item.borrow_date));
+        let busy = busyUnits(others, item);
+        let free = SPEAKER_UNITS.filter(u => !busy.has(u));
+        if (free.length === 0) {
+            hideLoading();
+            alert('❓ 這個時段目前沒有空的機台，請人工協調（例如請重疊時段的其他組換時段，或用「✏️ 編輯」幫這組改時間）。');
+            return;
         }
+        let pick = free[0];
+        showLoading('儲存中...');
+        const { error: upErr } = await db.from('borrow_records').update({ ma303_assigned: pick, ma303: '1', ma707: '0' }).eq('id', id);
+        hideLoading();
+        if (upErr) { alert('分配失敗：' + upErr.message); return; }
+        setTimeout(() => { alert(`✅ 已自動分配：${pick}`); loadAdminData(); }, 100);
     }
 
     // 🔙 讓手機/瀏覽器原生的「上一頁」可以在這些區塊之間切換，不用每次都按「返回首頁」。
@@ -1411,10 +1434,10 @@
         if (sectionId === 'homeMenu') document.getElementById('homeMenu').style.display = 'flex';
         else document.getElementById(sectionId).style.display = 'block';
 
-        // 查詢頁：打開時如果電話欄是空的，自動帶入這支手機上次用的電話
+        // 查詢頁：打開時如果姓名欄是空的，自動帶入這台手機上次查詢用的姓名
         if (sectionId === 'querySection') {
-            let q = document.getElementById('searchPhone');
-            if (!q.value) q.value = recallPhone();
+            let q = document.getElementById('searchName');
+            if (!q.value) q.value = recallName();
         }
 
         // 後台畫面在寬螢幕時放寬容器（見上方 CSS），其他頁面維持原本手機優先的窄版面
@@ -1471,6 +1494,7 @@
             pianoSec.classList.add("hidden");
             document.querySelector('input[name="piano"][value="不需要"]').checked = true;
         }
+        syncPianoModelVisibility();
 
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
         applyStandLimit();   // 換場地時譜架跟著鎖／開（兒主本來就有譜架）
@@ -1561,7 +1585,20 @@
         if (e.target && e.target.matches && e.target.matches('.toggle-group input[type="radio"]')) {
             syncToggles();
         }
+        // 🔁 第三十三輪（用戶確認後追加）：借用表單選「需要」鋼琴時才顯示鋼琴型號欄位
+        if (e.target && e.target.matches && e.target.matches('input[name="piano"]')) {
+            syncPianoModelVisibility();
+        }
     });
+
+    // 鋼琴型號欄位只在選「需要」鋼琴時出現，選填即可；切成「不需要」或換場地時清空、收起來
+    function syncPianoModelVisibility() {
+        let checked = document.querySelector('input[name="piano"]:checked');
+        let need = checked && checked.value === '需要';
+        let grp = document.getElementById('pianoModelGroup');
+        if (grp) grp.classList.toggle('hidden', !need);
+        if (!need) { let m = document.getElementById('pianoModel'); if (m) m.value = ''; }
+    }
 
     let availToken = 0;
     async function refreshAvailability() {
@@ -1687,15 +1724,47 @@
     const TIME_FIRST = 8;      // 最早 08:00（使用者指定早上 8 點到晚上 10 點）
     const TIME_LAST = 22;      // 最晚 22:00（借用時間最晚 21:30，歸還時間最晚 22:00）
 
+    // 📅 第三十三輪：開放的月份，從「只有 12 月」改成「11 月＋12 月」。
+    //    以後要再開放別的月份，改這個陣列（{y, m, days}）就好，其他用到日期範圍的地方
+    //    （送出檢查、編輯視窗檢查、週次篩選的月份判斷）都共用 isAllowedDate()。
+    const ALLOWED_MONTHS = [
+        { y: 2026, m: 11, days: 30 },
+        { y: 2026, m: 12, days: 31 }
+    ];
+    function isAllowedDate(dateStr) {
+        let parts = String(dateStr || '').split('-');
+        if (parts.length !== 3) return false;
+        let y = parseInt(parts[0], 10), m = parseInt(parts[1], 10);
+        return ALLOWED_MONTHS.some(x => x.y === y && x.m === m);
+    }
+
     function fillDateOptions(selectId) {
         let sel = document.getElementById(selectId);
         if (!sel) return;
         let html = '<option value="">請選擇日期</option>';
-        for (let d = 1; d <= 31; d++) {
-            let v = `2026-12-${String(d).padStart(2, '0')}`;
-            html += `<option value="${v}">${formatDateLabel(v)}</option>`;
-        }
+        ALLOWED_MONTHS.forEach(({ y, m, days }) => {
+            for (let d = 1; d <= days; d++) {
+                let v = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                html += `<option value="${v}">${formatDateLabel(v)}</option>`;
+            }
+        });
         sel.innerHTML = html;
+    }
+
+    // 📅 歸還日期跟著借用日期走：選了借用日期時，如果歸還日期還沒選、或選在借用日期「之前」，
+    //    自動帶成跟借用日期同一天（一般都是當天借當天還）；已經自己改成之後日期的不會被蓋掉。
+    function syncReturnDueDate() {
+        let bd = document.getElementById('borrowDate');
+        let rd = document.getElementById('returnDueDate');
+        if (!bd || !rd) return;
+        if (!rd.value || (bd.value && rd.value < bd.value)) rd.value = bd.value;
+    }
+    // 編輯視窗版本：同樣邏輯，只是欄位換成 editDate／editReturnDueDate
+    function syncEditReturnDueDate() {
+        let bd = document.getElementById('editDate');
+        let rd = document.getElementById('editReturnDueDate');
+        if (!bd || !rd) return;
+        if (!rd.value || (bd.value && rd.value < bd.value)) rd.value = bd.value;
     }
 
     // kind = 'start'（08:00–21:30）或 'end'（08:30–22:00）
@@ -1741,26 +1810,26 @@
     async function queryRecords(opts) {
         if (!requireDb()) return;
         opts = opts || {};
-        var phone = document.getElementById('searchPhone').value;
-        if(!phone) { alert('請輸入電話號碼'); return; }
+        var name = document.getElementById('searchName').value.trim();
+        if(!name) { alert('請輸入借用人姓名'); return; }
         document.getElementById('queryResult').innerHTML = "查詢中...";
 
         try {
-            const { data, error } = await fetchMyRecords(phone);
+            const { data, error } = await fetchMyRecordsByName(name);
             if(error) { document.getElementById('queryResult').innerHTML = "查詢失敗"; return; }
-            if(data.length === 0) { document.getElementById('queryResult').innerHTML = "找不到此電話的借用紀錄。"; return; }
-            rememberPhone(normalizePhone(phone));
+            if(data.length === 0) { document.getElementById('queryResult').innerHTML = "找不到此姓名的借用紀錄。"; return; }
+            rememberName(name);
             data.sort((a, b) => String(b.borrow_date).localeCompare(String(a.borrow_date)));
 
             let jb = opts.justBooked;
-            // 剛剛申請的那筆：同日期、同開始時間、同場地（同一支電話不會有兩筆完全一樣的）
+            // 剛剛申請的那筆：同日期、同開始時間、同場地（同名同時段兩筆一樣的機率很低，跟原本電話比對邏輯一致）
             const isJustBooked = (item) => jb && String(item.borrow_date) === jb.date
                 && String(item.start_time).slice(0, 5) === String(jb.start).slice(0, 5) && item.location === jb.loc;
             let html = '';
             if (jb) {
                 html += `<div class="booked-banner">
                     <div class="bb-title">✅ 申請成功！</div>
-                    <div class="bb-sub">下面是這支電話的借用紀錄，剛剛申請的那筆標了「🆕 剛剛申請」。</div>
+                    <div class="bb-sub">下面是這個姓名的借用紀錄，剛剛申請的那筆標了「🆕 剛剛申請」。</div>
                     <div class="bb-remind">📸 <b>借用當天記得再回來「查詢」</b>，管理員會上傳<b>設備放在哪裡的照片</b>，照著照片去拿設備就可以了。</div>
                 </div>`;
             }
@@ -1800,12 +1869,24 @@
         }
     }
 
-    async function checkAdminAccess() {
+    // 🔁 第三十三輪：「借用設備」也改成要先登入。loginPendingTarget 記住登入成功後要去哪一頁：
+    //    從首頁「登入後台」進來 → 去後台總覽；從「借用設備」進來 → 直接去借用需知／借用表單。
+    let loginPendingTarget = 'adminSection';
+    function goAfterLogin() {
+        let target = loginPendingTarget || 'adminSection';
+        loginPendingTarget = 'adminSection';
+        if (target === 'adminSection') { showSection('adminSection'); loadAdminData(); }
+        else { showSection(target); }
+    }
+    async function checkAdminAccess(target) {
         if (!requireDb()) return;
+        loginPendingTarget = target || 'adminSection';
         const { data: { session } } = await db.auth.getSession();
-        if (session) { showSection('adminSection'); loadAdminData(); }
+        if (session) { goAfterLogin(); }
         else { document.getElementById('loginModal').style.display = 'flex'; }
     }
+    // 「借用設備」按鈕用這個：已登入就直接去借用需知，沒登入就先跳出登入視窗
+    function requireLoginThen(target) { checkAdminAccess(target); }
 
     async function adminLogin() {
         if (!requireDb()) return;
@@ -1813,7 +1894,7 @@
         var password = document.getElementById('adminPassword').value;
         const { error } = await db.auth.signInWithPassword({ email: email, password: password });
         if (error) { alert("登入失敗：" + error.message); }
-        else { document.getElementById('loginModal').style.display = 'none'; showSection('adminSection'); loadAdminData(); }
+        else { document.getElementById('loginModal').style.display = 'none'; goAfterLogin(); }
     }
 
     async function adminLogout() { if (db) await db.auth.signOut(); showSection('homeMenu'); }
@@ -1867,98 +1948,8 @@
         }
     }
 
-    // 🔈 管理員分配喇叭機台
-    async function assignSpeaker(id, date, start, end) {
-        if (!requireDb()) return;
-        let selected = [];
-        if (document.getElementById(`sp_A_${id}`).checked) selected.push('MA303 編號A');
-        if (document.getElementById(`sp_B_${id}`).checked) selected.push('MA303 編號B');
-        if (document.getElementById(`sp_C_${id}`).checked) selected.push('MA303 編號C');
-        if (document.getElementById(`sp_707_${id}`).checked) selected.push('MA707');
-
-        if (selected.length === 0) { alert('請至少勾選一台要分配的喇叭！'); return; }
-
-        showLoading("檢查時段衝突與儲存中...");
-
-        try {
-            let startFloat = timeToFloat(start);
-            let endFloat = timeToFloat(end);
-
-            const { data: fetched, error } = await db.from('borrow_records').select('*').eq('borrow_date', date).neq('id', id);
-            if (error) { hideLoading(); alert("系統連線失敗"); return; }
-            // 再保險過濾一次：只留同一天、而且不是自己的紀錄
-            let records = (fetched || []).filter(r => r.id !== id && String(r.borrow_date) === String(date));
-
-            let shortage = null;   // 分配這麼多台之後，同時段其他組會不會不夠用（只提醒、不硬擋）
-            let waitingAll = new Set();
-            for (let t = startFloat; t < endFloat; t += 0.5) {
-                let timeStr = `${floatToTimeStr(t)}-${floatToTimeStr(t + 0.5)}`;
-                let usedThisSlot = [];
-                let othersNeed = 0, waiting = [];
-                for (let rec of records) {
-                    if (!rec.start_time || !rec.end_time) continue;
-                    let rStart = timeToFloat(rec.start_time);
-                    let rEnd = timeToFloat(rec.end_time);
-                    if (rStart <= t && rEnd > t) {
-                        usedThisSlot.push(...normalizeAssignedList(rec.ma303_assigned));
-                        othersNeed += speakerUsage(rec);
-                        if (!rec.is_returned && speakerUsage(rec) > 0 && normalizeAssignedList(rec.ma303_assigned).length === 0) {
-                            waiting.push(`${rec.leader_name}（${rec.location} ${rec.start_time}-${rec.end_time}）`);
-                        }
-                    }
-                }
-                for (let sel of selected) {
-                    if (usedThisSlot.includes(sel)) {
-                        hideLoading();
-                        alert(`⛔ 衝突！${timeStr} 的「${sel}」已經分配給其他小組了。\n請改選其他機台。`);
-                        return;
-                    }
-                }
-                if (selected.length + othersNeed > SPEAKER_TOTAL && waiting.length > 0) {
-                    if (!shortage) shortage = { timeStr };
-                    waiting.forEach(w => waitingAll.add(w));
-                }
-            }
-            if (shortage) shortage.waiting = [...waitingAll];
-
-            // ⚠️ 多分配會讓同時段還沒分配到機台的小組沒有機台可用：先提醒，管理員確認後才分配
-            if (shortage) {
-                hideLoading();
-                let ok = confirm(`⚠️ 提醒：${shortage.timeStr} 同時段還有以下小組申請了喇叭、但還沒分配機台：\n\n` +
-                    shortage.waiting.map(w => '・' + w).join('\n') +
-                    `\n\n這次分配 ${selected.length} 台之後，剩下的機台會不夠分給他們。\n確定還是要分配嗎？`);
-                if (!ok) return;
-                showLoading("儲存中...");
-            }
-
-            // 分配幾台就把數量寫回 ma303（ma707 歸零，總數統一記在 ma303），
-            // 這樣會眾端計算「還剩幾台」時，就會知道這組實際佔用了幾台，不會以為還借得到。
-            const { error: updateError } = await db.from('borrow_records').update({
-                ma303_assigned: selected.join(', '),
-                ma303: String(selected.length),
-                ma707: '0'
-            }).eq('id', id);
-            hideLoading();
-            if (updateError) { alert("分配失敗：" + updateError.message); }
-            else {
-                setTimeout(() => { alert(`分配成功！\n已指定：${selected.join('、')}\n該小組可於「查詢我的借用狀況」看到。`); loadAdminData(); }, 100);
-            }
-        } catch (e) {
-            hideLoading();
-            alert("發生錯誤：" + e.message);
-        }
-    }
-
-    async function resetAssign(id) {
-        if (!requireDb()) return;
-        if (confirm("確定要清除並重新分配機台嗎？")) {
-            showLoading("重設分配狀態中...");
-            // 清掉分配後回到「申請 1 台、待分配」的狀態（多分配時寫回的台數也一併還原）
-            await db.from('borrow_records').update({ ma303_assigned: null, ma303: '1', ma707: '0' }).eq('id', id);
-            hideLoading();
-            loadAdminData();
-        }
-    }
+    // 🔈 第三十三輪：喇叭改成系統自動分配（見 autoAssignSpeakerFor()），
+    //    這裡原本是管理員手動勾選機台的 assignSpeaker()／resetAssign()，已經移除。
 
     function addDaysStr(dateStr, n) {
         let d = new Date(`${dateStr}T00:00:00Z`);
@@ -2163,15 +2154,21 @@
         let recs = Object.values(adminRecordMap);
         let found;
         if (/^\d+$/.test(q)) {
+            // 電話欄位第三十三輪起已經不再收集，這條路只用來找還留有舊電話資料的紀錄（相容用）
             if (q.length < 3) return { list: [], hint: '電話請至少輸入 3 個數字' };
             found = recs.filter(r => String(r.leader_phone || '').includes(q))
                         .map(r => ({ r, rank: r.leader_phone === q ? 0 : 1, hit: 0 }));
         } else {
-            if ([...q].length < 2) return { list: [], hint: '名字請至少輸入 2 個字' };
+            if ([...q].length < 2) return { list: [], hint: '名字或小組請至少輸入 2 個字' };
+            // 負責人姓名、小組名稱都可以搜（兩邊取比較好的比對結果）
             found = recs.map(r => {
                 let n = normText(r.leader_name);
-                let hit = commonChars(q, n);
-                let rank = n === q ? 0 : (n.includes(q) ? 1 : (hit >= 2 ? 2 : 9));
+                let g = normText(r.group_name);
+                let nHit = commonChars(q, n), gHit = commonChars(q, g);
+                let nRank = n === q ? 0 : (n.includes(q) ? 1 : (nHit >= 2 ? 2 : 9));
+                let gRank = g === q ? 0 : (g && g.includes(q) ? 1 : (gHit >= 2 ? 2 : 9));
+                let rank = Math.min(nRank, gRank);
+                let hit = rank === nRank ? nHit : gHit;
                 return { r, rank, hit };
             }).filter(x => x.rank < 9);
         }
@@ -2212,7 +2209,7 @@
             html += `<div class="sr-item">
                 <div class="sr-main">
                     <div><b>📅 ${formatDateLabel(r.borrow_date)} ${r.start_time}–${r.end_time}</b>　📍 ${escapeHtml(r.location)} ${status}</div>
-                    <div>👤 ${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　📞 ${res.phone ? markMatch(r.leader_phone, res.q, true) : escapeHtml(r.leader_phone)}</div>
+                    <div>👤 ${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　🏷️ ${res.phone ? escapeHtml(r.group_name || '—') : markMatch(r.group_name || '—', res.q, false)}　🎧 ${escapeHtml(r.equipment_lead || '—')}</div>
                 </div>
                 <div class="sr-actions">
                     <button type="button" class="go" onclick="jumpToRecord(${r.id})">📍 跳到這筆</button>
@@ -2297,6 +2294,21 @@
         return item ? `${item.leader_name}｜${formatDateLabel(item.borrow_date)} ${item.start_time}-${item.end_time}｜${item.location}` : '';
     }
 
+    // 🏷️ 第三十三輪：後台顯示「小組」＋「設備組負責人」（取代原本的聯絡電話）。
+    //    舊資料（round 33 之前）沒有這兩個欄位時顯示「—」，不會噴 undefined。
+    function groupLeadLine(item) {
+        let g = escapeHtml(item.group_name || '—');
+        let l = escapeHtml(item.equipment_lead || '—');
+        return `<span>🏷️ ${g}</span><span>🎧 ${l}</span>`;
+    }
+
+    // 📅 借用日期跟歸還日期不同一天時（跨日借用），額外顯示「→ 12/3 歸還」提醒管理員
+    function dueDateBadge(item) {
+        let due = item.return_due_date;
+        if (!due || String(due) === String(item.borrow_date)) return '';
+        return `<span class="bk-badge" style="background:#eaf4fc; color:#2471a3;">→ ${formatDateLabel(due)} 歸還</span>`;
+    }
+
     async function adminMarkReturned(id) {
         if (!requireDb()) return;
         let note = prompt(`✅ 代為標記歸還\n${recordLabel(adminRecordMap[id])}\n\n` +
@@ -2345,15 +2357,20 @@
         setSelectValue('editStart', item.start_time);
         setSelectValue('editEnd', item.end_time);
         syncEndTimeOptions('editStart', 'editEnd');
+        // 歸還日期：舊資料沒有 return_due_date 欄位時，當作跟借用日期同一天（相容第三十三輪之前的資料）
+        setSelectValue('editReturnDueDate', item.return_due_date || item.borrow_date, formatDateLabel(item.return_due_date || item.borrow_date));
         document.getElementById('editLocation').value = item.location || '交誼廳';
         document.getElementById('editName').value = item.leader_name || '';
-        document.getElementById('editPhone').value = item.leader_phone || '';
+        document.getElementById('editGroup').value = item.group_name || '';
+        setSelectValue('editLead', item.equipment_lead || '');
         setRadio('editSpeaker', speakerUsage(item) > 0 ? '是' : '否');
         let stand = String(parseInt(item.music_stand) || 0);
         let standSel = document.getElementById('editStand');
         standSel.value = stand;
         if (standSel.value !== stand) standSel.value = '0';
         setRadio('editPiano', item.piano === '是' ? '是' : '無');
+        document.getElementById('editPianoModel').value = item.piano_model || '';
+        syncEditPianoModelVisibility();
         setRadio('editTech', item.need_tech === '是' ? '是' : '否');
         document.getElementById('editNotes').value = item.notes || '';
 
@@ -2367,6 +2384,20 @@
 
     function closeEdit() { document.getElementById('editModal').style.display = 'none'; }
 
+    // 編輯視窗的鋼琴型號欄位只在「會使用／需要」鋼琴時出現，跟借用表單那顆邏輯一樣
+    function syncEditPianoModelVisibility() {
+        let checked = document.querySelector('input[name="editPiano"]:checked');
+        let need = checked && checked.value === '是';
+        let grp = document.getElementById('editPianoModelGroup');
+        if (grp) grp.classList.toggle('hidden', !need);
+        if (!need) { let m = document.getElementById('editPianoModel'); if (m) m.value = ''; }
+    }
+    document.addEventListener('change', function (e) {
+        if (e.target && e.target.matches && e.target.matches('input[name="editPiano"]')) {
+            syncEditPianoModelVisibility();
+        }
+    });
+
     // 依場地顯示／隱藏鋼琴與音控題目（規則同借用表單的 checkRules）
     function syncEditVenueFields() {
         let loc = document.getElementById('editLocation').value;
@@ -2377,6 +2408,7 @@
         document.getElementById('editPianoYes').textContent = needSetup ? '需要' : '會使用';
         document.getElementById('editPianoNo').textContent = needSetup ? '不需要' : '不使用';
         if (!hasPiano) setRadio('editPiano', '無');
+        syncEditPianoModelVisibility();
         let hasTech = (loc === '兒主' || loc === '幼主');
         document.getElementById('editTechGroup').style.display = hasTech ? '' : 'none';
         let standSel = document.getElementById('editStand');
@@ -2397,22 +2429,28 @@
         let date = document.getElementById('editDate').value;
         let start = document.getElementById('editStart').value;
         let end = document.getElementById('editEnd').value;
+        let returnDueDate = document.getElementById('editReturnDueDate').value || date;
         let loc = document.getElementById('editLocation').value;
         let name = document.getElementById('editName').value.trim();
-        let phone = normalizePhone(document.getElementById('editPhone').value);
+        let groupName = document.getElementById('editGroup').value.trim();
+        let equipmentLead = document.getElementById('editLead').value;
         let wantSpeaker = radioValue('editSpeaker') === '是';
         let stand = parseInt(document.getElementById('editStand').value, 10) || 0;
         let piano = radioValue('editPiano') === '是' ? '是' : '無';
+        let pianoModel = piano === '是' ? document.getElementById('editPianoModel').value.trim() : '';
         let tech = radioValue('editTech') === '是' ? '是' : '否';
         let notes = document.getElementById('editNotes').value;
 
-        if (!/^2026-12-\d{2}$/.test(date)) { alert('日期必須在 2026 年 12 月內。'); return; }
+        if (!isAllowedDate(date)) { alert('借用日期超出開放範圍。'); return; }
         if (!start || !end) { alert('請填寫借用與歸還時間。'); return; }
         if (!/:(00|30)$/.test(start) || !/:(00|30)$/.test(end)) { alert('時間請以半小時為單位（例如 14:00、14:30）。'); return; }
         let s = timeToFloat(start), e = timeToFloat(end);
         if (s >= e) { alert('歸還時間必須晚於借用時間！'); return; }
+        if (!isAllowedDate(returnDueDate)) { alert('歸還日期超出開放範圍。'); return; }
+        if (returnDueDate < date) { alert('歸還日期不能早於借用日期。'); return; }
         if (!name) { alert('請填寫負責人。'); return; }
-        if (!/^\d{10}$/.test(phone)) { alert('聯絡電話請填寫 10 碼數字。'); return; }
+        if (!groupName) { alert('請填寫小組名稱。'); return; }
+        if (!equipmentLead) { alert('請選擇設備組負責人。'); return; }
 
         showLoading('檢查時段衝突中...');
         try {
@@ -2445,10 +2483,10 @@
             let speakerCount = !wantSpeaker ? 0 : (newAssigned ? normalizeAssignedList(newAssigned).length : 1);
 
             const { error: upErr } = await db.from('borrow_records').update({
-                borrow_date: date, start_time: start, end_time: end, location: loc,
-                leader_name: name, leader_phone: phone, need_tech: tech,
+                borrow_date: date, start_time: start, end_time: end, return_due_date: returnDueDate, location: loc,
+                leader_name: name, group_name: groupName, equipment_lead: equipmentLead, need_tech: tech,
                 ma303: String(speakerCount), ma707: '0', ma303_assigned: newAssigned,
-                music_stand: String(stand), piano: piano, notes: notes
+                music_stand: String(stand), piano: piano, piano_model: pianoModel, notes: notes
             }).eq('id', id);
             hideLoading();
             if (upErr) { alert('儲存失敗：' + upErr.message); return; }
@@ -2694,8 +2732,8 @@
                     : `<label class="upload-label">上傳照片<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`;
                 html += `<div class="bk-card${overdue ? ' overdue' : ''}" data-id="${item.id}">
                     <div class="bk-top"><span class="bk-time">🕐 ${item.start_time}–${item.end_time}</span><span class="bk-venue">📍 ${item.location}</span></div>
-                    <div class="bk-person"><span>👤 ${item.leader_name}</span><a href="tel:${item.leader_phone}">📞 ${item.leader_phone}</a></div>
-                    ${badges ? `<div>${badges}</div>` : ''}
+                    <div class="bk-person"><span>👤 ${item.leader_name}</span>${groupLeadLine(item)}</div>
+                    ${badges || dueDateBadge(item) ? `<div>${badges}${dueDateBadge(item)}</div>` : ''}
                     ${hasNote(item) ? `<div class="bk-note">📝 <b>備註：</b>${noteHtml(item.notes)}</div>` : ''}
                     ${extraBlock(item)}
                     <div class="bk-equip">
@@ -2730,7 +2768,7 @@
             if ((parseInt(item.music_stand) || 0) > 0) equip.push(`🎼 譜架 ${item.music_stand} 個`);
             cards += `<div class="bk-card bk-returned" data-id="${item.id}">
                 <div class="bk-top"><b>📅 ${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}</b><span class="bk-venue">📍 ${item.location}</span></div>
-                <div class="bk-person"><span>👤 ${item.leader_name}</span><span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</span></div>
+                <div class="bk-person"><span>👤 ${item.leader_name}</span>${groupLeadLine(item)}<span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</span></div>
                 ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
                 ${returnedExtraLines(item).length ? `<div class="ret-extra">${returnedExtraLines(item).join('<br>')}</div>` : ''}
                 <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員代為歸還</span>' : ''}
@@ -2760,16 +2798,15 @@
         records.forEach(r => { adminRecordMap[r.id] = r; });   // 給「編輯」「代為歸還」視窗查資料用
         renderTodo(records);        // 📌 待辦事項：用全部資料，不受週次篩選影響
         refreshAdminSearch();       // 🔍 搜尋框有字的話，用最新資料重新找一次（例如剛編輯完）
-        // 📦 設備總結算：跟著上面的週次篩選走（選第一週就只算第一週的借用；「所有紀錄」就算全部）
-        let weekSel = document.getElementById("adminWeekFilter");
-        renderInventory(weekFilter ? records.filter(passFilter) : records,
-                        weekFilter ? weekSel.options[weekSel.selectedIndex].text : '');
 
+        // 🔁 第三十三輪：開放 11 月後，週次篩選的「12 月第幾週」選項維持不變（11 月的資料量還很少，
+        //    暫時只用新增的「11 月」整月篩選；月份判斷從「只認 12 月」改成 isAllowedDate() 涵蓋的月份）。
         function passFilter(item) {
             if (weekFilter === '' || !item.borrow_date) return true;
             let parts = item.borrow_date.split('-');
             if (parts.length !== 3) return true;
             let month = parseInt(parts[1], 10), day = parseInt(parts[2], 10);
+            if (weekFilter === 'nov') return month === 11;
             if (month !== 12) return false;
             if (weekFilter === '1') return day >= 1 && day <= 7;
             if (weekFilter === '2') return day >= 8 && day <= 14;
@@ -2836,7 +2873,7 @@
                         <th>時間</th>
                         <th>場地</th>
                         <th>聯絡人</th>
-                        <th>電話</th>
+                        <th>小組／設備組負責人</th>
                         <th>喇叭</th>
                         <th>譜架</th>
                         <th>鋼琴</th>
@@ -2868,11 +2905,14 @@
                         ? speakerAssignUI(item, records)
                         : '<span style="color:#ccc;">—</span>';
 
+                    let dueBadgeCell = item.return_due_date && String(item.return_due_date) !== String(item.borrow_date)
+                        ? `<br><span style="display:inline-block; background:#eaf4fc; color:#2471a3; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin-top:3px;">→ ${formatDateLabel(item.return_due_date)} 歸還</span>`
+                        : '';
                     unreturnedHtml += `<tr data-id="${item.id}"${overdue ? ' style="background:#fdf1ef;"' : ''}>
-                            <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}</td>
+                            <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}${dueBadgeCell}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
                             <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}${extraBlock(item)}</td>
-                            <td style="white-space:nowrap;">📞 ${item.leader_phone}</td>
+                            <td style="white-space:normal;">🏷️ ${escapeHtml(item.group_name || '—')}<br>🎧 ${escapeHtml(item.equipment_lead || '—')}</td>
                             <td style="white-space:normal;">${speakerAdmin}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
@@ -2939,7 +2979,7 @@
                             <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
-                            <td style="white-space:nowrap;">👤 ${item.leader_name}</td>
+                            <td style="white-space:normal;">👤 ${item.leader_name}<br><span style="color:#7f8c8d; font-size:11.5px;">🏷️ ${escapeHtml(item.group_name || '—')}／🎧 ${escapeHtml(item.equipment_lead || '—')}</span></td>
                             <td style="white-space:normal;">${speakerCell(item)}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
@@ -2979,28 +3019,31 @@
             var date = document.getElementById("borrowDate").value;
             var startTime = document.getElementById("startTime").value;
             var endTime = document.getElementById("endTime").value;
+            var returnDueDate = document.getElementById("returnDueDate").value;
             var loc = document.getElementById("location").value;
             var name = document.getElementById("leaderName").value.trim();
-            var phone = normalizePhone(document.getElementById("leaderPhone").value);
+            var groupName = document.getElementById("groupName").value.trim();
+            var equipmentLead = document.getElementById("equipmentLead").value;
 
             // 依畫面由上到下的順序逐欄檢查，每次只提醒第一個有問題的欄位
             if (!date) { formProblem('borrowDate', "請選擇借用日期。"); return; }
-            // 日期必須落在 2026 年 12 月（選單本來就只有 12 月，這裡再保險檢查一次）
-            if (!/^2026-12-(0[1-9]|[12]\d|3[01])$/.test(date)) {
-                formProblem('borrowDate', "借用日期僅開放 2026 年 12 月 1 日至 12 月 31 日，請重新選擇。"); return;
+            // 日期必須落在開放的月份內（選單本來就只列這幾個月，這裡再保險檢查一次）
+            if (!isAllowedDate(date)) {
+                formProblem('borrowDate', "借用日期超出開放範圍，請重新選擇。"); return;
             }
             if (!startTime) { formProblem('startTime', "請選擇借用時間。"); return; }
             if (!endTime) { formProblem('endTime', "請選擇歸還時間。"); return; }
             var startFloat = timeToFloat(startTime);
             var endFloat = timeToFloat(endTime);
             if (startFloat >= endFloat) { formProblem('endTime', "歸還時間必須晚於借用時間！"); return; }
+            // 📅 歸還日期：沒選就預設跟借用日期同一天；一定要在借用日期（含）之後
+            if (!returnDueDate) returnDueDate = date;
+            if (!isAllowedDate(returnDueDate)) { formProblem('returnDueDate', "歸還日期超出開放範圍，請重新選擇。"); return; }
+            if (returnDueDate < date) { formProblem('returnDueDate', "歸還日期不能早於借用日期。"); return; }
             if (!loc) { formProblem('location', "請選擇借用場地。"); return; }
             if (name.length < 2) { formProblem('leaderName', "請填寫負責人姓名（至少 2 個字）。"); return; }
-            if (!/^\d{10}$/.test(phone)) {
-                formProblem('leaderPhone', "聯絡電話請填寫 10 碼數字，例如 0912345678。\n這組號碼是您日後查詢與歸還的唯一依據，請務必填正確。");
-                return;
-            }
-            if (!document.getElementById("agreeRules").checked) { formProblem('agreeRules', "請勾選「我已閱讀並同意設備借用守則」。"); return; }
+            if (!groupName) { formProblem('groupName', "請填寫小組名稱。"); return; }
+            if (!equipmentLead) { formProblem('equipmentLead', "請選擇設備組負責人。"); return; }
 
             var speakerNode = document.querySelector('input[name="needSpeaker"]:checked');
             var reqSpeaker = (speakerNode && speakerNode.value === "是") ? 1 : 0;
@@ -3009,6 +3052,8 @@
             var pianoNode = document.querySelector('input[name="piano"]:checked');
             var 該場地有鋼琴 = 自有鋼琴場地.indexOf(loc) >= 0 || 需架設鋼琴場地.indexOf(loc) >= 0;
             var reqPiano = 該場地有鋼琴 && pianoNode && pianoNode.value === "需要";
+            // 🎹 第三十三輪（用戶確認後追加）：鋼琴型號選填，只有真的需要鋼琴才會存
+            var pianoModel = reqPiano ? document.getElementById('pianoModel').value.trim() : '';
 
             showLoading("檢查時段與設備狀態中...");
 
@@ -3018,24 +3063,37 @@
             let conflict = findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date);
             if (conflict) { hideLoading(); alert(conflict); return; }
 
+            // 🔊 第三十三輪：喇叭改成系統自動分配下一台空著的機台（不再由管理員手動勾選 A/B/C/MA707），
+            //    邏輯跟 autoAssignDay() 挑機台一樣：這個時段沒有被其他組佔用的、依 SPEAKER_UNITS 順序挑第一個。
+            //    如果四台當下都被佔走，就先不分配（留 null），後台會用「❓ 沒有空的機台」清楚標出來，不會沒交代。
+            //    注意：fetchDayRecords() 走的 get_day_availability 這支 RPC 不會回傳 ma303_assigned
+            //    （正式資料庫本來就是這樣設計，見 doc_status.md），沒辦法拿來判斷機台忙不忙；
+            //    這裡借用表單已經是登入後才看得到的後台功能，改用有權限的 select('*') 抓完整欄位。
+            let assignedUnit = null;
+            if (reqSpeaker > 0) {
+                const { data: fullDay, error: fullErr } = await db.from('borrow_records').select('*').eq('borrow_date', date);
+                let dayRecs = fullErr ? [] : (fullDay || []).filter(r => String(r.borrow_date) === String(date));
+                let busy = busyUnits(dayRecs, { id: -1, borrow_date: date, start_time: startTime, end_time: endTime });
+                let free = SPEAKER_UNITS.filter(u => !busy.has(u));
+                assignedUnit = free.length ? free[0] : null;
+            }
+
             document.getElementById('loadingText').innerText = "資料傳送中...";
             let techNode = document.querySelector('input[name="needTech"]:checked');
             var techOption = (loc === "兒主" || loc === "幼主") && techNode ? techNode.value : "否";
 
             const { error } = await db.from('borrow_records').insert([{
-                borrow_date: date, start_time: startTime, end_time: endTime, location: loc,
-                leader_name: name, leader_phone: phone, need_tech: techOption,
-                ma303: reqSpeaker.toString(), ma707: "0",
-                piano: reqPiano ? "是" : "無", music_stand: reqStand.toString(), notes: document.getElementById("notes").value
+                borrow_date: date, start_time: startTime, end_time: endTime, return_due_date: returnDueDate, location: loc,
+                leader_name: name, leader_phone: '', group_name: groupName, equipment_lead: equipmentLead, need_tech: techOption,
+                ma303: reqSpeaker.toString(), ma707: "0", ma303_assigned: assignedUnit,
+                piano: reqPiano ? "是" : "無", piano_model: pianoModel, music_stand: reqStand.toString(), notes: document.getElementById("notes").value
             }]);
 
             hideLoading();
             if (error) { alert("發生錯誤：" + error.message); }
             else {
-                // ✅ 送出成功：不再跳成功視窗，直接帶到「查詢」頁把這支電話的借用紀錄查出來，
-                //    最上面顯示「申請成功」＋提醒借用當天回來看設備位置照片，剛剛這筆會標「🆕 剛剛申請」。
-                rememberPhone(phone);
-                let justBooked = { date: date, start: startTime, loc: loc };
+                // ✅ 送出成功：第三十三輪改成由管理員登記，送出後直接回到後台總覽（不再跳去會眾查詢頁）。
+                let speakerMsg = reqSpeaker > 0 ? (assignedUnit ? `\n🔊 已自動分配喇叭：${assignedUnit}` : `\n❓ 喇叭目前沒有空的機台，請到後台人工協調。`) : '';
                 setTimeout(() => {
                     document.getElementById("borrowForm").reset();
                     document.getElementById('availPanel').classList.add('hidden');
@@ -3043,11 +3101,9 @@
                     checkRules();
                     syncToggles();
                     syncEndTimeOptions('startTime', 'endTime');   // 重設後歸還時間的選項全部恢復可選
-                    // 先記一筆「首頁」再進查詢頁：在查詢頁按上一頁會回到首頁，不會回到已清空的借用表單
-                    showSection('homeMenu');
-                    showSection('querySection');
-                    document.getElementById('searchPhone').value = phone;
-                    queryRecords({ justBooked: justBooked });
+                    alert('✅ 已登記借用！' + speakerMsg);
+                    showSection('adminSection');
+                    loadAdminData();
                 }, 100);
             }
         } catch (e) {
@@ -3057,7 +3113,7 @@
     }
 
     function resetReturnForm() {
-        document.getElementById('returnSearchPhone').value = recallPhone();
+        document.getElementById('returnSearchName').value = recallName();
         document.getElementById('returnForm').classList.add('hidden');
         document.getElementById('returnForm').reset();
         document.getElementById('unreturnedList').innerHTML = '';
@@ -3124,8 +3180,8 @@
     async function searchUnreturned(opts) {
         if (!requireDb()) return;
         opts = opts || {};
-        var phone = document.getElementById('returnSearchPhone').value;
-        if(!phone) { alert('請輸入借用時填寫的電話號碼'); return; }
+        var name = document.getElementById('returnSearchName').value.trim();
+        if(!name) { alert('請輸入借用人姓名'); return; }
 
         let listContainer = document.getElementById('unreturnedList');
         let doneBox = document.getElementById('returnDoneBox');
@@ -3143,9 +3199,9 @@
         };
 
         try {
-            const { data: all, error } = await fetchMyRecords(phone);
+            const { data: all, error } = await fetchMyRecordsByName(name);
             if(error) { listContainer.innerHTML = "查詢失敗"; return; }
-            if ((all || []).length > 0) rememberPhone(normalizePhone(phone));
+            if ((all || []).length > 0) rememberName(name);
             let data = (all || []).filter(r => r.is_returned === false)
                                   .sort((a, b) => String(a.borrow_date).localeCompare(String(b.borrow_date)));
             // 照片、備註、送出鈕：有可以歸還的紀錄才顯示
@@ -3157,11 +3213,11 @@
             if(data.length === 0) {
                 if (opts.done) {
                     // 全部還完了：只留「歸還成功」的提示，不再顯示空的歸還表單
-                    showDone('🎉 這支電話借的設備都歸還完成了，謝謝！');
+                    showDone('🎉 這個姓名借的設備都歸還完成了，謝謝！');
                     document.getElementById('returnForm').classList.add('hidden');
                     return;
                 }
-                listContainer.innerHTML = "找不到此電話的「未歸還」紀錄。";
+                listContainer.innerHTML = "找不到此姓名的「未歸還」紀錄。";
                 showReturnFields(false);
                 return;
             }
@@ -3252,7 +3308,7 @@
 
             if (dbError) { hideLoading(); alert("寫入資料庫失敗"); return; }
 
-            // ✅ 歸還成功後留在歸還頁：最上面顯示「歸還成功」，下面重新列出這支電話還沒還的紀錄。
+            // ✅ 歸還成功後留在歸還頁：最上面顯示「歸還成功」，下面重新列出這個姓名還沒還的紀錄。
             //    以前直接跳回首頁，同一天借兩筆的小組長常常只還了一筆就走了。
             let done = { label: selectedRadio.dataset.label || '', time: formatReturnTimeShort(uploadedAt) };
             document.getElementById('returnNotes').value = '';
@@ -3267,16 +3323,109 @@
         }
     }
 
+    // ================= 📊 第三十三輪：匯出 Excel 簽到簿 =================
+    //    一週一個工作表，標題「2026 小組聖誕餐會外借設備｜第X週」，欄位對照紙本簽到單；
+    //    出借簽名／歸還簽名留空給現場手寫簽名，其他欄位從資料庫的借用紀錄自動填好。
+    const XLSX_HEADERS = ['日期', '星期', '出借簽名', '歸還簽名', '借用時間', '歸還時間', '使用地點', '小組負責人', '負責音控同工', 'MA303', 'MA707', '鋼琴（包含型號）', '譜架', '備註'];
+
+    // 這天在哪個「週」（跟後台的週次篩選同一套分法）：11 月整個算一週，12 月照 1-7/8-14/15-21/22+ 分四週
+    function xlsxWeekOf(dateStr) {
+        let d = String(dateStr || '');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+        let m = d.slice(5, 7), day = parseInt(d.slice(8, 10), 10);
+        if (m === '11') return { key: 'nov', label: '11月' };
+        if (m !== '12') return null;   // 開放範圍外的資料（理論上不會有）不匯出
+        if (day <= 7) return { key: 'w1', label: '第一週' };
+        if (day <= 14) return { key: 'w2', label: '第二週' };
+        if (day <= 21) return { key: 'w3', label: '第三週' };
+        return { key: 'w4', label: '第四週' };
+    }
+
+    // 一筆借用紀錄 → 一列 Excel 資料（欄位順序跟 XLSX_HEADERS 一致）
+    function xlsxRow(item) {
+        let full = formatDateLabel(item.borrow_date);          // 例："12/6（日）"
+        let m = full.match(/^(.*)（(.+)）$/);
+        let dateCol = m ? m[1] : full, weekdayCol = m ? m[2] : '';
+        let assigned = normalizeAssignedList(item.ma303_assigned);
+        let ma303Letters = assigned.filter(u => u.indexOf('MA303') === 0).map(u => u.replace('MA303 編號', '')).join('、');
+        let ma707Mark = assigned.indexOf('MA707') >= 0 ? '✓' : '';
+        let needSpeaker = (parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0) > 0;
+        // 有需要喇叭、但還沒分配到具體是 MA303 哪一台時，MA303 欄先打勾，讓紙本上看得出「這組要喇叭」
+        if (!ma303Letters && !ma707Mark && needSpeaker) ma303Letters = '✓';
+        let standN = parseInt(item.music_stand) || 0;
+        // 鋼琴：有借才顯示，型號有填就秀型號文字，沒填（或 undefined／null）就只打勾，不要出現空字串以外的怪東西
+        let pianoModelTrim = String(item.piano_model || '').trim();
+        let pianoCol = item.piano === '是' ? (pianoModelTrim || '✓') : '';
+        return [
+            dateCol, weekdayCol, '', '',
+            item.start_time || '', item.end_time || '', item.location || '',
+            item.group_name || '', item.equipment_lead || '',
+            ma303Letters, ma707Mark,
+            pianoCol,
+            standN > 0 ? String(standN) : '',
+            item.notes || ''
+        ];
+    }
+
+    async function exportExcel() {
+        if (!requireDb()) return;
+        if (typeof XLSX === 'undefined') {
+            alert('⚠️ 匯出功能需要的程式庫（SheetJS）沒有載入成功，可能是外部連線被封鎖。\n請確認網路連線後重新整理頁面再試一次。');
+            return;
+        }
+        showLoading('整理匯出資料中...');
+        const { data: records, error } = await db.from('borrow_records').select('*');
+        hideLoading();
+        if (error) { alert('讀取資料失敗：' + error.message); return; }
+
+        // 依週分組，同一週內依日期、時間排序
+        let weeks = {};   // key → { label, list }
+        (records || []).forEach(r => {
+            let w = xlsxWeekOf(r.borrow_date);
+            if (!w) return;
+            (weeks[w.key] = weeks[w.key] || { label: w.label, list: [] }).list.push(r);
+        });
+        let order = ['nov', 'w1', 'w2', 'w3', 'w4'];
+        let wb = XLSX.utils.book_new();
+        let sheetCount = 0;
+        order.forEach(key => {
+            let w = weeks[key];
+            if (!w || w.list.length === 0) return;
+            w.list.sort((a, b) => String(a.borrow_date).localeCompare(String(b.borrow_date)) || timeToFloat(a.start_time) - timeToFloat(b.start_time));
+            let aoa = [[`2026 小組聖誕餐會外借設備｜${w.label}`], XLSX_HEADERS].concat(w.list.map(xlsxRow));
+            let ws = XLSX.utils.aoa_to_sheet(aoa);
+            ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: XLSX_HEADERS.length - 1 } }];
+            ws['!cols'] = XLSX_HEADERS.map(() => ({ wch: 12 }));
+            XLSX.utils.book_append_sheet(wb, ws, w.label);
+            sheetCount++;
+        });
+        if (sheetCount === 0) { alert('目前沒有可以匯出的借用紀錄（11、12 月都還沒有資料）。'); return; }
+        XLSX.writeFile(wb, `2026聖誕餐會外借設備簽到簿_${todayStr()}.xlsx`);
+    }
+
     // 頁面剛載入時，先把預設選中的按鈕（否／不需要）畫成選中的樣子
     syncToggles();
 
     // 頁面剛載入時產生日期、時間下拉選單的選項（借用表單＋管理員編輯視窗）
     fillDateOptions('borrowDate');
+    fillDateOptions('returnDueDate');
     fillTimeOptions('startTime', 'start');
     fillTimeOptions('endTime', 'end');
     fillDateOptions('editDate');
+    fillDateOptions('editReturnDueDate');
     fillTimeOptions('editStart', 'start');
     fillTimeOptions('editEnd', 'end');
+
+    // 🔧 借用表單、編輯視窗的「設備組負責人」下拉選單，內容來自 EQUIPMENT_LEADS
+    function fillEquipmentLeadOptions(selectId) {
+        let sel = document.getElementById(selectId);
+        if (!sel) return;
+        let html = sel.querySelector('option[value=""]') ? sel.querySelector('option[value=""]').outerHTML : '<option value="">請選擇...</option>';
+        EQUIPMENT_LEADS.forEach(name => { html += `<option value="${name}">${name}</option>`; });
+        sel.innerHTML = html;
+    }
+    fillEquipmentLeadOptions('equipmentLead');
+    fillEquipmentLeadOptions('editLead');
 
     // 頁面剛載入時就在瀏覽紀錄留一筆「首頁」，這樣之後每按一次上一頁都會準確退回前一個畫面
     history.replaceState({ section: 'homeMenu' }, '', location.pathname);
