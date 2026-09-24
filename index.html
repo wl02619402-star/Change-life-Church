@@ -439,12 +439,16 @@
         <div class="modal-content" style="max-width: 520px;">
             <h3 style="margin-top: 0; color: #34495e;">✏️ 編輯借用紀錄</h3>
             <input type="hidden" id="editId">
-            <div class="form-group"><label>借用日期</label><select id="editDate" onchange="syncEditReturnDueDate()"></select></div>
+            <!-- 第三十三輪（使用者反映排列容易混淆後調整）：跟借用表單一致，改成「借用日期＋借用時間」
+                 一組、「歸還日期＋歸還時間」一組。 -->
             <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期</label><select id="editDate" onchange="syncEditReturnDueDate()"></select></div>
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label><select id="editStart" onchange="syncEndTimeOptions('editStart', 'editEnd')"></select></div>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還日期</label><select id="editReturnDueDate"></select></div>
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label><select id="editEnd"></select></div>
             </div>
-            <div class="form-group"><label>歸還日期 <span style="font-weight:normal; color:#7f8c8d; font-size:12.5px;">（跨日借用才需要改）</span></label><select id="editReturnDueDate"></select></div>
             <div class="form-group"><label>場地</label>
                 <select id="editLocation" onchange="syncEditVenueFields()">
                     <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
@@ -521,22 +525,26 @@
                 <!-- 日期、時間都用下拉選單：iPhone 內建的日期選擇器不理會「只限這幾個月」的設定，
                      時間滾輪也能選到 11:25 這種非半點時間；下拉選單只列出允許的選項，從根本上選不錯。
                      選項由 fillDateOptions()／fillTimeOptions() 在頁面載入時產生。
-                     第三十三輪：開放 11 月＋12 月（原本只有 12 月），見 ALLOWED_MONTHS。 -->
-                <div class="form-group"><label>借用日期（限 2026 年 11–12 月）</label>
-                    <select id="borrowDate" onchange="refreshAvailability(); syncReturnDueDate();"></select>
-                </div>
+                     第三十三輪：開放 11 月＋12 月（原本只有 12 月），見 ALLOWED_MONTHS。
+                     第三十三輪（使用者反映排列容易混淆後調整）：改成「借用日期＋借用時間」一組、
+                     「歸還日期＋歸還時間」一組，兩組各自並排，操作邏輯跟畫面順序一致。 -->
                 <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期（限 2026 年 11–12 月）</label>
+                        <select id="borrowDate" onchange="refreshAvailability(); syncReturnDueDate();"></select>
+                    </div>
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label>
                         <select id="startTime" onchange="syncEndTimeOptions('startTime', 'endTime'); refreshAvailability()"></select>
+                    </div>
+                </div>
+                <!-- 📅 歸還日期跟借用日期分開存，讓「借今天、隔天才還」這種跨日借用可以正確記錄。
+                     選好借用日期會自動帶入同一天，需要跨日歸還時再自己改成之後的日期（syncReturnDueDate()）。 -->
+                <div style="display: flex; gap: 10px;">
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還日期</label>
+                        <select id="returnDueDate"></select>
                     </div>
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label>
                         <select id="endTime" onchange="refreshAvailability()"></select>
                     </div>
-                </div>
-                <!-- 📅 第三十三輪：歸還日期跟借用日期分開存，讓「借今天、隔天才還」這種跨日借用可以正確記錄。
-                     選好借用日期會自動帶入同一天，需要跨日歸還時再自己改成之後的日期（syncReturnDueDate()）。 -->
-                <div class="form-group"><label>歸還日期 <span style="font-weight:normal; color:#7f8c8d; font-size:12.5px;">（跨日借用才需要改成之後的日期）</span></label>
-                    <select id="returnDueDate"></select>
                 </div>
                 <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13px; line-height:1.7;"></div>
             </div>
