@@ -190,7 +190,8 @@
         .inv-week span { font-weight: normal; color: #5d7a8c; font-size: 12px; }
         /* 已歸還清單：登記過的其他設備 */
         .ret-extra { margin-top: 6px; background: #fff8e1; color: #6e4b00; border-radius: 6px; padding: 5px 9px; font-size: 13.5px; }
-        tr.ret-extra-row td { background: #fffbea; color: #6e4b00; font-size: 13px; text-align: left; padding: 6px 12px; border-top: none; }
+        tr.ret-extra-row td { background: #fffbea; color: #6e4b00; font-size: 13px; text-align: left; padding: 6px 12px; border-top: none; white-space: normal; }
+        tr.ret-extra-row .sep { color: #d4b86a; margin: 0 10px; }
         .inv-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
         .inv-card { flex: 1 1 260px; background: #f8fafb; border: 1px solid #e3e9ee; border-radius: 10px; padding: 10px 12px; }
         .inv-card .inv-title { display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; color: #34495e; font-size: 14px; }
@@ -1215,6 +1216,14 @@
         if (rsv) return `<div class="stand-day-note">📌 ${rsv.why}另外預留 ${rsv.n} 個</div>`;
         return '';
     }
+    // 📝📦 已歸還清單：這一筆當初寫的備註、管理員登記的其他設備（歸還後也看得到，方便核對東西有沒有還回來）
+    function returnedExtraLines(item) {
+        let lines = [];
+        if (hasNote(item)) lines.push(`📝 備註：${noteInline(item.notes)}`);
+        if (extraItemsOf(item).length) lines.push(`📦 其他設備：<b>${extraItemsText(extraItemsOf(item))}</b>`);
+        return lines;
+    }
+
     // 借了不該借的譜架：不外借日、或場地本來就有譜架（規則訂之前就送出的舊資料）
     function standRuleBroken(r) {
         return (parseInt(r.music_stand) || 0) > 0 && (!!譜架不外借日期[String(r.borrow_date)] || 自有譜架場地.indexOf(r.location) >= 0);
@@ -2707,7 +2716,7 @@
                 <div class="bk-top"><b>📅 ${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}</b><span class="bk-venue">📍 ${item.location}</span></div>
                 <div class="bk-person"><span>👤 ${item.leader_name}</span><span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</span></div>
                 ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
-                ${extraItemsOf(item).length ? `<div class="ret-extra">📦 其他設備：<b>${extraItemsText(extraItemsOf(item))}</b></div>` : ''}
+                ${returnedExtraLines(item).length ? `<div class="ret-extra">${returnedExtraLines(item).join('<br>')}</div>` : ''}
                 <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員代為歸還</span>' : ''}
                     ${item.return_photo_url ? `　<a href="${item.return_photo_url}" target="_blank">📸 看照片</a>` : ''}</div>
                 <div class="bk-actions two">
@@ -2926,8 +2935,8 @@
                             </div></td>
                         </tr>`;
                     // 📦 管理員登記的其他設備（延長線、HDMI…）：歸還後也看得到，方便核對有沒有還回來
-                    if (extraItemsOf(item).length) {
-                        returnedHtml += `<tr class="ret-extra-row"><td colspan="10">📦 其他設備：<b>${extraItemsText(extraItemsOf(item))}</b></td></tr>`;
+                    if (returnedExtraLines(item).length) {
+                        returnedHtml += `<tr class="ret-extra-row"><td colspan="10">${returnedExtraLines(item).join('<span class="sep">｜</span>')}</td></tr>`;
                     }
                 });
                 returnedHtml += `</table></div>`;
