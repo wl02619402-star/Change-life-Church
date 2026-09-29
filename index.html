@@ -562,10 +562,6 @@
                         <option value="幼主">幼主</option><option value="圖書室">圖書室</option><option value="教會外場地">教會外場地</option>
                     </select>
                 </div>
-                <div class="form-group hidden" id="soundTechSection">
-                    <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
-                    <div class="toggle-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
-                </div>
                 <div class="form-group"><label>負責人</label><input type="text" id="leaderName" placeholder="例：王大明" required></div>
                 <!-- 🔁 第三十三輪：拿掉聯絡電話，改成「小組」＋「設備組負責人」（值班同工從固定名單選，見 EQUIPMENT_LEADS） -->
                 <div class="pair-row">
@@ -588,6 +584,12 @@
                         <label><input type="radio" name="needSpeaker" value="是"> 是</label>
                         <label><input type="radio" name="needSpeaker" value="否" checked> 否</label>
                     </div>
+                </div>
+
+                <!-- 第三十四輪：音控協助屬於設備需求，從「場地」卡片移到這裡（只有兒主／幼主才會顯示） -->
+                <div class="form-group hidden" id="soundTechSection">
+                    <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
+                    <div class="toggle-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
                 </div>
 
                 <div class="form-group">
@@ -680,30 +682,8 @@
 
     <div id="adminSection" class="admin-section">
         <h3 style="color: #34495e; text-align: center;">📊 設備借還後台管理</h3>
-        <div class="form-group" style="background: #eaf2f8; padding: 15px; border-radius: 8px;">
-            <label style="color: #2980b9;">📅 資料篩選</label>
-            <!-- 第三十三輪：開放 11 月後多一個「11 月」整月篩選；12 月維持原本的四週篩選 -->
-            <select id="adminWeekFilter" onchange="loadAdminData()">
-                <option value="">所有紀錄</option>
-                <option value="nov">11 月</option>
-                <option value="1">12 月第一週 (12/1 - 12/7)</option>
-                <option value="2">12 月第二週 (12/8 - 12/14)</option>
-                <option value="3">12 月第三週 (12/15 - 12/21)</option>
-                <option value="4">12 月第四週 (12/22 以後)</option>
-            </select>
-        </div>
-        <!-- 📦 第三十三輪：借用改成由管理員（值班同工）在後台幫小組登記，直接進借用表單，
-             不用再經過需知頁（使用者確認後拿掉這道手續）。 -->
-        <button class="btn-submit" style="margin-bottom:15px;" onclick="showSection('borrowSection')">📦 新增借用（幫小組登記）</button>
-        <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
-            <button class="btn-back" style="width: 48%; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
-            <button class="btn-back" style="width: 48%; margin:0; background-color: #c0392b;" onclick="adminLogout()">登出管理員</button>
-        </div>
-        <!-- 📊 第三十三輪：匯出 Excel 簽到簿（一週一個標題區，欄位對照紙本簽到單） -->
-        <button class="btn-back" id="btnExportExcel" style="margin-bottom:15px; background-color:#217346;" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
-
-        <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
-
+        <!-- 🧭 第三十四輪（管理員操作動線調整）：最常用的「找借用紀錄」放最上面；
+             「新增借用」＋「匯出 Excel」並排；「重新整理」縮小；「登出管理員」移到最下面（避免手滑誤按）。 -->
         <!-- 🔍 找借用紀錄：輸入電話（可以只打一部分）或名字（有兩個字對得上就列出來），點「跳到這筆」直接捲過去 -->
         <div class="search-box">
             <div class="search-title">🔍 找借用紀錄 <span>輸入負責人姓名或小組名稱，兩個字對得上就找得到</span></div>
@@ -715,6 +695,28 @@
             <div id="adminSearchResult"></div>
         </div>
 
+        <button class="btn-submit" style="margin-bottom:12px;" onclick="showSection('borrowSection')">📦 新增借用（幫小組登記）</button>
+        <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
+            <button class="btn-back" id="btnExportExcel" style="flex:2; margin:0; background-color:#217346;" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
+            <button class="btn-back" style="flex:1; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
+        </div>
+        <div class="form-group" style="background: #eaf2f8; padding: 15px; border-radius: 8px;">
+            <label style="color: #2980b9;">📅 資料篩選</label>
+            <!-- 第三十三輪：開放 11 月後多一個「11 月」整月篩選；12 月維持原本的四週篩選 -->
+            <select id="adminWeekFilter" onchange="loadAdminData()">
+                <option value="">所有紀錄</option>
+                <option value="n1">11 月第一週 (11/1 - 11/7)</option>
+                <option value="n2">11 月第二週 (11/8 - 11/14)</option>
+                <option value="n3">11 月第三週 (11/15 - 11/21)</option>
+                <option value="n4">11 月第四週 (11/22 以後)</option>
+                <option value="1">12 月第一週 (12/1 - 12/7)</option>
+                <option value="2">12 月第二週 (12/8 - 12/14)</option>
+                <option value="3">12 月第三週 (12/15 - 12/21)</option>
+                <option value="4">12 月第四週 (12/22 以後)</option>
+            </select>
+        </div>
+        <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
+
         <div id="todoBox"></div>
 
         <h4>⚠️ 未歸還清單</h4>
@@ -724,6 +726,8 @@
         <div id="returnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
         <button class="btn-back" style="margin-top: 25px;" onclick="showSection('homeMenu')">返回首頁</button>
+        <!-- 登出放在最下面、字小一點，並且會先問一次「確定要登出嗎」 -->
+        <button class="btn-back" style="margin-top: 12px; background-color:#fff; color:#c0392b; border:1px solid #c0392b; font-size:13px; padding:8px;" onclick="if(confirm('確定要登出管理員嗎？')) adminLogout()">登出管理員</button>
     </div>
 </div>
 
@@ -2223,7 +2227,7 @@
                 </div>
                 <div class="sr-actions">
                     <button type="button" class="go" onclick="jumpToRecord(${r.id})">📍 跳到這筆</button>
-                    ${r.is_returned ? '' : `<button type="button" class="ed" onclick="openEdit(${r.id})">✏️ 編輯／刪除</button>`}
+                    ${r.is_returned ? '' : `<button type="button" class="ed" onclick="openEdit(${r.id})">✏️ 修改這筆</button>`}
                 </div>
             </div>`;
         });
@@ -2475,19 +2479,23 @@
             if (conflict) { hideLoading(); alert(conflict + '\n\n請改其他時段或場地。'); return; }
 
             // 機台分配：不需要喇叭就清掉；改了日期/時間，要確認原本分配的機台在新時段沒被別組用走
+            //    第三十四輪：跟借用表單一致——需要喇叭卻沒有可用機台（新勾選、或原機台在新時段被佔走）
+            //    就自動挑下一台空的；一台都沒有就擋在存檔這一步，不再存了再讓管理員去後台處理。
             let newAssigned = old.ma303_assigned || null;
             if (!wantSpeaker) {
                 newAssigned = null;
-            } else if (assigned.length > 0 && (date !== old.borrow_date || start !== old.start_time || end !== old.end_time)) {
+            } else {
                 let busy = busyUnits(others, { id: id, borrow_date: date, start_time: start, end_time: end });
-                let clash = assigned.filter(u => busy.has(u));
-                if (clash.length > 0) {
-                    hideLoading();
-                    let ok = confirm(`新時段裡「${clash.join('、')}」已經分配給其他小組了。\n\n` +
-                        `按「確定」：照樣存檔，並清除這組的機台分配（存檔後再到喇叭欄重新分配）。\n按「取消」：回去修改。`);
-                    if (!ok) return;
-                    newAssigned = null;
-                    showLoading('儲存中...');
+                let timeChanged = (date !== old.borrow_date || start !== old.start_time || end !== old.end_time);
+                let clash = (assigned.length > 0 && timeChanged) ? assigned.filter(u => busy.has(u)) : [];
+                if (assigned.length === 0 || clash.length > 0) {
+                    let free = SPEAKER_UNITS.filter(u => !busy.has(u));
+                    if (!free.length) {
+                        hideLoading();
+                        alert('❓ 這個時段喇叭已經沒有空的機台了，無法儲存。\n\n請改其他時段，或把「是否需要喇叭」改成「否」。');
+                        return;
+                    }
+                    newAssigned = free[0];
                 }
             }
             let speakerCount = !wantSpeaker ? 0 : (newAssigned ? normalizeAssignedList(newAssigned).length : 1);
@@ -2753,7 +2761,7 @@
                         <span class="k">📍 領取照片</span><div>${photo}</div>
                     </div>
                     <div class="bk-actions two">
-                        <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 編輯／刪除</button>
+                        <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
                         <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 代為歸還</button>
                     </div>
                 </div>`;
@@ -2816,7 +2824,14 @@
             let parts = item.borrow_date.split('-');
             if (parts.length !== 3) return true;
             let month = parseInt(parts[1], 10), day = parseInt(parts[2], 10);
-            if (weekFilter === 'nov') return month === 11;
+            // 第三十四輪：11 月也跟 12 月一樣分四週（n1~n4）
+            if (weekFilter[0] === 'n') {
+                if (month !== 11) return false;
+                if (weekFilter === 'n1') return day <= 7;
+                if (weekFilter === 'n2') return day >= 8 && day <= 14;
+                if (weekFilter === 'n3') return day >= 15 && day <= 21;
+                return day >= 22;
+            }
             if (month !== 12) return false;
             if (weekFilter === '1') return day >= 1 && day <= 7;
             if (weekFilter === '2') return day >= 8 && day <= 14;
@@ -2928,7 +2943,7 @@
                             <td>${pianoCell(item)}</td>
                             <td>${photoAction}</td>
                             <td><div class="row-actions">
-                                <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 編輯／刪除</button>
+                                <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
                                 <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 代為歸還</button>
                             </div></td>
                         </tr>`;
@@ -3086,6 +3101,13 @@
                 let busy = busyUnits(dayRecs, { id: -1, borrow_date: date, start_time: startTime, end_time: endTime });
                 let free = SPEAKER_UNITS.filter(u => !busy.has(u));
                 assignedUnit = free.length ? free[0] : null;
+                // 🛑 使用者要求（第三十四輪）：既然是自動分配，沒有空機台就直接擋在送出表單這一步，
+                //    不要先登記進去、再讓管理員到後台處理（多此一舉）。
+                if (!assignedUnit) {
+                    hideLoading();
+                    alert('❓ 這個時段喇叭已經沒有空的機台了，無法登記。\n\n請改選其他時段，或把「是否需要喇叭」改成「否」，或先跟已借喇叭的小組協調換時段。');
+                    return;
+                }
             }
 
             document.getElementById('loadingText').innerText = "資料傳送中...";
@@ -3338,17 +3360,15 @@
     //    出借簽名／歸還簽名留空給現場手寫簽名，其他欄位從資料庫的借用紀錄自動填好。
     const XLSX_HEADERS = ['日期', '星期', '出借簽名', '歸還簽名', '借用時間', '歸還時間', '使用地點', '小組負責人', '負責音控同工', 'MA303', 'MA707', '鋼琴（包含型號）', '譜架', '備註'];
 
-    // 這天在哪個「週」（跟後台的週次篩選同一套分法）：11 月整個算一週，12 月照 1-7/8-14/15-21/22+ 分四週
+    // 這天在哪個「週」（跟後台的週次篩選同一套分法）：11、12 月都照 1-7/8-14/15-21/22+ 分四週
     function xlsxWeekOf(dateStr) {
         let d = String(dateStr || '');
         if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
         let m = d.slice(5, 7), day = parseInt(d.slice(8, 10), 10);
-        if (m === '11') return { key: 'nov', label: '11月' };
-        if (m !== '12') return null;   // 開放範圍外的資料（理論上不會有）不匯出
-        if (day <= 7) return { key: 'w1', label: '第一週' };
-        if (day <= 14) return { key: 'w2', label: '第二週' };
-        if (day <= 21) return { key: 'w3', label: '第三週' };
-        return { key: 'w4', label: '第四週' };
+        if (m !== '11' && m !== '12') return null;   // 開放範圍外的資料（理論上不會有）不匯出
+        let p = m === '11' ? 'n' : 'w', mn = m === '11' ? '11月' : '12月';
+        let k = day <= 7 ? 1 : day <= 14 ? 2 : day <= 21 ? 3 : 4;
+        return { key: p + k, label: mn + ['', '第一週', '第二週', '第三週', '第四週'][k] };
     }
 
     // 一筆借用紀錄 → 一列 Excel 資料（欄位順序跟 XLSX_HEADERS 一致）
@@ -3395,7 +3415,7 @@
             if (!w) return;
             (weeks[w.key] = weeks[w.key] || { label: w.label, list: [] }).list.push(r);
         });
-        let order = ['nov', 'w1', 'w2', 'w3', 'w4'];
+        let order = ['n1', 'n2', 'n3', 'n4', 'w1', 'w2', 'w3', 'w4'];
         let wb = XLSX.utils.book_new();
         let sheetCount = 0;
         order.forEach(key => {
@@ -3412,6 +3432,18 @@
         if (sheetCount === 0) { alert('目前沒有可以匯出的借用紀錄（11、12 月都還沒有資料）。'); return; }
         XLSX.writeFile(wb, `2026聖誕餐會外借設備簽到簿_${todayStr()}.xlsx`);
     }
+
+    // 🔄 第三十四輪：管理員在後台按瀏覽器「重新整理」，不要被踢回首頁——
+    //    網址是 #adminSection／#borrowSection 且還在登入狀態，就直接回到原本那頁；沒登入就維持首頁。
+    (async function restoreAdminPage() {
+        try {
+            let h = (location.hash || '').replace('#', '');
+            if (h !== 'adminSection' && h !== 'borrowSection') return;
+            if (typeof db === 'undefined' || !db) return;
+            const { data: { session } } = await db.auth.getSession();
+            if (session) { loginPendingTarget = h; goAfterLogin(); }
+        } catch (e) { /* 還原失敗就留在首頁，不影響使用 */ }
+    })();
 
     // 頁面剛載入時，先把預設選中的按鈕（否／不需要）畫成選中的樣子
     syncToggles();
