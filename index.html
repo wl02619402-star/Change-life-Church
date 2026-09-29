@@ -1607,7 +1607,9 @@
     // 鋼琴型號欄位只在選「需要」鋼琴時出現，選填即可；切成「不需要」或換場地時清空、收起來
     function syncPianoModelVisibility() {
         let checked = document.querySelector('input[name="piano"]:checked');
-        let need = checked && checked.value === '需要';
+        let loc = document.getElementById('location').value;
+        // 🔁 第三十六輪（用戶確認後追加）：兒主／幼主是場地自己的鋼琴，不用選型號，這題就不出現
+        let need = checked && checked.value === '需要' && 自有鋼琴場地.indexOf(loc) < 0;
         let grp = document.getElementById('pianoModelGroup');
         if (grp) grp.classList.toggle('hidden', !need);
         if (!need) { let m = document.getElementById('pianoModel'); if (m) m.value = ''; }
@@ -2402,7 +2404,9 @@
     // 編輯視窗的鋼琴型號欄位只在「會使用／需要」鋼琴時出現，跟借用表單那顆邏輯一樣
     function syncEditPianoModelVisibility() {
         let checked = document.querySelector('input[name="editPiano"]:checked');
-        let need = checked && checked.value === '是';
+        let loc = document.getElementById('editLocation').value;
+        // 🔁 第三十六輪（用戶確認後追加）：兒主／幼主是場地自己的鋼琴，不用選型號，這題就不出現
+        let need = checked && checked.value === '是' && 自有鋼琴場地.indexOf(loc) < 0;
         let grp = document.getElementById('editPianoModelGroup');
         if (grp) grp.classList.toggle('hidden', !need);
         if (!need) { let m = document.getElementById('editPianoModel'); if (m) m.value = ''; }
