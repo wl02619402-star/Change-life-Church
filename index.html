@@ -482,7 +482,7 @@
                 </div>
                 <!-- 🔁 第三十三輪（用戶確認後追加）：鋼琴型號，選填 -->
                 <div class="hidden" id="editPianoModelGroup" style="margin-top:8px;">
-                    <input type="text" id="editPianoModel" maxlength="40" placeholder="鋼琴型號（選填，例：Roland FP-30X）">
+                    <select id="editPianoModel"><option value="">不指定型號（兒主、幼主不用選）</option><option value="RD64">RD64</option><option value="舊二琴">舊二琴</option></select>
                 </div>
             </div>
             <div class="form-group" id="editTechGroup"><label>🎛️ 需要音控同工協助</label>
@@ -610,7 +610,7 @@
                     <!-- 🔁 第三十三輪（用戶確認後追加）：選「需要」才出現的鋼琴型號欄位，選填即可，
                          不填也沒關係——Excel 匯出時型號有填就顯示型號文字，沒填只打勾。 -->
                     <div class="hidden" id="pianoModelGroup" style="margin-top:8px;">
-                        <input type="text" id="pianoModel" maxlength="40" placeholder="鋼琴型號（選填，例：Roland FP-30X）">
+                        <select id="pianoModel"><option value="">不指定型號（兒主、幼主不用選）</option><option value="RD64">RD64</option><option value="舊二琴">舊二琴</option></select>
                     </div>
                     <div id="pianoHint" class="info-box"></div>
                 </div>
@@ -1013,8 +1013,10 @@
 
     function pianoCell(item) {
         if (item.piano !== '是') return '<span style="color:#ccc;">—</span>';
-        if (需要架設鋼琴(item)) return '<b style="color:#8e44ad;">需架設</b>';
-        return '<b style="color:#7f8c8d;">會使用</b><br><span style="color:#95a5a6; font-size:11px;">場地自有</span>';
+        let model = String(item.piano_model || '').trim();
+        let modelHtml = model ? `<br><span style="color:#34495e; font-size:13px; font-weight:bold;">🎹 ${noteHtml(model)}</span>` : '';
+        if (需要架設鋼琴(item)) return '<b style="color:#8e44ad;">需架設</b>' + modelHtml;
+        return '<b style="color:#7f8c8d;">會使用</b> <span style="color:#95a5a6; font-size:12px;">（場地自有）</span>' + modelHtml;
     }
 
     // 📝 會眾自己打的字（備註）放進畫面前先轉義，避免裡面有 < > 之類的符號把版面弄壞；換行照樣顯示
@@ -1387,13 +1389,11 @@
         let assigned = normalizeAssignedList(item.ma303_assigned);
         if (assigned.length > 0) {
             return `<b style="color:#27ae60;">${assigned.join('、')}</b><br>
-                <button onclick="autoAssignSpeakerFor(${item.id})" style="font-size:11px; padding:2px 6px; margin-top:4px; cursor:pointer; border:1px solid #ccc; border-radius:4px; background:#f9f9f9;">🔄 重新分配</button>`;
+                <button onclick="autoAssignSpeakerFor(${item.id})" style="font-size:12.5px; padding:5px 10px; margin-top:6px; cursor:pointer; border:1px solid #ccc; border-radius:6px; background:#f9f9f9;">🔄 重新分配</button>`;
         }
         let busy = busyUnits(allRecords, item);
         let free = SPEAKER_UNITS.filter(u => !busy.has(u));
-        let noteHint = item.notes
-            ? `<div style="color:#8e44ad; margin-bottom:4px;">💬 備註：${noteHtml(item.notes)}</div>`
-            : '';
+        let noteHint = '';   // 備註已經顯示在卡片上方，這裡不再重複
         if (free.length === 0) {
             // ❓ 這個時段四台都被佔走了：不是系統壞掉，是真的沒機台可分配，請管理員人工協調
             return `<div style="font-size:11px; background:#fdecea; padding:6px; border-radius:4px; border:1px solid #f1b0a8; margin-top:2px; color:#a02622;">
@@ -1401,10 +1401,9 @@
                 <span style="font-weight:normal;">這個時段 4 台都已分配給其他小組，請調整時段或請其他組換機台後再試。</span>
             </div>`;
         }
-        return `<div style="font-size:11px; background:#fff; padding:6px; border-radius:4px; border:1px solid #ddd; margin-top:2px;">
+        return `<div>
             <span style="color:#e74c3c; font-weight:bold;">⏳ 尚未分配</span><br>
-            ${noteHint}
-            <button onclick="autoAssignSpeakerFor(${item.id})" style="margin-top:5px; cursor:pointer; font-size:11px; background:#34495e; color:white; border:none; padding:4px 8px; border-radius:3px;">⚡ 自動分配（${free[0].replace('MA303 編號', 'A/B/C ').replace('MA707', 'MA707')}）</button>
+            <button onclick="autoAssignSpeakerFor(${item.id})" style="margin-top:6px; cursor:pointer; font-size:13px; background:#34495e; color:white; border:none; padding:7px 12px; border-radius:6px;">⚡ 自動分配（${free[0].replace('MA303 編號', '編號').replace('MA707', 'MA707')}）</button>
         </div>`;
     }
 
@@ -2325,7 +2324,7 @@
 
     async function adminMarkReturned(id) {
         if (!requireDb()) return;
-        let note = prompt(`✅ 代為標記歸還\n${recordLabel(adminRecordMap[id])}\n\n` +
+        let note = prompt(`✅ 標記歸還\n${recordLabel(adminRecordMap[id])}\n\n` +
             `小組長沒有自己填歸還單時使用，不需要照片。\n可以寫下歸還狀態（選填，例如「設備正常，已收回櫃檯」）：`, '');
         if (note === null) return;   // 按了取消
         showLoading("標記歸還中...");
@@ -2383,7 +2382,9 @@
         standSel.value = stand;
         if (standSel.value !== stand) standSel.value = '0';
         setRadio('editPiano', item.piano === '是' ? '是' : '無');
-        document.getElementById('editPianoModel').value = item.piano_model || '';
+        (function(){ let sel = document.getElementById('editPianoModel'), v = item.piano_model || '';
+            if (v && ![...sel.options].some(o => o.value === v)) { let o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); }
+            sel.value = v; })();
         syncEditPianoModelVisibility();
         setRadio('editTech', item.need_tech === '是' ? '是' : '否');
         document.getElementById('editNotes').value = item.notes || '';
@@ -2762,7 +2763,7 @@
                     </div>
                     <div class="bk-actions two">
                         <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
-                        <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 代為歸還</button>
+                        <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 歸還</button>
                     </div>
                 </div>`;
             });
@@ -2789,7 +2790,7 @@
                 <div class="bk-person"><span>👤 ${item.leader_name}</span>${groupLeadLine(item)}<span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</span></div>
                 ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
                 ${returnedExtraLines(item).length ? `<div class="ret-extra">${returnedExtraLines(item).join('<br>')}</div>` : ''}
-                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員代為歸還</span>' : ''}
+                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員登記歸還</span>' : ''}
                     ${item.return_photo_url ? `　<a href="${item.return_photo_url}" target="_blank">📸 看照片</a>` : ''}</div>
                 <div class="bk-actions two">
                     <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
@@ -2944,7 +2945,7 @@
                             <td>${photoAction}</td>
                             <td><div class="row-actions">
                                 <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
-                                <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 代為歸還</button>
+                                <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 歸還</button>
                             </div></td>
                         </tr>`;
                 });
@@ -2997,7 +2998,7 @@
                         ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
                         : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
                     if (byAdmin) {
-                        statusCell += `<br><span style="display:inline-block; background:#eef2f5; color:#5d6d7e; padding:1px 6px; border-radius:3px; font-size:10.5px; margin-top:3px;">👤 管理員代為歸還</span>`;
+                        statusCell += `<br><span style="display:inline-block; background:#eef2f5; color:#5d6d7e; padding:1px 6px; border-radius:3px; font-size:10.5px; margin-top:3px;">👤 管理員登記歸還</span>`;
                     }
 
                     returnedHtml += `<tr data-id="${item.id}">
