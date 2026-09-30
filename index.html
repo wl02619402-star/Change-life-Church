@@ -1338,7 +1338,6 @@
         if (s.extras && s.extras.length > 0) {
             rows.push(row('📦 其他', chips(s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`), 'ex'), '備註登記的，照這個數量準備'));
         }
-        rows.push(row('📸 照片', dayPhotoStatus(s) + (s.groups > 1 ? dayPhotoBtn(s) : '')));
         let notes = s.notes && s.notes.length > 0
             ? `<div class="sum-notes"><div style="font-weight:bold; color:#6e4b00;">📝 備註裡的其他需求</div>
                  <div class="sum-hint" style="margin:2px 0 4px;">還沒登記的不會算進數量，點標籤就可以登記</div>
@@ -1396,11 +1395,6 @@
                 ${s.extras && s.extras.length > 0
                     ? cell('📦 其他設備（備註登記）', `<span style="color:#9a6a00; font-size:14px;">${s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('<br>')}</span>`, '照登記的數量準備')
                     : ''}
-                <div style="min-width:96px;">
-                    <div style="color:#7f8c8d; font-size:11px;">📸 領取照片</div>
-                    <div style="margin-top:3px;">${dayPhotoStatus(s)}</div>
-                    ${s.groups > 1 ? dayPhotoBtn(s) : ''}
-                </div>
             </div>
             ${s.鋼琴自有使用.length > 0
                 ? `<div style="margin-top:8px; color:#7f8c8d; font-size:11px;">
@@ -1491,6 +1485,10 @@
 
         // 後台畫面在寬螢幕時放寬容器（見上方 CSS），其他頁面維持原本手機優先的窄版面
         document.querySelector('.container').classList.toggle('admin-wide', sectionId === 'adminSection');
+
+        // 🔁 第四十輪（用戶回報）：從借用單按「返回後台」或按瀏覽器上一頁回到後台時，原本只切換畫面、
+        //    沒有抓資料，要按重新整理才看得到。改成只要進到後台畫面就自動載入最新資料。
+        if (sectionId === 'adminSection') loadAdminData();
 
         if (!opts.fromPopstate) {
             if (!history.state || history.state.section !== sectionId) {
@@ -1947,7 +1945,6 @@
                 html += `<div class="booked-banner">
                     <div class="bb-title">✅ 申請成功！</div>
                     <div class="bb-sub">下面是這個姓名的借用紀錄，剛剛申請的那筆標了「🆕 剛剛申請」。</div>
-                    <div class="bb-remind">📸 <b>借用當天記得再回來「查詢」</b>，管理員會上傳<b>設備放在哪裡的照片</b>，照著照片去拿設備就可以了。</div>
                 </div>`;
             }
             html += `<div style="color:#7f8c8d; font-size:12.5px; margin-bottom:8px;">共找到 <b style="color:#2471a3;">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
@@ -1960,8 +1957,7 @@
 
                 let pickup = "";
                 if (!item.is_returned) {
-                    if (item.pickup_photo_url) { pickup = `<br><a href="${item.pickup_photo_url}" target="_blank" style="color:#e67e22; font-weight:bold;">📍 查看設備位置照片</a>`; }
-                    else if (!isOverdue(item)) { pickup = `<br><span style="color:#7f8c8d; font-size:12px;">📸 借用當天會上傳設備位置照片</span>`; }   // 已經逾期就不用再提位置照片
+                    // 第四十輪：照片功能拿掉，不再顯示設備位置照片   // 已經逾期就不用再提位置照片
                 }
                 let justNow = isJustBooked(item);
                 let rowCls = [hasNote(item) ? 'has-note' : '', justNow ? 'just-booked' : ''].filter(Boolean).join(' ');
@@ -1992,7 +1988,7 @@
     function goAfterLogin() {
         let target = loginPendingTarget || 'adminSection';
         loginPendingTarget = 'adminSection';
-        if (target === 'adminSection') { showSection('adminSection'); loadAdminData(); }
+        if (target === 'adminSection') { showSection('adminSection'); }
         else { showSection(target); }
     }
     async function checkAdminAccess(target) {
@@ -2207,9 +2203,7 @@
             { cls: 'red', label: '⚠️ 逾期還沒歸還', unit: '組', list: un.filter(isOverdue) },
             { cls: 'amber', label: '🔊 喇叭待分配', unit: '組', list: un.filter(r => speakerUsage(r) > 0 && normalizeAssignedList(r.ma303_assigned).length === 0) },
             { cls: 'amber', label: '⏳ 備註未登記', unit: '筆', list: un.filter(r => hasNote(r) && extraStateOf(r) === 'pending') },
-            { cls: 'red', label: '🎼 借了不外借的譜架', unit: '組', list: un.filter(standRuleBroken) },
-            { cls: 'amber', label: '📸 今明兩天還沒放領取照片', unit: '組',
-              list: un.filter(r => !r.pickup_photo_url && !hasStarted(r) && (r.borrow_date === today || r.borrow_date === tomorrow)) }
+            { cls: 'red', label: '🎼 借了不外借的譜架', unit: '組', list: un.filter(standRuleBroken) }
         ].filter(x => x.list.length > 0);
 
         if (rows.length === 0) {
@@ -2435,7 +2429,7 @@
     async function adminMarkReturned(id) {
         if (!requireDb()) return;
         let note = prompt(`✅ 標記歸還\n${recordLabel(adminRecordMap[id])}\n\n` +
-            `小組長沒有自己填歸還單時使用，不需要照片。\n可以寫下歸還狀態（選填，例如「設備正常，已收回櫃檯」）：`, '');
+            `可以寫下歸還狀態（選填，例如「設備正常，已收回櫃檯」）：`, '');
         if (note === null) return;   // 按了取消
         showLoading("標記歸還中...");
         const { error } = await db.from('borrow_records').update({
@@ -2451,7 +2445,7 @@
     // 按錯歸還（不管是會眾還是管理員按的）可以改回未歸還；歸還照片連結與歸還狀態會一併清除
     async function undoReturn(id) {
         if (!requireDb()) return;
-        if (!confirm(`確定要把這筆改回「未歸還」嗎？\n${recordLabel(adminRecordMap[id])}\n\n（歸還照片連結與歸還狀態會一併清除）`)) return;
+        if (!confirm(`確定要把這筆改回「未歸還」嗎？\n${recordLabel(adminRecordMap[id])}\n\n（歸還狀態會一併清除）`)) return;
         showLoading("更新中...");
         const { error } = await db.from('borrow_records').update({
             is_returned: false, return_date: null, return_photo_url: null, return_notes: null
@@ -2763,7 +2757,7 @@
         } else if (s.usingGroups > 0) {
             foot = `<div class="inv-foot use">🕐 有 ${s.usingGroups} 組正在使用中，還沒到歸還時間。他們歸還後這裡的數字會自動更新。</div>`;
         } else {
-            foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>${upNames.length ? '，還有上面列的其他設備' : ''}。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還照片。</div>`;
+            foot = `<div class="inv-foot ok">✅ ${s.otherNotes.length ? '喇叭、譜架' : '所有設備'}都應該在倉庫：<b>喇叭 ${SPEAKER_TOTAL} 台、譜架 ${STAND_TOTAL} 個</b>${upNames.length ? '，還有上面列的其他設備' : ''}。實際點到的數量如果對不上，請看下方「已歸還清單」最近幾組的歸還狀態。</div>`;
         }
         let other = s.otherNotes.length === 0 ? '' :
             `<div class="inv-notes other">📝 <b>還沒歸還、備註還沒登記的組別</b>（沒有算進上面的數量，點後面的「去登記」就可以登記）` +
@@ -2858,9 +2852,6 @@
                 let needSpeaker = speakerUsage(item) > 0;
                 let badges = (overdue ? '<span class="bk-badge red">⚠️ 已逾期</span>' : '') +
                              (item.need_tech === '是' ? '<span class="bk-badge pink">🎛️ 需音控</span>' : '');
-                let photo = item.pickup_photo_url
-                    ? `<a href="${item.pickup_photo_url}" target="_blank">查看</a>　<label class="upload-label">重傳<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`
-                    : `<label class="upload-label">上傳照片<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`;
                 html += `<div class="bk-card${overdue ? ' overdue' : ''}" data-id="${item.id}">
                     <div class="bk-top"><span class="bk-time">🕐 ${item.start_time}–${item.end_time}</span><span class="bk-venue">📍 ${item.location}</span></div>
                     <div class="bk-person">${whoBlock(item)}</div>
@@ -2871,7 +2862,6 @@
                         <span class="k">🔊 喇叭</span><div>${needSpeaker ? speakerAssignUI(item, records) : '<span style="color:#bbb;">不需要</span>'}</div>
                         <span class="k">🎼 譜架</span><div>${standCell(item)}</div>
                         <span class="k">🎹 鋼琴</span><div>${pianoCell(item)}</div>
-                        <span class="k">📍 領取照片</span><div>${photo}</div>
                     </div>
                     <div class="bk-actions two">
                         <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
@@ -2903,8 +2893,7 @@
                 <div style="color:#7f8c8d; margin-top:4px;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</div>
                 ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
                 ${returnedExtraLines(item).length ? `<div class="ret-extra">${returnedExtraLines(item).join('<br>')}</div>` : ''}
-                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員登記歸還</span>' : ''}
-                    ${item.return_photo_url ? `　<a href="${item.return_photo_url}" target="_blank">📸 看照片</a>` : ''}</div>
+                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員登記歸還</span>' : ''}</div>
                 <div class="bk-actions two">
                     <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
                     <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
@@ -3006,8 +2995,8 @@
                 // 導致清單顯示的機台數/編號比畫面上實際看得到的未歸還紀錄還多，兩邊對不起來。
                 unreturnedHtml += summaryBox(dailySummary(unreturnedGroups[date], date));
                 unreturnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
-                        <col style="width:10%"><col style="width:8%"><col style="width:15%"><col style="width:14%">
-                        <col style="width:6%"><col style="width:9%"><col style="width:18%"><col style="width:9%"><col style="width:11%">
+                        <col style="width:10%"><col style="width:9%"><col style="width:16%"><col style="width:15%">
+                        <col style="width:6%"><col style="width:9%"><col style="width:24%"><col style="width:11%">
                     </colgroup><tr>
                         <th>時間</th>
                         <th>場地</th>
@@ -3016,7 +3005,6 @@
                         <th>譜架</th>
                         <th>鋼琴</th>
                         <th>備註</th>
-                        <th>📍 領取照片</th>
                         <th>操作</th></tr>`;
 
                 unreturnedGroups[date].forEach(item => {
@@ -3035,9 +3023,6 @@
                         ? `<div style="background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; font-size:12.5px; line-height:1.5; border-radius:4px; padding:4px 7px; margin:3px 0 0;">📝 ${noteHtml(item.notes)}</div>`
                         : '';
 
-                    let photoAction = item.pickup_photo_url
-                        ? `<a href="${item.pickup_photo_url}" target="_blank">查看</a> | <label class="upload-label">重傳<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`
-                        : `<label class="upload-label">上傳照片<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`;
 
                     let needSpeaker = ((parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0)) > 0;
                     let speakerAdmin = needSpeaker
@@ -3055,7 +3040,6 @@
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
                             <td style="white-space:normal;">${techBadge}${noteBlock}${extraBlock(item)}${!techBadge && !noteBlock && !extraBlock(item) ? '<span style="color:#ccc;">—</span>' : ''}</td>
-                            <td>${photoAction}</td>
                             <td><div class="row-actions">
                                 <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
                                 <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 歸還</button>
@@ -3080,8 +3064,8 @@
                 returnedHtml += `<div class="date-header flex-head" style="background:#1e8449;"><span>${returnedGroupTitle(key)}</span><span>${list.length} 組</span></div>`;
                 // 借用日期已經寫在標題上，表格就不重複這一欄
                 returnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
-                        <col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:11%"><col style="width:12%">
-                        <col style="width:6%"><col style="width:8%"><col style="width:13%"><col style="width:6%"><col style="width:11%">
+                        <col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:14%"><col style="width:12%">
+                        <col style="width:6%"><col style="width:8%"><col style="width:16%"><col style="width:11%">
                     </colgroup><tr>
                         <th>🕒 歸還時間</th>
                         <th>時段</th>
@@ -3091,7 +3075,6 @@
                         <th>譜架</th>
                         <th>鋼琴</th>
                         <th>歸還狀態</th>
-                        <th>📸 照片</th>
                         <th>操作</th></tr>`;
                 list.forEach(item => {
                     let ts = returnTimeOf(item);
@@ -3099,9 +3082,6 @@
                         ? formatReturnTimeShort(ts).replace(' ', '<br>')
                         : `${item.return_date ? formatDateLabel(item.return_date) : '—'}<br><span style="color:#95a5a6; font-size:11px;">(無時間紀錄)</span>`;
                     let byAdmin = parseAdminReturn(item.return_notes);
-                    let photo = item.return_photo_url
-                        ? `<a href="${item.return_photo_url}" target="_blank">檢視</a>`
-                        : '<span style="color:#ccc;">—</span>';
 
                     // 歸還狀態用顏色分流：留空，或會眾自己寫的字裡有「正常」兩個字（不管是「正常歸還」「設備正常」哪種寫法都算），
                     // 一律視為沒問題、用綠色勾勾；其他文字才代表真的有異常說明，用橘色凸顯，不用逐行讀文字
@@ -3123,7 +3103,6 @@
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
                             <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
-                            <td>${photo}</td>
                             <td><div class="row-actions">
                                 <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
                                 <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
@@ -3249,8 +3228,7 @@
                     syncToggles();
                     syncEndTimeOptions('startTime', 'endTime');   // 重設後歸還時間的選項全部恢復可選
                     alert('✅ 已登記借用！' + speakerMsg);
-                    showSection('adminSection');
-                    loadAdminData();
+                    showSection('adminSection');   // 進後台會自動載入最新資料
                 }, 100);
             }
         } catch (e) {
