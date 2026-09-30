@@ -852,7 +852,8 @@
     //    預留：12/11「校園教會」一整天先預留 2 個，小組只能借剩下的 4 個。
     //    會眾那邊不解釋原因，只顯示「已借完」。
     const 譜架不外借日期 = { '2026-12-13': '聖誕總彩日', '2026-12-19': '聖誕特會' };
-    const 譜架預留 = { '2026-12-11': { n: 2, why: '校園教會' } };
+    //    預留（第三十八輪追加）：11/27「南區校園教會」一整天先預留 2 個。
+    const 譜架預留 = { '2026-11-27': { n: 2, why: '南區校園教會' }, '2026-12-11': { n: 2, why: '校園教會' } };
     // 這天整天最多可以借出幾個譜架
     function standCapacity(date) {
         date = String(date || '');
@@ -3005,16 +3006,16 @@
                 // 導致清單顯示的機台數/編號比畫面上實際看得到的未歸還紀錄還多，兩邊對不起來。
                 unreturnedHtml += summaryBox(dailySummary(unreturnedGroups[date], date));
                 unreturnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
-                        <col style="width:10%"><col style="width:8%"><col style="width:15%"><col style="width:18%">
-                        <col style="width:14%"><col style="width:6%"><col style="width:9%"><col style="width:9%"><col style="width:11%">
+                        <col style="width:10%"><col style="width:8%"><col style="width:15%"><col style="width:14%">
+                        <col style="width:6%"><col style="width:9%"><col style="width:18%"><col style="width:9%"><col style="width:11%">
                     </colgroup><tr>
                         <th>時間</th>
                         <th>場地</th>
                         <th>借用人／小組</th>
-                        <th>備註</th>
                         <th>喇叭</th>
                         <th>譜架</th>
                         <th>鋼琴</th>
+                        <th>備註</th>
                         <th>📍 領取照片</th>
                         <th>操作</th></tr>`;
 
@@ -3050,10 +3051,10 @@
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}${dueBadgeCell}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
                             <td style="white-space:normal;">${whoBlock(item)}</td>
-                            <td style="white-space:normal;">${techBadge}${noteBlock}${extraBlock(item)}${!techBadge && !noteBlock && !extraBlock(item) ? '<span style="color:#ccc;">—</span>' : ''}</td>
                             <td style="white-space:normal;">${speakerAdmin}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
+                            <td style="white-space:normal;">${techBadge}${noteBlock}${extraBlock(item)}${!techBadge && !noteBlock && !extraBlock(item) ? '<span style="color:#ccc;">—</span>' : ''}</td>
                             <td>${photoAction}</td>
                             <td><div class="row-actions">
                                 <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
