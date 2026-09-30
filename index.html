@@ -65,6 +65,29 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        /* 📅 第三十八輪：月曆 */
+        .date-pick { display: block; width: 100%; min-height: 50px; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: left; color: #2c3e50; font-family: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-appearance: none; appearance: none; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'><rect x='1.5' y='2.5' width='13' height='12' rx='2' fill='none' stroke='%237f8c8d' stroke-width='1.4'/><path d='M1.5 6h13M5 1v3M11 1v3' stroke='%237f8c8d' stroke-width='1.4' stroke-linecap='round'/></svg>") no-repeat right 12px center; transition: border-color .15s, box-shadow .15s; }
+        .date-pick.empty { color: #7f8c8d; }
+        .date-pick:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        .cal-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); justify-content: center; align-items: center; z-index: 5000; padding: 16px; box-sizing: border-box; }
+        .cal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 18px; color: #2c3e50; }
+        .cal-head button { width: 44px; height: 44px; border: none; border-radius: 10px; background: #f0f3f5; font-size: 24px; line-height: 1; color: #2c3e50; cursor: pointer; }
+        .cal-head button:disabled { opacity: .3; cursor: default; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .cal-wd { text-align: center; font-size: 12.5px; color: #95a5a6; padding: 4px 0; }
+        .cal-day { height: 44px; border: none; border-radius: 10px; background: #fff; font-size: 16px; color: #2c3e50; cursor: pointer; font-family: inherit; padding: 0; }
+        .cal-day:hover:not(:disabled) { background: #eaf2f8; }
+        .cal-wd.sun, .cal-day.sun { color: #e74c3c; }
+        .cal-day.today { box-shadow: inset 0 0 0 2px #aed6f1; }
+        .cal-day.sel { background: #3498db; color: #fff; font-weight: bold; }
+        .cal-day:disabled { color: #d5dbdf; cursor: default; background: transparent; }
+        .cal-hint { margin-top: 10px; font-size: 12.5px; color: #7f8c8d; text-align: center; }
+        .cal-close { margin-top: 12px; width: 100%; padding: 11px; border: none; border-radius: 8px; background: #ecf0f1; color: #34495e; font-size: 15px; cursor: pointer; font-family: inherit; }
+        /* 👤 第三十八輪：借用人／小組／設備組負責人改成「文字標籤：名字」 */
+        .who-block { line-height: 1.65; }
+        .who-block .lbl { color: #7f8c8d; }
+        .bk-person .who-block { font-size: 15px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
         .modal-content { background: white; padding: 25px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
         .upload-label { cursor: pointer; background: #3498db; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; }
@@ -374,6 +397,19 @@
 <body>
 
 <!-- 🔥 全域自動載入遮罩 -->
+<!-- 📅 第三十八輪：月曆選日期（openCalendar／renderCalendar） -->
+<div id="calModal" class="cal-modal" onclick="if(event.target===this) closeCalendar()">
+    <div class="cal-box" role="dialog" aria-label="選擇日期">
+        <div class="cal-head">
+            <button type="button" id="calPrev" onclick="calMove(-1)" aria-label="上個月">‹</button>
+            <b id="calTitle"></b>
+            <button type="button" id="calNext" onclick="calMove(1)" aria-label="下個月">›</button>
+        </div>
+        <div id="calGrid" class="cal-grid"></div>
+        <div id="calHint" class="cal-hint"></div>
+        <button type="button" class="cal-close" onclick="closeCalendar()">取消</button>
+    </div>
+</div>
 <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:white; font-size:18px; font-weight:bold;">
     <div style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom:15px;"></div>
     <div id="loadingText" style="text-align: center;">處理中，請稍候...</div>
@@ -443,11 +479,11 @@
             <!-- 第三十三輪（使用者反映排列容易混淆後調整）：跟借用表單一致，改成「借用日期＋借用時間」
                  一組、「歸還日期＋歸還時間」一組。 -->
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期</label><select id="editDate" onchange="syncEditReturnDueDate()"></select></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期</label><button type="button" class="date-pick empty" id="editDate" value="" onclick="openCalendar('editDate')" onchange="syncEditReturnDueDate()">請選擇日期</button></div>
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label><select id="editStart" onchange="syncEndTimeOptions('editStart', 'editEnd')"></select></div>
             </div>
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還日期</label><select id="editReturnDueDate"></select></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還日期</label><button type="button" class="date-pick empty" id="editReturnDueDate" value="" data-min-from="editDate" onclick="openCalendar('editReturnDueDate')">請選擇日期</button></div>
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label><select id="editEnd"></select></div>
             </div>
             <div class="form-group"><label>場地</label>
@@ -530,8 +566,8 @@
                      第三十三輪（使用者反映排列容易混淆後調整）：改成「借用日期＋借用時間」一組、
                      「歸還日期＋歸還時間」一組，兩組各自並排，操作邏輯跟畫面順序一致。 -->
                 <div style="display: flex; gap: 10px;">
-                    <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期（限 2026 年 11–12 月）</label>
-                        <select id="borrowDate" onchange="refreshAvailability(); syncReturnDueDate();"></select>
+                    <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期</label>
+                        <button type="button" class="date-pick empty" id="borrowDate" value="" onclick="openCalendar('borrowDate')" onchange="refreshAvailability(); syncReturnDueDate();">請選擇日期</button>
                     </div>
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label>
                         <select id="startTime" onchange="syncEndTimeOptions('startTime', 'endTime'); refreshAvailability()"></select>
@@ -541,7 +577,7 @@
                      選好借用日期會自動帶入同一天，需要跨日歸還時再自己改成之後的日期（syncReturnDueDate()）。 -->
                 <div style="display: flex; gap: 10px;">
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還日期</label>
-                        <select id="returnDueDate"></select>
+                        <button type="button" class="date-pick empty" id="returnDueDate" value="" data-min-from="borrowDate" onclick="openCalendar('returnDueDate')">請選擇日期</button>
                     </div>
                     <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label>
                         <select id="endTime" onchange="refreshAvailability()"></select>
@@ -612,7 +648,6 @@
                     <div class="hidden" id="pianoModelGroup" style="margin-top:8px;">
                         <select id="pianoModel"><option value="RD64">RD64</option><option value="舊二琴">舊二琴</option></select>
                     </div>
-                    <div id="pianoHint" class="info-box"></div>
                 </div>
             </div>
 
@@ -1016,7 +1051,7 @@
         let model = String(item.piano_model || '').trim();
         let modelHtml = model ? `<br><span style="color:#34495e; font-size:13px; font-weight:bold;">🎹 ${noteHtml(model)}</span>` : '';
         if (需要架設鋼琴(item)) return '<b style="color:#8e44ad;">需架設</b>' + modelHtml;
-        return '<b style="color:#7f8c8d;">會使用</b> <span style="color:#95a5a6; font-size:12px;">（場地自有）</span>' + modelHtml;
+        return '<b style="color:#7f8c8d;">會使用</b><br><span style="color:#95a5a6; font-size:11.5px;">場地自有</span>' + modelHtml;
     }
 
     // 📝 會眾自己打的字（備註）放進畫面前先轉義，避免裡面有 < > 之類的符號把版面弄壞；換行照樣顯示
@@ -1493,15 +1528,11 @@
             document.getElementById('pianoLabel').textContent = '鋼琴使用情形';
             document.getElementById('pianoYesText').textContent = '會使用';
             document.getElementById('pianoNoText').textContent = '不使用';
-            document.getElementById('pianoHint').textContent =
-                loc + '有自己的鋼琴，這題只是讓管理員知道您會不會用到，不需要另外準備。';
         } else if (需架設鋼琴場地.indexOf(loc) >= 0) {
             pianoSec.classList.remove("hidden");
             document.getElementById('pianoLabel').textContent = '是否需要鋼琴';
             document.getElementById('pianoYesText').textContent = '需要';
             document.getElementById('pianoNoText').textContent = '不需要';
-            document.getElementById('pianoHint').textContent =
-                '選「需要」的話，同工會事先幫您把' + loc + '的鋼琴架設好。';
         } else {
             // 尚未選場地，或選了教會外場地（沒有鋼琴）
             pianoSec.classList.add("hidden");
@@ -1753,6 +1784,76 @@
         return ALLOWED_MONTHS.some(x => x.y === y && x.m === m);
     }
 
+    // 📅 第三十八輪（用戶要求）：日期從下拉選單改成「月曆」。
+    //    不用瀏覽器內建的日期選擇器：iPhone 內建的不理會「只限 11–12 月」的限制，自己畫月曆才能
+    //    只顯示開放的月份、並把「歸還日期早於借用日期」的日子直接鎖住。
+    //    日期欄位是一顆按鈕（class="date-pick"），值放在 button.value（YYYY-MM-DD），
+    //    選好日期會觸發 change 事件，所以原本寫在 onchange 的連動（查剩餘設備、帶入歸還日期）照常運作。
+    function setDateValue(id, v) {
+        let b = document.getElementById(id);
+        if (!b) return;
+        b.value = v || '';
+        b.textContent = v ? formatDateLabel(v) : '請選擇日期';
+        b.classList.toggle('empty', !v);
+    }
+    let calState = null;
+    function ymdStr(y, m, d) { return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`; }
+    function openCalendar(id) {
+        let el = document.getElementById(id);
+        let minFrom = el.dataset.minFrom ? document.getElementById(el.dataset.minFrom) : null;
+        let min = minFrom ? minFrom.value : '';
+        let base = el.value || min || '';
+        let idx = 0;
+        if (base) {
+            let p = base.split('-').map(Number);
+            let k = ALLOWED_MONTHS.findIndex(x => x.y === p[0] && x.m === p[1]);
+            if (k >= 0) idx = k;
+        } else {
+            let t = new Date();
+            let k = ALLOWED_MONTHS.findIndex(x => x.y === t.getFullYear() && x.m === t.getMonth() + 1);
+            if (k >= 0) idx = k;
+        }
+        calState = { id: id, idx: idx, min: min };
+        renderCalendar();
+        document.getElementById('calModal').style.display = 'flex';
+    }
+    function closeCalendar() { document.getElementById('calModal').style.display = 'none'; calState = null; }
+    function calMove(delta) {
+        if (!calState) return;
+        let n = calState.idx + delta;
+        if (n < 0 || n >= ALLOWED_MONTHS.length) return;
+        calState.idx = n;
+        renderCalendar();
+    }
+    function renderCalendar() {
+        let { y, m, days } = ALLOWED_MONTHS[calState.idx];
+        let cur = document.getElementById(calState.id).value;
+        let t = new Date(), today = ymdStr(t.getFullYear(), t.getMonth() + 1, t.getDate());
+        document.getElementById('calTitle').textContent = `${y} 年 ${m} 月`;
+        document.getElementById('calPrev').disabled = calState.idx === 0;
+        document.getElementById('calNext').disabled = calState.idx === ALLOWED_MONTHS.length - 1;
+        let first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+        let html = '日一二三四五六'.split('').map((w, i) => `<div class="cal-wd${i === 0 ? ' sun' : ''}">${w}</div>`).join('');
+        for (let i = 0; i < first; i++) html += '<div></div>';
+        for (let d = 1; d <= days; d++) {
+            let v = ymdStr(y, m, d);
+            let dis = calState.min && v < calState.min;
+            let wd = (first + d - 1) % 7;
+            let cls = 'cal-day' + (v === cur ? ' sel' : '') + (v === today ? ' today' : '') + (wd === 0 ? ' sun' : '');
+            html += `<button type="button" class="${cls}" data-date="${v}"${dis ? ' disabled' : ''} onclick="pickCalDate('${v}')">${d}</button>`;
+        }
+        document.getElementById('calGrid').innerHTML = html;
+        let hint = document.getElementById('calHint');
+        hint.textContent = calState.min ? `歸還日期不能早於借用日期（${formatDateLabel(calState.min)}）` : '開放 2026 年 11–12 月';
+    }
+    function pickCalDate(v) {
+        if (!calState) return;
+        let id = calState.id;
+        setDateValue(id, v);
+        closeCalendar();
+        document.getElementById(id).dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
     function fillDateOptions(selectId) {
         let sel = document.getElementById(selectId);
         if (!sel) return;
@@ -1772,14 +1873,14 @@
         let bd = document.getElementById('borrowDate');
         let rd = document.getElementById('returnDueDate');
         if (!bd || !rd) return;
-        if (!rd.value || (bd.value && rd.value < bd.value)) rd.value = bd.value;
+        if (!rd.value || (bd.value && rd.value < bd.value)) setDateValue('returnDueDate', bd.value);
     }
     // 編輯視窗版本：同樣邏輯，只是欄位換成 editDate／editReturnDueDate
     function syncEditReturnDueDate() {
         let bd = document.getElementById('editDate');
         let rd = document.getElementById('editReturnDueDate');
         if (!bd || !rd) return;
-        if (!rd.value || (bd.value && rd.value < bd.value)) rd.value = bd.value;
+        if (!rd.value || (bd.value && rd.value < bd.value)) setDateValue('editReturnDueDate', bd.value);
     }
 
     // kind = 'start'（08:00–21:30）或 'end'（08:30–22:00）
@@ -2224,7 +2325,7 @@
             html += `<div class="sr-item">
                 <div class="sr-main">
                     <div><b>📅 ${formatDateLabel(r.borrow_date)} ${r.start_time}–${r.end_time}</b>　📍 ${escapeHtml(r.location)} ${status}</div>
-                    <div>👤 ${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　🏷️ ${res.phone ? escapeHtml(r.group_name || '—') : markMatch(r.group_name || '—', res.q, false)}　🎧 ${escapeHtml(r.equipment_lead || '—')}</div>
+                    <div><span style="color:#7f8c8d;">借用人：</span>${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　<span style="color:#7f8c8d;">小組：</span>${res.phone ? escapeHtml(r.group_name || '—') : markMatch(r.group_name || '—', res.q, false)}　<span style="color:#7f8c8d;">設備組負責人：</span>${escapeHtml(r.equipment_lead || '—')}</div>
                 </div>
                 <div class="sr-actions">
                     <button type="button" class="go" onclick="jumpToRecord(${r.id})">📍 跳到這筆</button>
@@ -2311,6 +2412,12 @@
 
     // 🏷️ 第三十三輪：後台顯示「小組」＋「設備組負責人」（取代原本的聯絡電話）。
     //    舊資料（round 33 之前）沒有這兩個欄位時顯示「—」，不會噴 undefined。
+    // 第三十八輪：手機卡片、電腦表格都用「借用人：／小組：／設備組負責人：」一行一個，不再只放小圖示
+    function whoBlock(item) {
+        return `<div class="who-block"><div><span class="lbl">借用人：</span><b>${escapeHtml(item.leader_name || '—')}</b></div>` +
+            `<div><span class="lbl">小組：</span>${escapeHtml(item.group_name || '—')}</div>` +
+            `<div><span class="lbl">設備組負責人：</span>${escapeHtml(item.equipment_lead || '—')}</div></div>`;
+    }
     function groupLeadLine(item) {
         let g = escapeHtml(item.group_name || '—');
         let l = escapeHtml(item.equipment_lead || '—');
@@ -2368,12 +2475,12 @@
         let item = adminRecordMap[id];
         if (!item) { alert('找不到這筆資料，請先按「🔄 重新整理」'); return; }
         document.getElementById('editId').value = id;
-        setSelectValue('editDate', item.borrow_date, formatDateLabel(item.borrow_date));
+        setDateValue('editDate', item.borrow_date);
         setSelectValue('editStart', item.start_time);
         setSelectValue('editEnd', item.end_time);
         syncEndTimeOptions('editStart', 'editEnd');
         // 歸還日期：舊資料沒有 return_due_date 欄位時，當作跟借用日期同一天（相容第三十三輪之前的資料）
-        setSelectValue('editReturnDueDate', item.return_due_date || item.borrow_date, formatDateLabel(item.return_due_date || item.borrow_date));
+        setDateValue('editReturnDueDate', item.return_due_date || item.borrow_date);
         document.getElementById('editLocation').value = item.location || '交誼廳';
         document.getElementById('editName').value = item.leader_name || '';
         document.getElementById('editGroup').value = item.group_name || '';
@@ -2755,7 +2862,7 @@
                     : `<label class="upload-label">上傳照片<input type="file" onchange="uploadPickupPhoto(${item.id}, this)" accept="image/*" hidden></label>`;
                 html += `<div class="bk-card${overdue ? ' overdue' : ''}" data-id="${item.id}">
                     <div class="bk-top"><span class="bk-time">🕐 ${item.start_time}–${item.end_time}</span><span class="bk-venue">📍 ${item.location}</span></div>
-                    <div class="bk-person"><span>👤 ${item.leader_name}</span>${groupLeadLine(item)}</div>
+                    <div class="bk-person">${whoBlock(item)}</div>
                     ${badges || dueDateBadge(item) ? `<div>${badges}${dueDateBadge(item)}</div>` : ''}
                     ${hasNote(item) ? `<div class="bk-note">📝 <b>備註：</b>${noteHtml(item.notes)}</div>` : ''}
                     ${extraBlock(item)}
@@ -2791,7 +2898,8 @@
             if ((parseInt(item.music_stand) || 0) > 0) equip.push(`🎼 譜架 ${item.music_stand} 個`);
             cards += `<div class="bk-card bk-returned" data-id="${item.id}">
                 <div class="bk-top"><b>📅 ${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}</b><span class="bk-venue">📍 ${item.location}</span></div>
-                <div class="bk-person"><span>👤 ${item.leader_name}</span>${groupLeadLine(item)}<span style="color:#7f8c8d;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</span></div>
+                <div class="bk-person">${whoBlock(item)}</div>
+                <div style="color:#7f8c8d; margin-top:4px;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</div>
                 ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
                 ${returnedExtraLines(item).length ? `<div class="ret-extra">${returnedExtraLines(item).join('<br>')}</div>` : ''}
                 <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員登記歸還</span>' : ''}
@@ -2897,13 +3005,13 @@
                 // 導致清單顯示的機台數/編號比畫面上實際看得到的未歸還紀錄還多，兩邊對不起來。
                 unreturnedHtml += summaryBox(dailySummary(unreturnedGroups[date], date));
                 unreturnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
-                        <col style="width:11%"><col style="width:10%"><col style="width:14%"><col style="width:12%">
-                        <col style="width:16%"><col style="width:6%"><col style="width:8%"><col style="width:11%"><col style="width:12%">
+                        <col style="width:10%"><col style="width:8%"><col style="width:15%"><col style="width:18%">
+                        <col style="width:14%"><col style="width:6%"><col style="width:9%"><col style="width:9%"><col style="width:11%">
                     </colgroup><tr>
                         <th>時間</th>
                         <th>場地</th>
-                        <th>聯絡人</th>
-                        <th>小組／設備組負責人</th>
+                        <th>借用人／小組</th>
+                        <th>備註</th>
                         <th>喇叭</th>
                         <th>譜架</th>
                         <th>鋼琴</th>
@@ -2923,7 +3031,7 @@
 
                     // 會眾備註單獨一個淺色小方塊，跟姓名分開，不會混在一起變成一整段字
                     let noteBlock = hasNote(item)
-                        ? `<div style="background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; font-size:12.5px; line-height:1.5; border-radius:4px; padding:4px 7px; margin-top:5px; min-width:140px;">📝 <b>備註：</b>${noteHtml(item.notes)}</div>`
+                        ? `<div style="background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; font-size:12.5px; line-height:1.5; border-radius:4px; padding:4px 7px; margin:3px 0 0;">📝 ${noteHtml(item.notes)}</div>`
                         : '';
 
                     let photoAction = item.pickup_photo_url
@@ -2941,8 +3049,8 @@
                     unreturnedHtml += `<tr data-id="${item.id}"${overdue ? ' style="background:#fdf1ef;"' : ''}>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}${dueBadgeCell}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
-                            <td style="white-space:normal;">👤 ${item.leader_name}${techBadge ? '<br>' + techBadge : ''}${noteBlock}${extraBlock(item)}</td>
-                            <td style="white-space:normal;">🏷️ ${escapeHtml(item.group_name || '—')}<br>🎧 ${escapeHtml(item.equipment_lead || '—')}</td>
+                            <td style="white-space:normal;">${whoBlock(item)}</td>
+                            <td style="white-space:normal;">${techBadge}${noteBlock}${extraBlock(item)}${!techBadge && !noteBlock && !extraBlock(item) ? '<span style="color:#ccc;">—</span>' : ''}</td>
                             <td style="white-space:normal;">${speakerAdmin}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
@@ -2977,7 +3085,7 @@
                         <th>🕒 歸還時間</th>
                         <th>時段</th>
                         <th>場地</th>
-                        <th>負責人</th>
+                        <th>借用人／小組</th>
                         <th>喇叭</th>
                         <th>譜架</th>
                         <th>鋼琴</th>
@@ -3009,7 +3117,7 @@
                             <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
-                            <td style="white-space:normal;">👤 ${item.leader_name}<br><span style="color:#7f8c8d; font-size:11.5px;">🏷️ ${escapeHtml(item.group_name || '—')}／🎧 ${escapeHtml(item.equipment_lead || '—')}</span></td>
+                            <td style="white-space:normal; font-size:12.5px;">${whoBlock(item)}</td>
                             <td style="white-space:normal;">${speakerCell(item)}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
@@ -3133,6 +3241,7 @@
                 let speakerMsg = reqSpeaker > 0 ? (assignedUnit ? `\n🔊 已自動分配喇叭：${assignedUnit}` : `\n❓ 喇叭目前沒有空的機台，請到後台人工協調。`) : '';
                 setTimeout(() => {
                     document.getElementById("borrowForm").reset();
+                    setDateValue('borrowDate', ''); setDateValue('returnDueDate', '');
                     document.getElementById('availPanel').classList.add('hidden');
                     resetAvailabilityLimits();
                     checkRules();
@@ -3454,12 +3563,12 @@
     syncToggles();
 
     // 頁面剛載入時產生日期、時間下拉選單的選項（借用表單＋管理員編輯視窗）
-    fillDateOptions('borrowDate');
-    fillDateOptions('returnDueDate');
+    setDateValue('borrowDate', '');
+    setDateValue('returnDueDate', '');
     fillTimeOptions('startTime', 'start');
     fillTimeOptions('endTime', 'end');
-    fillDateOptions('editDate');
-    fillDateOptions('editReturnDueDate');
+    setDateValue('editDate', '');
+    setDateValue('editReturnDueDate', '');
     fillTimeOptions('editStart', 'start');
     fillTimeOptions('editEnd', 'end');
 
