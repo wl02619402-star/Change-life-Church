@@ -843,7 +843,27 @@
 
     // 🔧 設備組值班同工名單（第三十三輪）：借用表單「設備組負責人」下拉選單就是這份清單。
     //    以後值班的人變動，只要改這一行陣列即可，不用改別的地方。
-    const EQUIPMENT_LEADS = ['小橘', '苡捷', '承燁'];
+    const EQUIPMENT_LEADS = ['小橘', '苡捷', '承燁', '修哥'];
+    // 🔑 第四十一輪（用戶要求）：用誰的信箱登入，借用單的「設備組負責人」就自動帶入誰（還是可以手動改）。
+    //    新增同工時：在 Supabase 新增帳號、資料庫權限加上他的信箱，再在這裡加一行。
+    const LEAD_BY_EMAIL = {
+        'wl02619402@gmail.com': '承燁',
+        '1122jasony@gmail.com': '苡捷',
+        'bob.hung@twclc.org': '修哥',
+        'orange.liang@twclc.org': '小橘'
+    };
+    let autoFilledLead = '';   // 上一次自動帶入的名字：換人登入時可以覆蓋掉，但不會蓋掉手動選的
+    async function prefillEquipmentLead() {
+        try {
+            if (!db) return;
+            const { data: { session } } = await db.auth.getSession();
+            let email = session && session.user && session.user.email ? String(session.user.email).toLowerCase() : '';
+            let name = LEAD_BY_EMAIL[email] || '';
+            let sel = document.getElementById('equipmentLead');
+            if (!sel || !name) return;
+            if (!sel.value || sel.value === autoFilledLead) { sel.value = name; autoFilledLead = name; }
+        } catch (e) { /* 帶不出來就讓使用者自己選 */ }
+    }
 
     const SPEAKER_TOTAL = 4;   // 喇叭總數
     const STAND_TOTAL = 6;     // 譜架總數
@@ -1489,6 +1509,7 @@
         // 🔁 第四十輪（用戶回報）：從借用單按「返回後台」或按瀏覽器上一頁回到後台時，原本只切換畫面、
         //    沒有抓資料，要按重新整理才看得到。改成只要進到後台畫面就自動載入最新資料。
         if (sectionId === 'adminSection') loadAdminData();
+        if (sectionId === 'borrowSection') prefillEquipmentLead();
 
         if (!opts.fromPopstate) {
             if (!history.state || history.state.section !== sectionId) {
@@ -2010,7 +2031,14 @@
         else { document.getElementById('loginModal').style.display = 'none'; goAfterLogin(); }
     }
 
-    async function adminLogout() { if (db) await db.auth.signOut(); showSection('homeMenu'); }
+    async function adminLogout() {
+        if (db) await db.auth.signOut();
+        // 登出時把自動帶入的負責人清掉，下一個人登入才不會看到上一個人的名字
+        let sel = document.getElementById('equipmentLead');
+        if (sel && sel.value === autoFilledLead) sel.value = '';
+        autoFilledLead = '';
+        showSection('homeMenu');
+    }
 
     // 🗑️ 刪除：未歸還的紀錄只能從「✏️ 編輯」視窗最下面刪（卡片上不再放刪除鈕，避免跟「代為歸還」按錯）
     async function deleteRecord(id, fromEdit) {
