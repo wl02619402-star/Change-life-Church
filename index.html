@@ -65,6 +65,15 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        /* 🔊 第四十二輪：喇叭教學影片（管理員一鍵複製給會友） */
+        .tutorial-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #f4ecf7; border: 1px solid #d7bde2; border-radius: 10px; padding: 10px 12px; margin-bottom: 15px; }
+        .tutorial-box .tt-text { flex: 1 1 180px; min-width: 0; color: #4a235a; font-size: 14.5px; line-height: 1.45; }
+        .tutorial-box .tt-text small { display: block; color: #7d6b85; font-size: 12px; }
+        .tutorial-box .tt-btns { display: flex; gap: 8px; flex: 0 0 auto; }
+        .tutorial-box button, .tutorial-box a { border: none; border-radius: 8px; padding: 9px 14px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; font-family: inherit; white-space: nowrap; }
+        .tutorial-box .tt-copy { background: #8e44ad; color: #fff; }
+        .tutorial-box .tt-copy.done { background: #27ae60; }
+        .tutorial-box .tt-open { background: #fff; color: #8e44ad; border: 1px solid #c39bd3; }
         /* 📅 第三十八輪：月曆 */
         .date-pick { display: block; width: 100%; min-height: 50px; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: left; color: #2c3e50; font-family: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-appearance: none; appearance: none; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'><rect x='1.5' y='2.5' width='13' height='12' rx='2' fill='none' stroke='%237f8c8d' stroke-width='1.4'/><path d='M1.5 6h13M5 1v3M11 1v3' stroke='%237f8c8d' stroke-width='1.4' stroke-linecap='round'/></svg>") no-repeat right 12px center; transition: border-color .15s, box-shadow .15s; }
         .date-pick.empty { color: #7f8c8d; }
@@ -735,6 +744,14 @@
             <button class="btn-back" id="btnExportExcel" style="flex:2; margin:0; background-color:#217346;" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
             <button class="btn-back" style="flex:1; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
         </div>
+        <!-- 🔊 第四十二輪（用戶要求）：喇叭教學影片，按「複製給會友」就能直接貼到 LINE -->
+        <div class="tutorial-box">
+            <div class="tt-text">🔊 <b>MA303 喇叭教學影片</b><small>借喇叭的小組，把影片連結傳給他們看</small></div>
+            <div class="tt-btns">
+                <button type="button" class="tt-copy" id="btnCopyTutorial" onclick="copyTutorial()">📋 複製給會友</button>
+                <a class="tt-open" href="https://drive.google.com/file/d/1oHQoinOaArzRL0UxMvJP6zYvX3sx_S7h/view" target="_blank" rel="noopener">▶️ 看影片</a>
+            </div>
+        </div>
         <div class="form-group" style="background: #eaf2f8; padding: 15px; border-radius: 8px;">
             <label style="color: #2980b9;">📅 資料篩選</label>
             <!-- 第三十三輪：開放 11 月後多一個「11 月」整月篩選；12 月維持原本的四週篩選 -->
@@ -863,6 +880,29 @@
             if (!sel || !name) return;
             if (!sel.value || sel.value === autoFilledLead) { sel.value = name; autoFilledLead = name; }
         } catch (e) { /* 帶不出來就讓使用者自己選 */ }
+    }
+
+    // 🔊 第四十二輪：喇叭教學影片（Google 雲端，任何知道連結的人都能看）
+    const SPEAKER_TUTORIAL_URL = 'https://drive.google.com/file/d/1oHQoinOaArzRL0UxMvJP6zYvX3sx_S7h/view';
+    const SPEAKER_TUTORIAL_TEXT = '🔊 MA303 喇叭使用教學影片，借用前請先看一下：\n' + SPEAKER_TUTORIAL_URL;
+    async function copyTutorial() {
+        let ok = false;
+        try { await navigator.clipboard.writeText(SPEAKER_TUTORIAL_TEXT); ok = true; } catch (e) { }
+        if (!ok) {   // 舊手機瀏覽器不支援 clipboard 時的備用做法
+            try {
+                let ta = document.createElement('textarea');
+                ta.value = SPEAKER_TUTORIAL_TEXT; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, ta.value.length);
+                ok = document.execCommand('copy'); document.body.removeChild(ta);
+            } catch (e) { }
+        }
+        let btn = document.getElementById('btnCopyTutorial');
+        if (ok) {
+            btn.textContent = '✅ 已複製，可以貼上了'; btn.classList.add('done');
+            clearTimeout(btn._t); btn._t = setTimeout(() => { btn.textContent = '📋 複製給會友'; btn.classList.remove('done'); }, 2500);
+        } else {
+            prompt('請長按下面的文字複製：', SPEAKER_TUTORIAL_TEXT);
+        }
     }
 
     const SPEAKER_TOTAL = 4;   // 喇叭總數
