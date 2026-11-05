@@ -508,7 +508,7 @@
                     <select id="editLead"><option value="">請選擇...</option></select>
                 </div>
             </div>
-            <div class="form-group"><label>🔊 喇叭</label>
+            <div class="form-group" id="editSpeakerGroup"><label>🔊 喇叭</label>
                 <div class="toggle-group">
                     <label><input type="radio" name="editSpeaker" value="是"> 需要</label>
                     <label><input type="radio" name="editSpeaker" value="否"> 不需要</label>
@@ -623,7 +623,9 @@
                 <div class="form-card-title">🎛️ 設備需求</div>
                 <div class="form-card-sub">以下請依實際需求填寫，不需要的維持預設值即可</div>
 
-                <div class="form-group">
+                <!-- 第四十三輪：兒主教室有現場音響，不借喇叭、不佔機台，選兒主時這題換成下面的說明 -->
+                <div class="hidden" id="ownSoundNote" style="background:#eaf7f1; border:1px solid #c8e6d5; color:#1e8449; border-radius:8px; padding:10px 12px; margin-bottom:15px; font-size:14px; line-height:1.6;">🔊 兒主教室有現場音響，不用借喇叭，也不會占用機台。</div>
+                <div class="form-group" id="speakerGroup">
                     <label>🔊 是否需要喇叭？<span style="font-weight:normal; color:#7f8c8d; font-size:14px;">（附 2 支麥克風）</span></label>
                     <div class="toggle-group">
                         <label><input type="radio" name="needSpeaker" value="是"> 是</label>
@@ -1573,6 +1575,10 @@
     const 自有鋼琴場地 = ['兒主', '幼主'];
     const 需架設鋼琴場地 = ['交誼廳', '餐廳'];
 
+    // 🔊 第四十三輪（用戶回報）：兒主教室有現場音響，不借喇叭，也就不會佔用 MA303／MA707 機台。
+    const 自有音響場地 = ['兒主'];
+    function usesOwnSound(loc) { return 自有音響場地.indexOf(loc) >= 0; }
+
     // 🌳 「教會外場地」其實是各組各自去不同的地方（公園、學校、別人家…），不是同一個空間，
     //    所以不做場地互斥：同時段可以有好幾組都選教會外場地，只檢查喇叭、譜架數量夠不夠。
     const 可共用場地 = ['教會外場地'];
@@ -1601,6 +1607,10 @@
         syncPianoModelVisibility();
 
         if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
+        let ownSound = usesOwnSound(loc);
+        document.getElementById('speakerGroup').classList.toggle('hidden', ownSound);
+        document.getElementById('ownSoundNote').classList.toggle('hidden', !ownSound);
+        if (ownSound) document.querySelector('input[name="needSpeaker"][value="否"]').checked = true;
         applyStandLimit();   // 換場地時譜架跟著鎖／開（兒主本來就有譜架）
         syncToggles();
     }
@@ -2598,6 +2608,9 @@
         document.getElementById('editPianoNo').textContent = needSetup ? '不需要' : '不使用';
         if (!hasPiano) setRadio('editPiano', '無');
         syncEditPianoModelVisibility();
+        let ownSound = usesOwnSound(loc);
+        document.getElementById('editSpeakerGroup').style.display = ownSound ? 'none' : '';
+        if (ownSound) setRadio('editSpeaker', '否');
         let hasTech = (loc === '兒主' || loc === '幼主');
         document.getElementById('editTechGroup').style.display = hasTech ? '' : 'none';
         let standSel = document.getElementById('editStand');
@@ -2623,7 +2636,7 @@
         let name = document.getElementById('editName').value.trim();
         let groupName = document.getElementById('editGroup').value.trim();
         let equipmentLead = document.getElementById('editLead').value;
-        let wantSpeaker = radioValue('editSpeaker') === '是';
+        let wantSpeaker = radioValue('editSpeaker') === '是' && !usesOwnSound(loc);
         let stand = parseInt(document.getElementById('editStand').value, 10) || 0;
         let piano = radioValue('editPiano') === '是' ? '是' : '無';
         let pianoModel = piano === '是' ? document.getElementById('editPianoModel').value.trim() : '';
@@ -3232,7 +3245,7 @@
             if (!equipmentLead) { formProblem('equipmentLead', "請選擇設備組負責人。"); return; }
 
             var speakerNode = document.querySelector('input[name="needSpeaker"]:checked');
-            var reqSpeaker = (speakerNode && speakerNode.value === "是") ? 1 : 0;
+            var reqSpeaker = (speakerNode && speakerNode.value === "是" && !usesOwnSound(loc)) ? 1 : 0;
             var standNode = document.querySelector('input[name="musicStand"]:checked');
             var reqStand = standNode ? (parseInt(standNode.value) || 0) : 0;
             var pianoNode = document.querySelector('input[name="piano"]:checked');
