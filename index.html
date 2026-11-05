@@ -623,8 +623,8 @@
                 <div class="form-card-title">🎛️ 設備需求</div>
                 <div class="form-card-sub">以下請依實際需求填寫，不需要的維持預設值即可</div>
 
-                <!-- 第四十三輪：兒主教室有現場音響，不借喇叭、不佔機台，選兒主時這題換成下面的說明 -->
-                <div class="hidden" id="ownSoundNote" style="background:#eaf7f1; border:1px solid #c8e6d5; color:#1e8449; border-radius:8px; padding:10px 12px; margin-bottom:15px; font-size:14px; line-height:1.6;">🔊 兒主教室有現場音響，不用借喇叭，也不會占用機台。</div>
+                <!-- 第四十三輪：兒主、幼主有現場音響，不借喇叭、不佔機台，選這兩個場地時這題換成下面的說明 -->
+                <div class="hidden" id="ownSoundNote" style="background:#eaf7f1; border:1px solid #c8e6d5; color:#1e8449; border-radius:8px; padding:10px 12px; margin-bottom:15px; font-size:14px; line-height:1.6;">🔊 <span id="ownSoundVenue"></span>有現場音響，不用借喇叭，也不會占用機台。</div>
                 <div class="form-group" id="speakerGroup">
                     <label>🔊 是否需要喇叭？<span style="font-weight:normal; color:#7f8c8d; font-size:14px;">（附 2 支麥克風）</span></label>
                     <div class="toggle-group">
@@ -1575,8 +1575,8 @@
     const 自有鋼琴場地 = ['兒主', '幼主'];
     const 需架設鋼琴場地 = ['交誼廳', '餐廳'];
 
-    // 🔊 第四十三輪（用戶回報）：兒主教室有現場音響，不借喇叭，也就不會佔用 MA303／MA707 機台。
-    const 自有音響場地 = ['兒主'];
+    // 🔊 第四十三輪（用戶回報）：兒主、幼主有現場音響，不借喇叭，也就不會佔用 MA303／MA707 機台。
+    const 自有音響場地 = ['兒主', '幼主'];
     function usesOwnSound(loc) { return 自有音響場地.indexOf(loc) >= 0; }
 
     // 🌳 「教會外場地」其實是各組各自去不同的地方（公園、學校、別人家…），不是同一個空間，
@@ -1610,6 +1610,7 @@
         let ownSound = usesOwnSound(loc);
         document.getElementById('speakerGroup').classList.toggle('hidden', ownSound);
         document.getElementById('ownSoundNote').classList.toggle('hidden', !ownSound);
+        document.getElementById('ownSoundVenue').textContent = ownSound ? loc : '';
         if (ownSound) document.querySelector('input[name="needSpeaker"][value="否"]').checked = true;
         applyStandLimit();   // 換場地時譜架跟著鎖／開（兒主本來就有譜架）
         syncToggles();
