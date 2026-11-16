@@ -148,6 +148,9 @@
         /* 後台電腦版：每一天各一張表，用固定欄寬讓上下每一天的欄位對齊（不然每張表各自依內容算欄寬，會歪來歪去） */
         .fixed-cols { table-layout: fixed; width: 100%; min-width: 1100px; }
         .fixed-cols td, .fixed-cols th { overflow-wrap: break-word; vertical-align: middle; }
+        /* 第四十九輪：換裝後圖示和字變大，固定寬度的欄位（場地、跨日時間）要能換行，不然字會超出格子 */
+        .fixed-cols td { white-space: normal !important; }   /* 格子本身有寫死 nowrap，要用 !important 蓋過 */
+        .fixed-cols td > b:first-child { white-space: nowrap; }   /* 時間「16:00-22:00」不要在連字號斷行；跨日的「→ 日期」可以換到下一行 */
         .date-header.flex-head { display: flex; justify-content: space-between; align-items: baseline; }
         .date-header.flex-head span:last-child { font-weight: normal; font-size: 13.5px; }
 
@@ -1087,12 +1090,13 @@
     const SPEAKER_TOTAL = 4;   // 喇叭總數
     const STAND_TOTAL = 6;     // 譜架總數
     // 🎼 譜架的特殊日期（使用者交代，第二十七輪）：
-    //    不外借：12/13「聖誕總彩日」、12/19「聖誕特會」一整天譜架都不外借。
+    //    不外借：12/13「聖誕總彩日」一整天譜架都不外借（12/19 第四十九輪改成預留，見下方）。
     //    預留：12/11「校園教會」一整天先預留 2 個，小組只能借剩下的 4 個。
     //    會眾那邊不解釋原因，只顯示「已借完」。
-    const 譜架不外借日期 = { '2026-12-13': '聖誕總彩日', '2026-12-19': '聖誕特會' };
+    const 譜架不外借日期 = { '2026-12-13': '聖誕總彩日' };
     //    預留（第三十八輪追加）：11/27「南區校園教會」一整天先預留 2 個。
-    const 譜架預留 = { '2026-11-27': { n: 2, why: '南區校園教會' }, '2026-12-11': { n: 2, why: '校園教會' } };
+    //    第四十九輪（使用者交代）：12/19「聖誕特會」從整天不外借改成預留 3 個，小組可以借剩下的 3 個。
+    const 譜架預留 = { '2026-11-27': { n: 2, why: '南區校園教會' }, '2026-12-11': { n: 2, why: '校園教會' }, '2026-12-19': { n: 3, why: '聖誕特會' } };
     // 這天整天最多可以借出幾個譜架
     function standCapacity(date) {
         date = String(date || '');
