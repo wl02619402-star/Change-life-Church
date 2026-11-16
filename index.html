@@ -558,6 +558,16 @@
         svg.ic.ok { color: var(--pine); } svg.ic.warn { color: var(--amber); } svg.ic.bad { color: var(--red); }
         .btn-submit svg.ic.ok, .btn-ok svg.ic.ok, .btn-main svg.ic { color: inherit; }
 
+        /* 展開日期（第四十八輪）：像掀開藥盒的蓋子，內容從日期列底下升起；只用 transform 和 opacity */
+        details.day-fold > summary { transition: transform .12s cubic-bezier(.22, 1, .36, 1); }
+        details.day-fold > summary:active { transform: translateY(2px); }
+        .fold-chev { transition: transform .22s cubic-bezier(.65, 0, .35, 1); }
+        @keyframes lidRise { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+        details.day-fold.just-opened > :not(summary) { animation: lidRise .42s cubic-bezier(.22, 1, .36, 1) both; }
+        details.day-fold.just-opened > :not(summary):nth-child(3) { animation-delay: 60ms; }
+        details.day-fold.just-opened > :not(summary):nth-child(4) { animation-delay: 120ms; }
+        details.day-fold.just-opened > :not(summary):nth-child(n+5) { animation-delay: 180ms; }
+
         :where(button, a, input, select, textarea, summary, [tabindex], .date-pick):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
         .toggle-group label:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
 
@@ -3880,6 +3890,18 @@
                 if (p.length === 3) d.setAttribute('data-wd', new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay());
             });
         }
+        // 展開動畫只在使用者自己點開時播放；後台重新整理時重畫出來的已展開日期不會再動一次
+        var lastAct = 0;
+        document.addEventListener('click', function () { lastAct = performance.now(); }, true);
+        document.addEventListener('toggle', function (e) {
+            var d = e.target;
+            if (!d.matches || !d.matches('details.day-fold') || !d.open || performance.now() - lastAct > 600) return;
+            d.classList.remove('just-opened');
+            void d.offsetWidth;
+            d.classList.add('just-opened');
+            clearTimeout(d._jo);
+            d._jo = setTimeout(function () { d.classList.remove('just-opened'); }, 900);
+        }, true);
         walk(document.body);
         tagDays(document);
         new MutationObserver(function (ms) {
