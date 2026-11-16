@@ -9,121 +9,163 @@
          載入失敗時 exportExcel() 會檢查 window.XLSX 存不存在，跳出清楚的提示，不會讓整頁壞掉。 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; transition: max-width .15s; }
+        /* Hallmark · redesign: restyle · built: the project · scope: app · theme: dose (deal: manual) · dose: white · signature: the day list as a pill organiser, one tint per weekday · critique: brighter paper, one pharmacy green for every go signal, solid status pills, emoji replaced by one icon set, one card layer */
+        /* Hallmark · waive dose do-not (red for late) · overdue equipment is a real problem the team must act on; the user asked that alerts stand out */
+    :root {
+        /* Dose：暖白晨光紙、綠黑墨色、一種藥房綠負責所有「可以／選中／完成」 */
+        --paper: oklch(97.6% 0.011 88);
+        --surface: oklch(99.5% 0.005 88);
+        --surface-2: oklch(95.6% 0.014 100);
+        --line: oklch(89% 0.018 130);
+        --line-strong: oklch(82% 0.022 140);
+        --ink: oklch(21% 0.025 170);
+        --ink-2: oklch(31% 0.02 170);
+        --ink-3: oklch(46% 0.024 165);
+        --ink-4: oklch(58% 0.02 160);
+        --field-edge: oklch(62% 0.024 160);
+        --on-solid: oklch(99% 0.006 160);
+        --pine-bg: oklch(95% 0.035 160);
+        --pine-line: oklch(84% 0.07 160);
+        --pine: oklch(52% 0.13 160);
+        --pine-ink: oklch(40% 0.1 162);
+        --pine-deep: oklch(46% 0.12 162);
+        --mint: oklch(88% 0.08 160);
+        --red-bg: oklch(96% 0.025 25);
+        --red-line: oklch(85% 0.07 25);
+        --red: oklch(52% 0.17 27);
+        --red-ink: oklch(42% 0.14 27);
+        --amber-bg: oklch(96.5% 0.04 95);
+        --amber-line: oklch(87% 0.08 90);
+        --amber: oklch(52% 0.11 70);
+        --amber-ink: oklch(42% 0.09 65);
+        --gold: oklch(90% 0.11 95);
+        --glint: oklch(100% 0 0);
+        --focus: oklch(45% 0.14 160);
+        /* 藥盒的七格：只代表「星期幾」，不代表任何狀態 */
+        --p-0: oklch(84% 0.048 322); --p-1: oklch(85% 0.052 22); --p-2: oklch(87.5% 0.058 64); --p-3: oklch(91.5% 0.064 98);
+        --p-4: oklch(86.5% 0.075 160); --p-5: oklch(87% 0.048 210); --p-6: oklch(84% 0.045 270);
+        --font: "Instrument Sans", -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+        --font-display: "Schibsted Grotesk", -apple-system, "PingFang TC", "Noto Sans TC", sans-serif;
+        --font-mono: "DM Mono", ui-monospace, "PingFang TC", monospace;
+        --r-sm: 10px; --r-md: 10px; --r-lg: 14px;
+        --shadow-card: 0 1px 2px oklch(30% 0.03 165 / 0.07), 0 18px 36px -24px oklch(40% 0.08 165 / 0.30);
+        --shadow-lift: 0 1px 1px oklch(30% 0.03 165 / 0.10), 6px 14px 24px -14px oklch(36% 0.06 165 / 0.28);
+    }
+        body { font-family: var(--font); background-color: var(--paper); margin: 0; padding: 20px; color: var(--ink); }
+        .container { max-width: 600px; margin: auto; background: var(--surface); padding: 30px; border-radius: var(--r-lg); box-shadow: 0 4px 15px rgba(0,0,0,0.05); position: relative; transition: max-width .15s; }
         /* 後台表格一律拆成獨立欄位顯示（見 loadAdminData()），電腦螢幕夠寬時放寬容器，
            讓表格盡量不用橫向捲動就看得到大部分欄位；手機或視窗較窄時維持原本 600px，
            表格本身用 overflow-x:auto 橫向捲動。由 showSection() 切換 .admin-wide class。 */
         @media (min-width: 900px) {
             .container.admin-wide { max-width: 1200px; }
         }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 30px; }
+        h2 { text-align: center; color: var(--ink); margin-bottom: 30px; }
         .home-menu { display: flex; flex-direction: column; align-items: center; gap: 15px; }
-        .btn-main { width: 100%; max-width: 280px; padding: 18px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; text-align: center; }
-        .btn-borrow { background-color: #3498db; color: white; }
-        .btn-query { background-color: #9b59b6; color: white; }
-        .btn-return { background-color: #e67e22; color: white; }
-        .btn-speaker { background-color: #16a085; color: white; }
+        .btn-main { width: 100%; max-width: 280px; padding: 18px; font-size: 18px; font-weight: bold; border: none; border-radius: var(--r-md); cursor: pointer; transition: 0.3s; text-align: center; }
+        .btn-borrow { background-color: var(--pine); color: var(--on-solid); }
+        .btn-query { background-color: var(--amber); color: var(--on-solid); }
+        .btn-return { background-color: var(--amber); color: var(--on-solid); }
+        .btn-speaker { background-color: var(--pine-ink); color: var(--on-solid); }
 
         .form-section, .admin-section { display: none; }
         .form-group { margin-bottom: 15px; }
-        label { display: block; font-weight: bold; margin-bottom: 5px; color: #555; font-size: 14px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; color: var(--ink); font-size: 15px; }
         /* ✏️ 一般文字／日期／時間欄位：加粗邊框＋聚焦時的藍色光暈，跟卡片、按鈕的風格一致 */
         /*    字級一律 16px：iPhone Safari 遇到字小於 16px 的欄位，點下去會自動放大整個畫面，版面看起來就像突出框框、跑掉了。 */
-        input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; min-width: 0; background: #fff; color: #2c3e50; font-family: inherit; transition: border-color .15s, box-shadow .15s; }
-        input[type="text"]:focus, input[type="tel"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="password"]:focus, input[type="email"]:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
-        input[type="text"]::placeholder, input[type="tel"]::placeholder, input[type="email"]::placeholder { color: #adb9c2; }
+        input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"] { width: 100%; padding: 12px 14px; border: 2px solid var(--line); border-radius: var(--r-md); box-sizing: border-box; font-size: 16px; min-width: 0; background: var(--surface); color: var(--ink); font-family: inherit; transition: border-color .15s, box-shadow .15s; }
+        input[type="text"]:focus, input[type="tel"]:focus, input[type="date"]:focus, input[type="time"]:focus, input[type="password"]:focus, input[type="email"]:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        input[type="text"]::placeholder, input[type="tel"]::placeholder, input[type="email"]::placeholder { color: var(--line-strong); }
         /* 📝 備註用多行輸入框，樣式跟文字欄位一致（同樣 16px，iPhone 才不會自動放大） */
-        textarea { width: 100%; padding: 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; line-height: 1.5; min-width: 0; background: #fff; color: #2c3e50; font-family: inherit; resize: vertical; transition: border-color .15s, box-shadow .15s; }
-        textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
-        textarea::placeholder { color: #adb9c2; }
+        textarea { width: 100%; padding: 12px 14px; border: 2px solid var(--line); border-radius: var(--r-md); box-sizing: border-box; font-size: 16px; line-height: 1.5; min-width: 0; background: var(--surface); color: var(--ink); font-family: inherit; resize: vertical; transition: border-color .15s, box-shadow .15s; }
+        textarea:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        textarea::placeholder { color: var(--line-strong); }
 
 
         /* 🔽 下拉選單：換成自訂箭頭圖示，去掉瀏覽器預設的陽春樣式 */
-        select { width: 100%; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; min-width: 0; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%237f8c8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center; -webkit-appearance: none; -moz-appearance: none; appearance: none; color: #2c3e50; font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
-        select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
-        select:disabled { background-color: #f4f6f8; color: #b0bcc4; cursor: not-allowed; }
+        select { width: 100%; padding: 12px 38px 12px 14px; border: 2px solid var(--line); border-radius: var(--r-md); box-sizing: border-box; font-size: 16px; min-width: 0; background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7'><path d='M1 1l4.5 4.5L10 1' stroke='%237f8c8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>") no-repeat right 14px center; -webkit-appearance: none; -moz-appearance: none; appearance: none; color: var(--ink); font-family: inherit; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+        select:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        select:disabled { background-color: var(--surface-2); color: var(--line-strong); cursor: not-allowed; }
 
         /* 📎 檔案上傳欄位：改成虛線框，看起來像「拖放上傳」而不是陽春的瀏覽器按鈕 */
-        input[type="file"] { width: 100%; padding: 10px 12px; border: 2px dashed #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 13.5px; background: #fbfcfd; color: #7f8c8d; font-family: inherit; }
+        input[type="file"] { width: 100%; padding: 10px 12px; border: 2px dashed var(--line); border-radius: var(--r-md); box-sizing: border-box; font-size: 13.5px; background: var(--surface-2); color: var(--ink-2); font-family: inherit; }
         .hidden { display: none; }
         .radio-group { display: flex; gap: 15px; align-items: center; margin-top: 5px; flex-wrap: wrap; }
         .radio-group label { display: flex; align-items: center; font-weight: normal; font-size: 16px; margin: 0; cursor: pointer; }
-        .btn-submit { width: 100%; padding: 15px; background-color: #27ae60; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-back { width: 100%; padding: 12px; background-color: #95a5a6; color: white; border: none; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        .btn-danger { background-color: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-submit { width: 100%; padding: 15px; background-color: var(--pine); color: var(--on-solid); border: none; border-radius: var(--r-sm); font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn-back { width: 100%; padding: 12px; background-color: var(--ink-3); color: var(--on-solid); border: none; border-radius: var(--r-sm); font-size: 15px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .btn-danger { background-color: var(--red); color: var(--on-solid); border: none; padding: 5px 10px; border-radius: var(--r-sm); cursor: pointer; font-size: 12.5px; }
         /* 後台每列的操作按鈕（編輯／代為歸還／改回未歸還），跟刪除鈕同尺寸、直向排列 */
-        .btn-edit, .btn-ok, .btn-undo { color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; white-space: nowrap; }
-        .btn-edit { background-color: #3498db; }
-        .btn-ok { background-color: #27ae60; }
-        .btn-undo { background-color: #7f8c8d; }
+        .btn-edit, .btn-ok, .btn-undo { color: var(--on-solid); border: none; padding: 5px 10px; border-radius: var(--r-sm); cursor: pointer; font-size: 12.5px; white-space: nowrap; }
+        .btn-edit { background-color: var(--pine); }
+        .btn-ok { background-color: var(--pine); }
+        .btn-undo { background-color: var(--ink-2); }
         .row-actions { display: flex; flex-direction: column; gap: 5px; align-items: stretch; }
         /* 負責人／聯絡電話兩欄：電腦並排；手機上改上下排，電話欄的提示字「例：0912345678」才不會被切掉 */
         .pair-row { display: flex; gap: 10px; }
         @media (max-width: 600px) { .pair-row { flex-direction: column; gap: 0; } }
-        hr { border: 0; border-top: 1px solid #eee; margin: 25px 0; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        hr { border: 0; border-top: 1px solid var(--line); margin: 25px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13.5px; white-space: nowrap; }
+        th, td { border: 1px solid var(--line); padding: 8px; text-align: left; }
+        th { background-color: var(--surface-2); }
         /* 🔊 第四十二輪：喇叭教學影片（管理員一鍵複製給會友） */
-        .tutorial-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #f4ecf7; border: 1px solid #d7bde2; border-radius: 10px; padding: 10px 12px; margin-bottom: 15px; }
-        .tutorial-box .tt-text { flex: 1 1 180px; min-width: 0; color: #4a235a; font-size: 14.5px; line-height: 1.45; }
-        .tutorial-box .tt-text small { display: block; color: #7d6b85; font-size: 12px; }
+        .tutorial-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 15px; }
+        .tutorial-box .tt-text { flex: 1 1 180px; min-width: 0; color: var(--amber-ink); font-size: 15px; line-height: 1.45; }
+        .tutorial-box .tt-text small { display: block; color: var(--ink-2); font-size: 12.5px; }
         .tutorial-box .tt-btns { display: flex; gap: 8px; flex: 0 0 auto; }
-        .tutorial-box button, .tutorial-box a { border: none; border-radius: 8px; padding: 9px 14px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; font-family: inherit; white-space: nowrap; }
-        .tutorial-box .tt-copy { background: #8e44ad; color: #fff; }
-        .tutorial-box .tt-copy.done { background: #27ae60; }
-        .tutorial-box .tt-open { background: #fff; color: #8e44ad; border: 1px solid #c39bd3; }
+        .tutorial-box button, .tutorial-box a { border: none; border-radius: var(--r-md); padding: 9px 14px; font-size: 15px; font-weight: bold; cursor: pointer; text-decoration: none; font-family: inherit; white-space: nowrap; }
+        .tutorial-box .tt-copy { background: var(--amber); color: var(--on-solid); }
+        .tutorial-box .tt-copy.done { background: var(--pine); }
+        .tutorial-box .tt-open { background: var(--surface); color: var(--amber); border: 1px solid var(--amber-line); }
         /* 📅 第三十八輪：月曆 */
-        .date-pick { display: block; width: 100%; min-height: 50px; padding: 12px 38px 12px 14px; border: 2px solid #dfe6ea; border-radius: 8px; box-sizing: border-box; font-size: 16px; text-align: left; color: #2c3e50; font-family: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-appearance: none; appearance: none; background: #fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'><rect x='1.5' y='2.5' width='13' height='12' rx='2' fill='none' stroke='%237f8c8d' stroke-width='1.4'/><path d='M1.5 6h13M5 1v3M11 1v3' stroke='%237f8c8d' stroke-width='1.4' stroke-linecap='round'/></svg>") no-repeat right 12px center; transition: border-color .15s, box-shadow .15s; }
-        .date-pick.empty { color: #7f8c8d; }
-        .date-pick:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        .date-pick { display: block; width: 100%; min-height: 50px; padding: 12px 38px 12px 14px; border: 2px solid var(--line); border-radius: var(--r-md); box-sizing: border-box; font-size: 16px; text-align: left; color: var(--ink); font-family: inherit; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-appearance: none; appearance: none; background: var(--surface) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'><rect x='1.5' y='2.5' width='13' height='12' rx='2' fill='none' stroke='%237f8c8d' stroke-width='1.4'/><path d='M1.5 6h13M5 1v3M11 1v3' stroke='%237f8c8d' stroke-width='1.4' stroke-linecap='round'/></svg>") no-repeat right 12px center; transition: border-color .15s, box-shadow .15s; }
+        .date-pick.empty { color: var(--ink-2); }
+        .date-pick:focus { outline: none; border-color: var(--pine); box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
         .cal-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); justify-content: center; align-items: center; z-index: 5000; padding: 16px; box-sizing: border-box; }
-        .cal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 18px; color: #2c3e50; }
-        .cal-head button { width: 44px; height: 44px; border: none; border-radius: 10px; background: #f0f3f5; font-size: 24px; line-height: 1; color: #2c3e50; cursor: pointer; }
+        .cal-box { background: var(--surface); border-radius: var(--r-lg); width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 18px; color: var(--ink); }
+        .cal-head button { width: 44px; height: 44px; border: none; border-radius: var(--r-md); background: var(--surface-2); font-size: 24px; line-height: 1; color: var(--ink); cursor: pointer; }
         .cal-head button:disabled { opacity: .3; cursor: default; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-        .cal-wd { text-align: center; font-size: 12.5px; color: #95a5a6; padding: 4px 0; }
-        .cal-day { height: 44px; border: none; border-radius: 10px; background: #fff; font-size: 16px; color: #2c3e50; cursor: pointer; font-family: inherit; padding: 0; }
-        .cal-day:hover:not(:disabled) { background: #eaf2f8; }
-        .cal-wd.sun, .cal-day.sun { color: #e74c3c; }
-        .cal-day.today { box-shadow: inset 0 0 0 2px #aed6f1; }
-        .cal-day.sel { background: #3498db; color: #fff; font-weight: bold; }
-        .cal-day:disabled { color: #d5dbdf; cursor: default; background: transparent; }
-        .cal-hint { margin-top: 10px; font-size: 12.5px; color: #7f8c8d; text-align: center; }
-        .cal-close { margin-top: 12px; width: 100%; padding: 11px; border: none; border-radius: 8px; background: #ecf0f1; color: #34495e; font-size: 15px; cursor: pointer; font-family: inherit; }
+        .cal-wd { text-align: center; font-size: 13.5px; color: var(--ink-3); padding: 4px 0; }
+        .cal-day { height: 44px; border: none; border-radius: var(--r-md); background: var(--surface); font-size: 16px; color: var(--ink); cursor: pointer; font-family: inherit; padding: 0; }
+        .cal-day:hover:not(:disabled) { background: var(--surface-2); }
+        .cal-wd.sun, .cal-day.sun { color: var(--red); }
+        .cal-day.today { box-shadow: inset 0 0 0 2px var(--line); }
+        .cal-day.sel { background: var(--pine); color: var(--on-solid); font-weight: bold; }
+        .cal-day:disabled { color: var(--line); cursor: default; background: transparent; }
+        .cal-hint { margin-top: 10px; font-size: 13.5px; color: var(--ink-2); text-align: center; }
+        .cal-close { margin-top: 12px; width: 100%; padding: 11px; border: none; border-radius: var(--r-md); background: var(--surface-2); color: var(--ink); font-size: 15px; cursor: pointer; font-family: inherit; }
         /* 👤 第三十八輪：借用人／小組／設備組負責人改成「文字標籤：名字」 */
         .who-block { line-height: 1.65; }
-        .who-block .lbl { color: #7f8c8d; }
+        .who-block .lbl { color: var(--ink-2); }
         .bk-person .who-block { font-size: 15px; }
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .upload-label { cursor: pointer; background: #3498db; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; }
-        .rules-link { color: #3498db; text-decoration: underline; cursor: pointer; font-weight: bold; }
-        .date-header { background: #34495e; color: white; padding: 8px 12px; border-radius: 6px 6px 0 0; font-weight: bold; margin-top: 15px; font-size: 15px; }
-        .grouped-table { margin-top: 0; border-radius: 0 0 6px 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .modal-content { background: var(--surface); padding: 25px; border-radius: var(--r-md); max-width: 400px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .upload-label { cursor: pointer; background: var(--pine); color: var(--on-solid); padding: 4px 8px; border-radius: var(--r-sm); font-size: 12.5px; display: inline-block; }
+        .rules-link { color: var(--pine); text-decoration: underline; cursor: pointer; font-weight: bold; }
+        .date-header { background: var(--ink); color: var(--on-solid); padding: 8px 12px; border-radius: var(--r-sm) var(--r-sm) 0 0; font-weight: bold; margin-top: 15px; font-size: 15px; }
+        .grouped-table { margin-top: 0; border-radius: 0 0 var(--r-sm) var(--r-sm); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         /* 後台電腦版：每一天各一張表，用固定欄寬讓上下每一天的欄位對齊（不然每張表各自依內容算欄寬，會歪來歪去） */
         .fixed-cols { table-layout: fixed; width: 100%; min-width: 1100px; }
         .fixed-cols td, .fixed-cols th { overflow-wrap: break-word; vertical-align: middle; }
         .date-header.flex-head { display: flex; justify-content: space-between; align-items: baseline; }
-        .date-header.flex-head span:last-child { font-weight: normal; font-size: 13px; }
+        .date-header.flex-head span:last-child { font-weight: normal; font-size: 13.5px; }
 
         /* 🗂️ 借用表單：把相關欄位框在同一張卡片裡，讓頁面分區更清楚 */
-        .form-card { background: #f8fafc; border: 1px solid #e8edf2; border-radius: 10px; padding: 16px 16px 4px; margin-bottom: 18px; }
-        .form-card-title { font-size: 15px; font-weight: bold; color: #2c3e50; margin: 0 0 14px; display: flex; align-items: center; gap: 6px; }
-        .form-card-sub { font-size: 12px; color: #95a5a6; margin: -10px 0 14px; }
+        .form-card { background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 16px 16px 4px; margin-bottom: 18px; }
+        .form-card-title { font-size: 15px; font-weight: bold; color: var(--ink); margin: 0 0 14px; display: flex; align-items: center; gap: 6px; }
+        .form-card-sub { font-size: 12.5px; color: var(--ink-3); margin: -10px 0 14px; }
 
         /* 🔘 是/否、數量這種二選一或三選一的題目，改成大按鈕，一眼就看出目前選了哪個
            用 grid 而不是 flex：不管按鈕裡文字多寬，永遠固定排成一列、平均分配寬度，
            不會因為某個選項字比較多就跳到下一行、排版忽大忽小。 */
         .toggle-group { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; margin-top: 6px; }
-        .toggle-group label { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 11px 4px; border: 2px solid #dfe6ea; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 15px; color: #7f8c8d; background: #fff; margin: 0; transition: border-color .15s, background .15s, color .15s; }
-        .toggle-group label.active { border-color: #3498db; background: #eaf4fc; color: #2471a3; }
+        .toggle-group label { min-width: 0; display: flex; align-items: center; justify-content: center; gap: 4px; text-align: center; padding: 11px 4px; border: 2px solid var(--line); border-radius: var(--r-md); cursor: pointer; font-weight: bold; font-size: 15px; color: var(--ink-2); background: var(--surface); margin: 0; transition: border-color .15s, background .15s, color .15s; }
+        .toggle-group label.active { border-color: var(--pine); background: var(--surface-2); color: var(--pine-ink); }
         .toggle-group input[type="radio"] { display: none; }
 
         /* 💬 說明文字改用有底色的提示框，比純文字更不容易被忽略 */
-        .info-box { background:#f4f0fa; border:1px solid #e3d7f4; color:#6c5a8c; font-size:12.5px; line-height:1.65; padding:9px 11px; border-radius:6px; margin-top:8px; }
+        .info-box { background:var(--surface-2); border:1px solid var(--line); color:var(--ink-2); font-size:13.5px; line-height:1.65; padding:9px 11px; border-radius:var(--r-sm); margin-top:8px; }
 
         /* 載入動畫專用樣式 */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -131,279 +173,404 @@
         /* 📱 手機版後台（螢幕寬度 700px 以下）：一筆借用一張卡片，不用左右滑表格；電腦寬度維持表格。
            由 loadAdminData() 依 isPhoneAdmin() 決定畫哪一種（同一時間只畫一種，避免分配勾選框的 id 重複）。 */
         .stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
-        .stat-tiles .tile { background: #fff; border: 1px solid #e3e9ee; border-radius: 10px; padding: 8px 4px; text-align: center; }
-        .stat-tiles .tile b { display: block; font-size: 22px; line-height: 1.2; color: #2c3e50; }
-        .stat-tiles .tile span { font-size: 12px; color: #7f8c8d; }
-        .stat-tiles .tile.red b { color: #c0392b; }
-        .stat-tiles .tile.green b { color: #27ae60; }
-        .day-head { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: #fff; border-radius: 10px 10px 0 0; padding: 10px 14px; margin-top: 18px; font-weight: bold; font-size: 16px; }
-        .day-head > span { font-size: 12.5px; font-weight: normal; opacity: .85; }
+        .stat-tiles .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 4px; text-align: center; }
+        .stat-tiles .tile b { display: block; font-size: 22px; line-height: 1.2; color: var(--ink); }
+        .stat-tiles .tile span { font-size: 12.5px; color: var(--ink-2); }
+        .stat-tiles .tile.red b { color: var(--red); }
+        .stat-tiles .tile.green b { color: var(--pine); }
+        .day-head { display: flex; justify-content: space-between; align-items: center; background: var(--ink); color: var(--on-solid); border-radius: var(--r-md) var(--r-md) 0 0; padding: 10px 14px; margin-top: 18px; font-weight: bold; font-size: 16px; }
+        .day-head > span { font-size: 13.5px; font-weight: normal; opacity: .85; }
         summary.day-head { display: block; }
         summary.date-header.flex-head { display: block; }
-        .bk-card { background: #fff; border: 1px solid #e3e9ee; border-radius: 12px; padding: 12px 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,.05); font-size: 14px; }
-        .bk-card.overdue { border-color: #f1b0a8; background: #fff8f7; }
+        .bk-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; margin: 10px 0; box-shadow: 0 1px 3px rgba(0,0,0,.05); font-size: 15px; }
+        .bk-card.overdue { border-color: var(--red-line); background: var(--red-bg); }
         .bk-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-        .bk-time { font-size: 18px; font-weight: bold; color: #2c3e50; }
-        .bk-venue { background: #eaf4fc; color: #2471a3; font-weight: bold; border-radius: 20px; padding: 3px 11px; font-size: 13px; white-space: nowrap; }
-        .bk-person { margin-top: 6px; color: #34495e; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-        .bk-person a { color: #2471a3; text-decoration: none; font-weight: bold; }
-        .bk-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11.5px; font-weight: bold; margin: 6px 6px 0 0; }
-        .bk-badge.red { background: #e74c3c; color: #fff; }
-        .bk-badge.pink { background: #fdecea; color: #c0392b; }
-        .bk-note { background: #fff8e1; border: 1px solid #f3dfa2; color: #6e4b00; font-size: 13px; line-height: 1.55; border-radius: 6px; padding: 6px 9px; margin-top: 7px; }
-        .bk-equip { margin-top: 10px; border-top: 1px dashed #e5eaee; padding-top: 10px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: start; }
-        .bk-equip .k { color: #7f8c8d; white-space: nowrap; font-size: 13px; padding-top: 1px; }
+        .bk-time { font-size: 18px; font-weight: bold; color: var(--ink); }
+        .bk-venue { background: var(--surface-2); color: var(--pine-ink); font-weight: bold; border-radius: 20px; padding: 3px 11px; font-size: 13.5px; white-space: nowrap; }
+        .bk-person { margin-top: 6px; color: var(--ink); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        .bk-person a { color: var(--pine-ink); text-decoration: none; font-weight: bold; }
+        .bk-badge { display: inline-block; padding: 2px 8px; border-radius: var(--r-sm); font-size: 12.5px; font-weight: bold; margin: 6px 6px 0 0; }
+        .bk-badge.red { background: var(--red); color: var(--on-solid); }
+        .bk-badge.pink { background: var(--red-bg); color: var(--red); }
+        .bk-note { background: var(--amber-bg); border: 1px solid var(--amber-line); color: var(--amber-ink); font-size: 13.5px; line-height: 1.55; border-radius: var(--r-sm); padding: 6px 9px; margin-top: 7px; }
+        .bk-equip { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 10px; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: start; }
+        .bk-equip .k { color: var(--ink-2); white-space: nowrap; font-size: 13.5px; padding-top: 1px; }
         .bk-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
         .bk-actions.two { grid-template-columns: 1fr 1fr; }
-        .bk-actions button { padding: 11px 4px; font-size: 14px; border-radius: 8px; }
+        .bk-actions button { padding: 11px 4px; font-size: 15px; border-radius: var(--r-md); }
         .bk-returned { font-size: 13.5px; }
-        .ret-day { display: flex; justify-content: space-between; margin: 14px 2px 2px; padding: 6px 10px; background: #1e8449; color: #fff; border-radius: 8px; font-weight: bold; font-size: 14px; }
-        .ret-day span:last-child { font-weight: normal; font-size: 12.5px; }
+        .ret-day { display: flex; justify-content: space-between; margin: 14px 2px 2px; padding: 6px 10px; background: var(--pine-ink); color: var(--on-solid); border-radius: var(--r-md); font-weight: bold; font-size: 15px; }
+        .ret-day span:last-child { font-weight: normal; font-size: 13.5px; }
 
         /* 📦 登記備註設備 */
-        .btn-extra { display: inline-block; margin-top: 6px; background: #fff; color: #9a6a00; border: 1.5px dashed #e0b84f; border-radius: 6px; padding: 4px 10px; font-size: 12.5px; font-weight: bold; cursor: pointer; }
-        .btn-extra:hover { background: #fff8e1; }
-        .extra-chip { margin-top: 6px; background: #eaf7ef; border: 1px solid #bfe3cc; color: #1e8449; border-radius: 6px; padding: 4px 8px; font-size: 12.5px; line-height: 1.5; }
-        .extra-chip a { color: #2471a3; cursor: pointer; margin-left: 6px; font-weight: normal; white-space: nowrap; }
-        .extra-note { background: #fff8e1; border: 1px solid #f3dfa2; color: #6e4b00; border-radius: 8px; padding: 8px 10px; font-size: 14px; line-height: 1.6; }
-        .extra-hint { color: #7f8c8d; font-size: 12.5px; margin: 12px 0 6px; }
+        .btn-extra { display: inline-block; margin-top: 6px; background: var(--surface); color: var(--amber-ink); border: 1.5px dashed var(--amber); border-radius: var(--r-sm); padding: 4px 10px; font-size: 13.5px; font-weight: bold; cursor: pointer; }
+        .btn-extra:hover { background: var(--amber-bg); }
+        .extra-chip { margin-top: 6px; background: var(--pine-bg); border: 1px solid var(--pine-line); color: var(--pine-ink); border-radius: var(--r-sm); padding: 4px 8px; font-size: 13.5px; line-height: 1.5; }
+        .extra-chip a { color: var(--pine-ink); cursor: pointer; margin-left: 6px; font-weight: normal; white-space: nowrap; }
+        .extra-note { background: var(--amber-bg); border: 1px solid var(--amber-line); color: var(--amber-ink); border-radius: var(--r-md); padding: 8px 10px; font-size: 15px; line-height: 1.6; }
+        .extra-hint { color: var(--ink-2); font-size: 13.5px; margin: 12px 0 6px; }
         .extra-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
         .extra-row input { flex: 1; }
         .extra-row select { width: 90px; flex: none; }
-        .extra-del { flex: none; width: 38px; height: 38px; border: none; background: #f4f6f8; color: #95a5a6; border-radius: 8px; font-size: 16px; cursor: pointer; }
-        .extra-add { background: none; border: none; color: #2471a3; font-size: 14px; font-weight: bold; cursor: pointer; padding: 4px 0; }
-        .reg-tag { display: inline-block; background: #eaf7ef; color: #1e8449; border-radius: 4px; padding: 0 5px; font-size: 11px; margin-left: 4px; }
+        .extra-del { flex: none; width: 38px; height: 38px; border: none; background: var(--surface-2); color: var(--ink-3); border-radius: var(--r-md); font-size: 16px; cursor: pointer; }
+        .extra-add { background: none; border: none; color: var(--pine-ink); font-size: 15px; font-weight: bold; cursor: pointer; padding: 4px 0; }
+        .reg-tag { display: inline-block; background: var(--pine-bg); color: var(--pine-ink); border-radius: var(--r-sm); padding: 0 5px; font-size: 12.5px; margin-left: 4px; }
         a.reg-tag { cursor: pointer; text-decoration: none; border: 1px solid transparent; }
         a.reg-tag:hover { border-color: currentColor; }
-        .reg-tag.pending { background: #fdebd0; color: #b9770e; font-weight: bold; }
-        .reg-tag.none { background: #eef2f5; color: #7f8c8d; }
-        .extra-chip.none { background: #f4f6f8; border-color: #dfe6ea; color: #7f8c8d; }
+        .reg-tag.pending { background: var(--amber-bg); color: var(--amber-ink); font-weight: bold; }
+        .reg-tag.none { background: var(--surface-2); color: var(--ink-2); }
+        .extra-chip.none { background: var(--surface-2); border-color: var(--line); color: var(--ink-2); }
         .extra-more { display: flex; gap: 8px; margin-top: 10px; }
-        .extra-more button { flex: 1; background: #fff; border-radius: 6px; padding: 9px 6px; font-size: 13.5px; font-weight: bold; cursor: pointer; }
-        .btn-noneed { border: 1.5px solid #bdc3c7; color: #5d6d7e; }
-        .btn-unreg { border: 1.5px solid #e6b0aa; color: #c0392b; }
+        .extra-more button { flex: 1; background: var(--surface); border-radius: var(--r-sm); padding: 9px 6px; font-size: 13.5px; font-weight: bold; cursor: pointer; }
+        .btn-noneed { border: 1.5px solid var(--line-strong); color: var(--ink-2); }
+        .btn-unreg { border: 1.5px solid var(--red-line); color: var(--red); }
 
         /* 📂 未歸還清單：每一天可以點開／收合 */
         details.day-fold > summary { list-style: none; cursor: pointer; }
         details.day-fold > summary::-webkit-details-marker { display: none; }
-        details.day-fold:not([open]) > summary { border-radius: 10px; }
-        details.day-fold:not([open]) > summary.date-header { border-radius: 6px; }
+        details.day-fold:not([open]) > summary { border-radius: var(--r-md); }
+        details.day-fold:not([open]) > summary.date-header { border-radius: var(--r-sm); }
         .fold-title { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; }
-        .fold-right { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: normal; opacity: .95; white-space: nowrap; }
+        .fold-right { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: normal; opacity: .95; white-space: nowrap; }
         .fold-chev { display: inline-block; font-size: 18px; line-height: 1; transition: transform .15s; }
         details.day-fold[open] .fold-chev { transform: rotate(90deg); }
         .fold-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
         .fold-badges:empty { display: none; }
-        .fold-badges span { background: rgba(255,255,255,.16); border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: normal; }
-        .fold-badges span.red { background: #e74c3c; }
-        .fold-badges span.amber { background: #f39c12; }
-        .fold-badges span.tech { background: #8e44ad; }
-        .fold-tools { display: flex; justify-content: flex-end; gap: 14px; font-size: 13px; margin: 4px 2px -6px; }
-        .fold-tools a { color: #2471a3; cursor: pointer; }
+        .fold-badges span { background: rgba(255,255,255,.16); border-radius: var(--r-md); padding: 1px 8px; font-size: 12.5px; font-weight: normal; }
+        .fold-badges span.red { background: var(--red); }
+        .fold-badges span.amber { background: var(--amber); }
+        .fold-badges span.tech { background: var(--amber); }
+        .fold-tools { display: flex; justify-content: flex-end; gap: 14px; font-size: 13.5px; margin: 4px 2px -6px; }
+        .fold-tools a { color: var(--pine-ink); cursor: pointer; }
 
         /* 📱 手機版備品準備清單 */
-        .sum-row { display: flex; gap: 10px; padding: 9px 0; border-top: 1px dashed #cfe5d8; }
+        .sum-row { display: flex; gap: 10px; padding: 9px 0; border-top: 1px dashed var(--pine-line); }
         .sum-row:first-child { border-top: none; padding-top: 4px; }
-        .sum-k { flex: 0 0 70px; color: #5d6d7e; font-size: 13px; font-weight: bold; padding-top: 2px; }
-        .sum-v { flex: 1; min-width: 0; font-size: 14.5px; color: #2c3e50; }
-        .sum-hint { color: #95a5a6; font-size: 11.5px; margin-top: 3px; font-weight: normal; }
-        .sum-chip { display: inline-block; margin: 0 5px 5px 0; padding: 3px 9px; border-radius: 12px; font-size: 13px; font-weight: bold; }
-        .sum-chip.sp { background: #e3f4ee; color: #138d75; }
-        .sum-chip.ex { background: #fdf2d9; color: #9a6a00; }
-        .sum-notes { margin-top: 10px; background: #fff8e1; border: 1px solid #f3dfa2; border-radius: 8px; padding: 9px 10px; font-size: 13px; }
-        .sum-note { background: #fff; border: 1px solid #f3e3b5; border-radius: 6px; padding: 7px 9px; margin-top: 6px; }
-        .sum-note-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12px; color: #8a6d3b; }
+        .sum-k { flex: 0 0 70px; color: var(--ink-2); font-size: 13.5px; font-weight: bold; padding-top: 2px; }
+        .sum-v { flex: 1; min-width: 0; font-size: 15px; color: var(--ink); }
+        .sum-hint { color: var(--ink-3); font-size: 12.5px; margin-top: 3px; font-weight: normal; }
+        .sum-chip { display: inline-block; margin: 0 5px 5px 0; padding: 3px 9px; border-radius: var(--r-lg); font-size: 13.5px; font-weight: bold; }
+        .sum-chip.sp { background: var(--pine-bg); color: var(--pine-ink); }
+        .sum-chip.ex { background: var(--amber-bg); color: var(--amber-ink); }
+        .sum-notes { margin-top: 10px; background: var(--amber-bg); border: 1px solid var(--amber-line); border-radius: var(--r-md); padding: 9px 10px; font-size: 13.5px; }
+        .sum-note { background: var(--surface); border: 1px solid var(--amber-line); border-radius: var(--r-sm); padding: 7px 9px; margin-top: 6px; }
+        .sum-note-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
         .sum-note-top .reg-tag { margin-left: 0; white-space: nowrap; flex: none; }
-        .sum-note-text { font-size: 14px; color: #4d3800; margin-top: 3px; line-height: 1.5; }
+        .sum-note-text { font-size: 15px; color: var(--amber-ink); margin-top: 3px; line-height: 1.5; }
 
         /* 📦 設備總結算 */
-        details.inv-box { background: #fff; border: 2px solid #34495e; border-radius: 12px; padding: 12px 14px; margin-bottom: 20px; }
+        details.inv-box { background: var(--surface); border: 2px solid var(--ink); border-radius: var(--r-lg); padding: 12px 14px; margin-bottom: 20px; }
         details.inv-box > summary { list-style: none; cursor: pointer; }
         details.inv-box > summary::-webkit-details-marker { display: none; }
         details.inv-box[open] .fold-chev { transform: rotate(90deg); }
         .inv-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
-        .inv-head b { font-size: 16px; color: #2c3e50; }
-        .inv-head span { font-size: 12px; color: #7f8c8d; display: inline-flex; align-items: center; gap: 6px; }
-        .inv-head .fold-chev { font-size: 18px; color: #34495e; }
-        .inv-week { display: inline-block; background: #eaf2f8; color: #2471a3; border-radius: 8px; padding: 4px 10px; font-size: 13px; font-weight: bold; margin-top: 6px; }
-        .inv-week span { font-weight: normal; color: #5d7a8c; font-size: 12px; }
+        .inv-head b { font-size: 16px; color: var(--ink); }
+        .inv-head span { font-size: 12.5px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 6px; }
+        .inv-head .fold-chev { font-size: 18px; color: var(--ink); }
+        .inv-week { display: inline-block; background: var(--surface-2); color: var(--pine-ink); border-radius: var(--r-md); padding: 4px 10px; font-size: 13.5px; font-weight: bold; margin-top: 6px; }
+        .inv-week span { font-weight: normal; color: var(--ink-2); font-size: 12.5px; }
         /* 已歸還清單：登記過的其他設備 */
-        .ret-extra { margin-top: 6px; background: #fff8e1; color: #6e4b00; border-radius: 6px; padding: 5px 9px; font-size: 13.5px; }
-        tr.ret-extra-row td { background: #fffbea; color: #6e4b00; font-size: 13px; text-align: left; padding: 6px 12px; border-top: none; white-space: normal; }
-        tr.ret-extra-row .sep { color: #d4b86a; margin: 0 10px; }
+        .ret-extra { margin-top: 6px; background: var(--amber-bg); color: var(--amber-ink); border-radius: var(--r-sm); padding: 5px 9px; font-size: 13.5px; }
+        tr.ret-extra-row td { background: var(--amber-bg); color: var(--amber-ink); font-size: 13.5px; text-align: left; padding: 6px 12px; border-top: none; white-space: normal; }
+        tr.ret-extra-row .sep { color: var(--amber); margin: 0 10px; }
         .inv-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
-        .inv-card { flex: 1 1 260px; background: #f8fafb; border: 1px solid #e3e9ee; border-radius: 10px; padding: 10px 12px; }
-        .inv-card .inv-title { display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; color: #34495e; font-size: 14px; }
-        .inv-card .inv-num { font-size: 13px; color: #7f8c8d; font-weight: normal; }
-        .inv-card .inv-num b { font-size: 26px; color: #27ae60; margin-right: 2px; }
-        .inv-card.some .inv-num b { color: #d35400; }
-        .inv-card.late .inv-num b { color: #c0392b; }
+        .inv-card { flex: 1 1 260px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 10px 12px; }
+        .inv-card .inv-title { display: flex; justify-content: space-between; align-items: baseline; font-weight: bold; color: var(--ink); font-size: 15px; }
+        .inv-card .inv-num { font-size: 13.5px; color: var(--ink-2); font-weight: normal; }
+        .inv-card .inv-num b { font-size: 26px; color: var(--pine); margin-right: 2px; }
+        .inv-card.some .inv-num b { color: var(--amber); }
+        .inv-card.late .inv-num b { color: var(--red); }
         .inv-list { list-style: none; margin: 8px 0 0; padding: 0; }
-        .inv-list li { padding: 6px 0; border-top: 1px dashed #e3e9ee; font-size: 13px; line-height: 1.5; }
+        .inv-list li { padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13.5px; line-height: 1.5; }
         .inv-list li:first-child { border-top: none; }
-        .inv-list li .who { display: block; color: #5d6d7e; font-size: 12px; }
-        .inv-list li .who a { color: #2471a3; }
-        .inv-list li.ok { color: #1e8449; }
-        .inv-list li.use { color: #b9770e; }
-        .inv-list li.late { color: #c0392b; }
-        .inv-list li.nonum { color: #a04000; }
-        .inv-foot { margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; line-height: 1.6; }
-        .inv-foot.ok { background: #eafaf1; color: #1e8449; }
-        .inv-foot.use { background: #fef5e7; color: #9c640c; }
-        .inv-foot.late { background: #fdecea; color: #a02622; }
-        .inv-notes.other { background: #f0f6fb; border-color: #cfe0ee; color: #1f4e79; }
-        .inv-notes { margin-top: 8px; padding: 8px 10px; border-radius: 8px; background: #fff8ec; border: 1px solid #f5d9a8; font-size: 12.5px; color: #7e5109; line-height: 1.6; }
+        .inv-list li .who { display: block; color: var(--ink-2); font-size: 12.5px; }
+        .inv-list li .who a { color: var(--pine-ink); }
+        .inv-list li.ok { color: var(--pine-ink); }
+        .inv-list li.use { color: var(--amber-ink); }
+        .inv-list li.late { color: var(--red); }
+        .inv-list li.nonum { color: var(--amber-ink); }
+        .inv-foot { margin-top: 10px; padding: 8px 10px; border-radius: var(--r-md); font-size: 13.5px; line-height: 1.6; }
+        .inv-foot.ok { background: var(--pine-bg); color: var(--pine-ink); }
+        .inv-foot.use { background: var(--amber-bg); color: var(--amber-ink); }
+        .inv-foot.late { background: var(--red-bg); color: var(--red-ink); }
+        .inv-notes.other { background: var(--surface-2); border-color: var(--line); color: var(--pine-ink); }
+        .inv-notes { margin-top: 8px; padding: 8px 10px; border-radius: var(--r-md); background: var(--amber-bg); border: 1px solid var(--amber-line); font-size: 13.5px; color: var(--amber-ink); line-height: 1.6; }
         /* 已歸還清單（手機）：預設收起來，點綠色橫條才展開 */
-        .returned-fold > summary { list-style: none; cursor: pointer; background: #eafaf1; color: #1e8449; border: 1px solid #c8e6d5; border-radius: 10px; padding: 12px 14px; font-weight: bold; font-size: 15px; }
+        .returned-fold > summary { list-style: none; cursor: pointer; background: var(--pine-bg); color: var(--pine-ink); border: 1px solid var(--pine-line); border-radius: var(--r-md); padding: 12px 14px; font-weight: bold; font-size: 15px; }
         .returned-fold > summary::-webkit-details-marker { display: none; }
-        .returned-fold > summary::after { content: ' ▾ 點開'; font-weight: normal; font-size: 13px; color: #27ae60; }
+        .returned-fold > summary::after { content: ' ▾ 點開'; font-weight: normal; font-size: 13.5px; color: var(--pine); }
         .returned-fold[open] > summary::after { content: ' ▴ 收起'; }
         /* 卡片裡的機台分配框：手機上手指要點得到，字、勾選框、確認鈕都放大 */
-        .bk-equip > div > div[style*="font-size:11px"] { font-size: 13.5px !important; padding: 8px !important; line-height: 1.6; }
+        .bk-equip > div > div[style*="font-size:12.5px"] { font-size: 13.5px !important; padding: 8px !important; line-height: 1.6; }
         .bk-equip input[type="checkbox"] { width: 22px; height: 22px; vertical-align: middle; margin-right: 3px; }
         .bk-equip label[title] { font-size: 16px; margin-right: 12px !important; }
-        .bk-equip button[onclick^="assignSpeaker"] { font-size: 14px !important; padding: 8px 16px !important; border-radius: 6px !important; }
-        .bk-equip button[onclick^="resetAssign"] { font-size: 13px !important; padding: 5px 10px !important; }
+        .bk-equip button[onclick^="assignSpeaker"] { font-size: 15px !important; padding: 8px 16px !important; border-radius: var(--r-sm) !important; }
+        .bk-equip button[onclick^="resetAssign"] { font-size: 13.5px !important; padding: 5px 10px !important; }
         /* 📱 手機版：查詢結果改成一筆一張卡片，不必左右滑動 */
         @media (max-width: 600px) {
             body { padding: 10px; }
             .container { padding: 18px 15px; }
-            h2 { font-size: 19px; line-height: 1.4; margin-bottom: 20px; }
+            h2 { font-size: 18px; line-height: 1.4; margin-bottom: 20px; }
             .form-card { padding: 14px 12px 2px; }
             .toggle-group label { padding: 11px 2px; font-size: 13.5px; }
             .responsive-table thead { display: none; }
             .responsive-table, .responsive-table tbody, .responsive-table tr, .responsive-table td { display: block; width: 100%; box-sizing: border-box; }
-            .responsive-table tr { border: 1px solid #ddd; border-radius: 8px; margin-bottom: 14px; padding: 4px 10px; background: #fff; }
-            .responsive-table td { border: none; border-bottom: 1px dashed #eee; padding: 9px 0; white-space: normal; text-align: right; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+            .responsive-table tr { border: 1px solid var(--line); border-radius: var(--r-md); margin-bottom: 14px; padding: 4px 10px; background: var(--surface); }
+            .responsive-table td { border: none; border-bottom: 1px dashed var(--line); padding: 9px 0; white-space: normal; text-align: right; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
             .responsive-table td:last-child { border-bottom: none; }
-            .responsive-table td::before { content: attr(data-label); font-weight: bold; color: #7f8c8d; text-align: left; flex-shrink: 0; }
+            .responsive-table td::before { content: attr(data-label); font-weight: bold; color: var(--ink-2); text-align: left; flex-shrink: 0; }
             /* 查詢結果的備註列：跟上面那筆接成同一張卡片（上面那張拿掉下緣，備註列拿掉上緣） */
-            .responsive-table tr.has-note { margin-bottom: 0; border-bottom: none; border-radius: 8px 8px 0 0; }
+            .responsive-table tr.has-note { margin-bottom: 0; border-bottom: none; border-radius: var(--r-md) var(--r-md) 0 0; }
             .responsive-table tr.has-note td:last-child { border-bottom: none; }
-            .responsive-table tr.note-row { border-top: none; border-radius: 0 0 8px 8px; padding: 0 10px 10px; background: #fff; }
-            .responsive-table tr.note-row td { display: block; border: none; border-radius: 8px; padding: 9px 11px; text-align: left; }
+            .responsive-table tr.note-row { border-top: none; border-radius: 0 0 var(--r-md) var(--r-md); padding: 0 10px 10px; background: var(--surface); }
+            .responsive-table tr.note-row td { display: block; border: none; border-radius: var(--r-md); padding: 9px 11px; text-align: left; }
             .responsive-table tr.note-row td::before { content: none; }
             .responsive-table .note-label { display: block; margin: 0 0 2px; }
         }
         /* 📝 查詢頁：備註是紀錄下方一整條，跟上面那列連在一起 */
         @media (min-width: 601px) {
             .responsive-table tr.has-note td { border-bottom: none; }
-            .responsive-table tr.note-row td { border-top: 1px dashed #f0dfa8; }
+            .responsive-table tr.note-row td { border-top: 1px dashed var(--amber-line); }
         }
-        .responsive-table tr.note-row td { background: #fffbea; padding: 8px 12px; white-space: normal; color: #6e4b00; font-size: 13.5px; line-height: 1.6; text-align: left; }
+        .responsive-table tr.note-row td { background: var(--amber-bg); padding: 8px 12px; white-space: normal; color: var(--amber-ink); font-size: 13.5px; line-height: 1.6; text-align: left; }
         .responsive-table .note-label { font-weight: bold; margin-right: 8px; white-space: nowrap; }
 
         /* ✅ 送出借用單後直接帶到查詢頁：最上面的「申請成功」提醒，剛剛那筆用綠色標出來 */
-        .booked-banner { background: #eafaf1; border: 1px solid #abebc6; border-radius: 10px; padding: 14px 16px; margin-bottom: 14px; line-height: 1.65; }
-        .booked-banner .bb-title { color: #1e8449; font-size: 20px; font-weight: bold; margin-bottom: 2px; }
-        .booked-banner .bb-sub { color: #4d6b5a; font-size: 13.5px; }
-        .booked-banner .bb-remind { margin-top: 10px; background: #fff; border: 1px dashed #f5b041; border-radius: 8px; padding: 10px 12px; color: #7e5109; font-size: 14.5px; }
-        .new-tag { display: inline-block; background: #27ae60; color: #fff; font-size: 11.5px; font-weight: bold; padding: 1px 8px; border-radius: 10px; margin-bottom: 3px; }
-        .responsive-table tr.just-booked:not(.note-row) td { background: #f2fbf5; }
+        .booked-banner { background: var(--pine-bg); border: 1px solid var(--pine-line); border-radius: var(--r-md); padding: 14px 16px; margin-bottom: 14px; line-height: 1.65; }
+        .booked-banner .bb-title { color: var(--pine-ink); font-size: 20px; font-weight: bold; margin-bottom: 2px; }
+        .booked-banner .bb-sub { color: var(--ink-2); font-size: 13.5px; }
+        .booked-banner .bb-remind { margin-top: 10px; background: var(--surface); border: 1px dashed var(--amber); border-radius: var(--r-md); padding: 10px 12px; color: var(--amber-ink); font-size: 15px; }
+        .new-tag { display: inline-block; background: var(--pine); color: var(--on-solid); font-size: 12.5px; font-weight: bold; padding: 1px 8px; border-radius: var(--r-md); margin-bottom: 3px; }
+        .responsive-table tr.just-booked:not(.note-row) td { background: var(--pine-bg); }
         @media (max-width: 600px) {
-            .responsive-table tr.just-booked { border: 2px solid #58d68d; }
+            .responsive-table tr.just-booked { border: 2px solid var(--pine); }
             .responsive-table tr.just-booked.has-note { border-bottom: none; }
-            .responsive-table tr.note-row.just-booked { border: 2px solid #58d68d; border-top: none; }
+            .responsive-table tr.note-row.just-booked { border: 2px solid var(--pine); border-top: none; }
         }
 
         /* 📷 歸還頁：拍照按鈕（取代瀏覽器預設的「Choose File」） */
-        .photo-hint { color: #5d6d7e; font-size: 13px; line-height: 1.6; background: #f4f8fb; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
-        .photo-btn { display: block; text-align: center; background: #fff; border: 2px dashed #e67e22; color: #d35400; font-weight: bold; font-size: 18px; border-radius: 10px; padding: 18px 10px; cursor: pointer; }
-        .photo-btn:active { background: #fef5e7; }
-        .photo-btn.has-photo { border-style: solid; border-color: #bdc3c7; color: #5d6d7e; font-size: 15px; padding: 11px 10px; }
+        .photo-hint { color: var(--ink-2); font-size: 13.5px; line-height: 1.6; background: var(--surface-2); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 10px; }
+        .photo-btn { display: block; text-align: center; background: var(--surface); border: 2px dashed var(--amber); color: var(--amber); font-weight: bold; font-size: 18px; border-radius: var(--r-md); padding: 18px 10px; cursor: pointer; }
+        .photo-btn:active { background: var(--amber-bg); }
+        .photo-btn.has-photo { border-style: solid; border-color: var(--line-strong); color: var(--ink-2); font-size: 15px; padding: 11px 10px; }
         .photo-preview { margin-top: 10px; text-align: center; }
-        .photo-preview img { max-width: 100%; max-height: 220px; border-radius: 8px; border: 1px solid #ddd; }
-        .photo-preview .pp-ok { color: #1e8449; font-weight: bold; font-size: 14px; margin-top: 6px; }
+        .photo-preview img { max-width: 100%; max-height: 220px; border-radius: var(--r-md); border: 1px solid var(--line); }
+        .photo-preview .pp-ok { color: var(--pine-ink); font-weight: bold; font-size: 15px; margin-top: 6px; }
 
         /* 🔄 歸還頁：剛歸還完成的提示 */
-        .return-done { background: #eafaf1; border: 1px solid #abebc6; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; line-height: 1.6; color: #1e8449; }
+        .return-done { background: var(--pine-bg); border: 1px solid var(--pine-line); border-radius: var(--r-md); padding: 12px 14px; margin-bottom: 12px; line-height: 1.6; color: var(--pine-ink); }
         .return-done .rd-title { font-size: 18px; font-weight: bold; }
-        .return-done .rd-next { margin-top: 6px; color: #b9770e; font-weight: bold; }
+        .return-done .rd-next { margin-top: 6px; color: var(--amber-ink); font-weight: bold; }
 
         /* 📌 後台最上面的「待辦事項」：還有什麼要處理、在哪幾天，點日期直接跳過去 */
-        .todo-box { background: #fffdf5; border: 2px solid #f5cba7; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
-        .todo-box.all-clear { background: #f4faf7; border-color: #c8e6d5; }
-        .todo-title { font-weight: bold; font-size: 16px; color: #a04000; margin-bottom: 4px; }
-        .todo-box.all-clear .todo-title { color: #1e8449; margin-bottom: 0; }
-        .todo-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px dashed #f0dcc4; }
+        .todo-box { background: var(--amber-bg); border: 2px solid var(--amber-line); border-radius: var(--r-lg); padding: 12px 14px; margin-bottom: 18px; }
+        .todo-box.all-clear { background: var(--pine-bg); border-color: var(--pine-line); }
+        .todo-title { font-weight: bold; font-size: 16px; color: var(--amber-ink); margin-bottom: 4px; }
+        .todo-box.all-clear .todo-title { color: var(--pine-ink); margin-bottom: 0; }
+        .todo-row { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px dashed var(--amber-line); }
         .todo-row:first-of-type { border-top: none; }
-        .todo-row .todo-k { flex: 0 0 auto; font-weight: bold; color: #2c3e50; font-size: 14px; padding-top: 3px; min-width: 222px; }
+        .todo-row .todo-k { flex: 0 0 auto; font-weight: bold; color: var(--ink); font-size: 15px; padding-top: 3px; min-width: 222px; }
         .todo-row .todo-k b { font-size: 16px; }
-        .todo-row.red .todo-k b { color: #c0392b; }
-        .todo-row.amber .todo-k b { color: #d35400; }
+        .todo-row.red .todo-k b { color: var(--red); }
+        .todo-row.amber .todo-k b { color: var(--amber); }
         .todo-dates { display: flex; flex-wrap: wrap; gap: 6px; flex: 1; min-width: 0; }
-        .todo-date { background: #fff; border: 1px solid #d5dde3; color: #2471a3; border-radius: 14px; padding: 3px 10px; font-size: 13px; cursor: pointer; white-space: nowrap; }
-        .todo-date:hover { background: #eaf2f8; }
-        .todo-date small { color: #7f8c8d; margin-left: 3px; }
+        .todo-date { background: var(--surface); border: 1px solid var(--line); color: var(--pine-ink); border-radius: var(--r-lg); padding: 3px 10px; font-size: 13.5px; cursor: pointer; white-space: nowrap; }
+        .todo-date:hover { background: var(--surface-2); }
+        .todo-date small { color: var(--ink-2); margin-left: 3px; }
         @media (max-width: 700px) {
             .todo-row { flex-direction: column; gap: 6px; }
             .todo-row .todo-k { min-width: 0; }
-            .todo-date { font-size: 14px; padding: 5px 12px; }
+            .todo-date { font-size: 15px; padding: 5px 12px; }
         }
         /* 從待辦事項跳過去時，那一天閃一下，一眼看到是哪一天 */
-        @keyframes dayFlash { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 4px #f5b041; } }
+        @keyframes dayFlash { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 4px var(--amber); } }
         details.day-fold.flash > summary { animation: dayFlash 1.4s ease 2; }
 
         /* 📋 每天備品清單裡的工具：一次上傳整天的領取照片、自動分配喇叭 */
-        .day-tool-btn { display: inline-block; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 13px; padding: 6px 12px; border: none; margin-top: 6px; }
-        .day-tool-btn.photo { background: #3498db; color: #fff; }
-        .day-tool-btn.auto { background: #34495e; color: #fff; }
-        @media (max-width: 700px) { .day-tool-btn { font-size: 14px; padding: 9px 14px; } }
+        .day-tool-btn { display: inline-block; cursor: pointer; border-radius: var(--r-sm); font-weight: bold; font-size: 13.5px; padding: 6px 12px; border: none; margin-top: 6px; }
+        .day-tool-btn.photo { background: var(--pine); color: var(--on-solid); }
+        .day-tool-btn.auto { background: var(--ink); color: var(--on-solid); }
+        @media (max-width: 700px) { .day-tool-btn { font-size: 15px; padding: 9px 14px; } }
 
         /* 🎼 借用表單譜架旁的小字：兒主已有譜架／已借完 */
-        .stand-note { font-weight: normal; font-size: 13px; color: #7f8c8d; margin-left: 4px; }
-        .stand-note.out { color: #c0392b; font-weight: bold; }
-        .stand-day-note { font-size: 12px; margin-top: 3px; color: #8e44ad; font-weight: normal; }
-        .stand-day-note.warn { color: #c0392b; font-weight: bold; }
+        .stand-note { font-weight: normal; font-size: 13.5px; color: var(--ink-2); margin-left: 4px; }
+        .stand-note.out { color: var(--red); font-weight: bold; }
+        .stand-day-note { font-size: 12.5px; margin-top: 3px; color: var(--amber); font-weight: normal; }
+        .stand-day-note.warn { color: var(--red); font-weight: bold; }
 
         /* 🎛️ 備品清單的音控協助：哪個場地、幾點、誰 */
-        .tech-line { color: #c0392b; font-size: 13px; line-height: 1.55; font-weight: normal; }
+        .tech-line { color: var(--red); font-size: 13.5px; line-height: 1.55; font-weight: normal; }
         .tech-line b { font-weight: bold; }
-        .tech-line span { color: #7f8c8d; }
-        .sum-v .tech-line { font-size: 14px; }
+        .tech-line span { color: var(--ink-2); }
+        .sum-v .tech-line { font-size: 15px; }
 
         /* 🔍 後台「找借用紀錄」 */
-        .search-box { background: #fff; border: 1px solid #d6e4ee; border-radius: 12px; padding: 12px 14px; margin-bottom: 18px; }
-        .search-title { font-weight: bold; color: #2471a3; font-size: 15px; margin-bottom: 8px; }
-        .search-title span { font-weight: normal; color: #7f8c8d; font-size: 12px; margin-left: 4px; }
+        .search-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px 14px; margin-bottom: 18px; }
+        .search-title { font-weight: bold; color: var(--pine-ink); font-size: 15px; margin-bottom: 8px; }
+        .search-title span { font-weight: normal; color: var(--ink-2); font-size: 12.5px; margin-left: 4px; }
         .search-row { display: flex; gap: 8px; }
-        .search-row input { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border: 2px solid #d6e4ee; border-radius: 8px; }
-        .search-row input:focus { border-color: #3498db; outline: none; }
-        .search-clear { flex: 0 0 auto; background: #ecf0f1; color: #5d6d7e; border: none; border-radius: 8px; padding: 0 14px; font-size: 14px; cursor: pointer; }
+        .search-row input { flex: 1; min-width: 0; font-size: 16px; padding: 10px 12px; border: 2px solid var(--line); border-radius: var(--r-md); }
+        .search-row input:focus { border-color: var(--pine); outline: none; }
+        .search-clear { flex: 0 0 auto; background: var(--surface-2); color: var(--ink-2); border: none; border-radius: var(--r-md); padding: 0 14px; font-size: 15px; cursor: pointer; }
         .search-row input::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }   /* 只留自己的「清除」鈕 */
         @media (max-width: 700px) { .search-title span { display: block; margin: 2px 0 0; } }
         #adminSearchResult:empty { display: none; }
         #adminSearchResult { margin-top: 10px; }
-        .sr-hint { color: #7f8c8d; font-size: 13px; }
-        .sr-item { border: 1px solid #e3e9ee; border-radius: 10px; padding: 9px 12px; margin-top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-        .sr-main { flex: 1; min-width: 220px; line-height: 1.6; font-size: 14px; color: #2c3e50; }
-        .sr-main mark { background: #fdebd0; color: inherit; padding: 0 1px; border-radius: 3px; }
-        .sr-tag { display: inline-block; font-size: 11.5px; font-weight: bold; padding: 1px 7px; border-radius: 10px; margin-left: 4px; vertical-align: 1px; }
-        .sr-tag.out { background: #eaf2f8; color: #2471a3; }
-        .sr-tag.late { background: #e74c3c; color: #fff; }
-        .sr-tag.done { background: #e9f7ef; color: #1e8449; }
-        .sr-tag.fuzzy { background: #f4ecf7; color: #7d3c98; font-weight: normal; }
+        .sr-hint { color: var(--ink-2); font-size: 13.5px; }
+        .sr-item { border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 12px; margin-top: 8px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .sr-main { flex: 1; min-width: 220px; line-height: 1.6; font-size: 15px; color: var(--ink); }
+        .sr-main mark { background: var(--amber-bg); color: inherit; padding: 0 1px; border-radius: var(--r-sm); }
+        .sr-tag { display: inline-block; font-size: 12.5px; font-weight: bold; padding: 1px 7px; border-radius: var(--r-md); margin-left: 4px; vertical-align: 1px; }
+        .sr-tag.out { background: var(--surface-2); color: var(--pine-ink); }
+        .sr-tag.late { background: var(--red); color: var(--on-solid); }
+        .sr-tag.done { background: var(--pine-bg); color: var(--pine-ink); }
+        .sr-tag.fuzzy { background: var(--surface-2); color: var(--amber); font-weight: normal; }
         .sr-actions { display: flex; gap: 6px; }
-        .sr-actions button { border: none; border-radius: 6px; padding: 7px 10px; font-size: 13px; cursor: pointer; color: #fff; white-space: nowrap; }
-        .sr-actions .go { background: #34495e; }
-        .sr-actions .ed { background: #3498db; }
+        .sr-actions button { border: none; border-radius: var(--r-sm); padding: 7px 10px; font-size: 13.5px; cursor: pointer; color: var(--on-solid); white-space: nowrap; }
+        .sr-actions .go { background: var(--ink); }
+        .sr-actions .ed { background: var(--pine); }
         @media (max-width: 700px) {
             .sr-actions { width: 100%; }
-            .sr-actions button { flex: 1; padding: 10px; font-size: 14px; }
+            .sr-actions button { flex: 1; padding: 10px; font-size: 15px; }
         }
         /* 從搜尋結果跳過去的那一筆：閃兩下 */
-        @keyframes recFlash { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 4px #f5b041; } }
-        @keyframes recFlashBg { 0%, 100% { background-color: transparent; } 30%, 70% { background-color: #fdebd0; } }
+        @keyframes recFlash { 0%, 100% { box-shadow: none; } 30%, 70% { box-shadow: 0 0 0 4px var(--amber); } }
+        @keyframes recFlashBg { 0%, 100% { background-color: transparent; } 30%, 70% { background-color: var(--amber-bg); } }
         .bk-card.rec-flash { animation: recFlash 1.4s ease 2; }
         tr.rec-flash > td { animation: recFlashBg 1.4s ease 2; }
 
         /* ✏️ 編輯視窗最下面的「刪除這筆紀錄」：從卡片上移進來，平常不會誤按 */
-        .edit-danger-zone { margin-top: 18px; padding-top: 12px; border-top: 1px dashed #e6b0aa; text-align: center; }
-        .edit-danger-zone button { background: none; border: 1px solid #e6b0aa; color: #c0392b; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; }
-        .edit-danger-zone .hint { color: #95a5a6; font-size: 11.5px; margin-top: 5px; }
+        .edit-danger-zone { margin-top: 18px; padding-top: 12px; border-top: 1px dashed var(--red-line); text-align: center; }
+        .edit-danger-zone button { background: none; border: 1px solid var(--red-line); color: var(--red); border-radius: var(--r-sm); padding: 7px 14px; font-size: 13.5px; cursor: pointer; }
+        .edit-danger-zone .hint { color: var(--ink-3); font-size: 12.5px; margin-top: 5px; }
+    
+        /* ===== 換裝（第四十七輪，Dose）：只覆蓋外觀，版面與操作不變 ===== */
+        html, body { overflow-x: clip; }
+        body { background-color: var(--paper); background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.35  0 0 0 0 0.32  0 0 0 0 0.22  0 0 0 0.05 0'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>"); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; line-height: 1.5; }
+        h2, h3, h4, .form-card-title, .todo-title { font-family: var(--font-display); letter-spacing: -0.01em; }
+        ::selection { background: var(--mint); color: var(--ink); }
+        input, textarea, select { caret-color: var(--pine); }
+        .container { background: transparent; box-shadow: none; padding: 0 0 32px; }
+
+        /* 頁首：一條薄荷色的淡塑膠帶，上緣一道反光 */
+        .container > h2 { --t: var(--p-4); background: linear-gradient(oklch(100% 0 0 / .45), transparent 30%), color-mix(in oklab, var(--t) 80%, var(--surface)); color: var(--ink); border-radius: var(--r-lg); padding: 18px 16px; margin: 0 0 22px; font-size: 18px; font-weight: 700; line-height: 1.35; overflow-wrap: break-word; min-width: 0; box-shadow: inset 0 1.5px 0 var(--glint), inset 0 -22px 30px -26px color-mix(in oklab, var(--t) 55%, var(--ink)), var(--shadow-card); }
+        .container > h2 svg.ic { color: var(--pine-deep); width: 1.3em; height: 1.3em; }
+
+        .form-section > h3, .admin-section > h3 { color: var(--ink) !important; font-size: 21px; font-weight: 700; margin: 6px 0 16px; }
+        h4 { color: var(--ink); font-size: 17px; }
+        label { color: var(--ink-2); font-weight: 600; }
+
+        /* 白色卡片只一層，放在紙上 */
+        .form-card, .bk-card, .search-box, .stat-tiles .tile, details.inv-box, .tutorial-box, .modal-content, .cal-box {
+            background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--shadow-card);
+        }
+        .form-card-title { font-size: 16.5px; color: var(--ink); }
+        .todo-box { border: 1px solid var(--amber-line); background: var(--amber-bg); border-radius: var(--r-lg); box-shadow: none; }
+        .todo-box.all-clear { background: var(--pine-bg); border-color: var(--pine-line); }
+        .bk-card.overdue { border-color: var(--red-line); background: linear-gradient(var(--red-bg), var(--surface) 70px); }
+
+        /* 時間用 DM Mono，像藥袋上的標籤 */
+        .bk-time, .cal-day, .todo-date, .stat-tiles .tile b { font-family: var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+        .bk-time { font-weight: 500; }
+
+        /* 輸入欄 */
+        input[type="text"], input[type="tel"], input[type="date"], input[type="time"], input[type="password"], input[type="email"], select, textarea, .date-pick {
+            background-color: var(--surface); border: 1px solid var(--field-edge); border-radius: var(--r-md); color: var(--ink); min-height: 48px;
+        }
+        input::placeholder, textarea::placeholder { color: var(--ink-4); }
+
+        /* 選項：模壓塑膠按鍵，選中變薄荷綠 */
+        .toggle-group label { border: 0; border-radius: var(--r-md); background: var(--surface); color: var(--ink-2); box-shadow: inset 0 1px 0 var(--glint), 0 0 0 1px var(--line-strong), 0 3px 0 var(--line-strong); transition: transform .12s ease-out, background-color .15s ease; }
+        .toggle-group label.active { background: var(--mint); color: var(--ink); box-shadow: inset 0 1px 0 oklch(100% 0 0 / .6), 0 0 0 1px var(--pine), 0 3px 0 var(--pine); }
+        .toggle-group label:active { transform: translateY(2px); }
+
+        /* 按鈕：主要是綠色塑膠，其餘是透明塑膠；按下去會沉 3px */
+        .btn-main, .btn-submit, .btn-back { border-radius: var(--r-md); min-height: 50px; font-size: 16px; font-weight: 600; transition: transform .12s ease-out, background-color .15s ease; }
+        .btn-main { max-width: 320px; }
+        .btn-borrow, .btn-submit, .btn-ok, .tutorial-box .tt-copy, .day-tool-btn.auto, .sr-actions .go, button[onclick^="autoAssignSpeakerFor"][style*="background:var(--ink)"] {
+            background: linear-gradient(var(--pine), var(--pine-deep)) !important; color: var(--on-solid) !important; border: 0 !important;
+            box-shadow: inset 0 1px 0 oklch(100% 0 0 / .3), 0 0 0 1px var(--pine-deep), 0 3px 0 var(--pine-deep);
+        }
+        .btn-query, .btn-back, .btn-edit, .btn-undo, .tutorial-box .tt-open, .day-tool-btn.photo {
+            background: var(--surface) !important; color: var(--ink-2) !important; border: 0 !important;
+            box-shadow: inset 0 1px 0 var(--glint), 0 0 0 1px var(--line-strong), 0 3px 0 var(--line-strong);
+        }
+        #btnExportExcel { color: var(--pine-ink) !important; }
+        .btn-danger { background: var(--surface); color: var(--red); border: 0; box-shadow: 0 0 0 1px var(--red-line), 0 3px 0 var(--red-line); }
+        .btn-main:active, .btn-submit:active, .btn-back:active, .btn-edit:active, .btn-ok:active, .btn-undo:active, .btn-danger:active { transform: translateY(3px); box-shadow: none; }
+        .btn-edit, .btn-ok, .btn-undo, .btn-danger { border-radius: var(--r-sm); margin-bottom: 3px; }
+        button:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* 後台日期列：像藥盒的格子，每個星期幾一個淡色（只代表星期，不代表狀態） */
+        details.day-fold > summary, .day-head, .date-header, summary.date-header.flex-head {
+            --t: var(--p-4);
+            background: linear-gradient(oklch(100% 0 0 / .35), transparent 22%), color-mix(in oklab, var(--t) 72%, var(--surface)) !important;
+            color: var(--ink) !important; border: 0; border-radius: var(--r-lg);
+            box-shadow: inset 0 1.5px 0 var(--glint), inset 0 -18px 28px -26px color-mix(in oklab, var(--t) 50%, var(--ink)), var(--shadow-card);
+        }
+        details.day-fold[data-wd="0"] > summary { --t: var(--p-0); } details.day-fold[data-wd="1"] > summary { --t: var(--p-1); }
+        details.day-fold[data-wd="2"] > summary { --t: var(--p-2); } details.day-fold[data-wd="3"] > summary { --t: var(--p-3); }
+        details.day-fold[data-wd="4"] > summary { --t: var(--p-4); } details.day-fold[data-wd="5"] > summary { --t: var(--p-5); }
+        details.day-fold[data-wd="6"] > summary { --t: var(--p-6); }
+        details.day-fold > summary { font-size: 17.5px; font-family: var(--font-display); }
+        .day-head > span, .fold-right { color: var(--ink-2); opacity: 1; }
+
+        /* 狀態標籤：琥珀＝還要有人動手，紅＝逾期；都是實心，一眼看得到 */
+        .fold-badges span, .fold-badges span.amber, .fold-badges span.tech { background: var(--amber); color: var(--on-solid); border: 0; font-weight: 600; }
+        .fold-badges span.red { font-weight: 700; }
+
+        /* 本日備品準備清單：白紙上的清單，資料一律墨色粗體；顏色只留給還要處理的事（顧問會議第一輪） */
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] { background: var(--surface) !important; border-color: var(--line) !important; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] b[style*="--pine-ink"] { color: var(--ink) !important; font-size: 16px !important; font-family: var(--font-display); }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] span[style*="color:var(--pine-ink)"],
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] [style*="color:var(--amber)"] { color: var(--ink) !important; font-weight: 700; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] span[style*="color:var(--line-strong)"] { color: var(--ink-4) !important; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] div[style*="color:var(--ink-3)"], .sum-hint { color: var(--ink-3) !important; font-size: 13px !important; }
+        /* 層次：小標淡、數值大而黑、說明淡；沒有東西要準備的欄位整欄退後 */
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="gap:26px"] {
+            display: grid !important; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0 !important; margin-top: 12px !important; border-top: 1px solid var(--line);
+        }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="gap:26px"] > div { min-width: 0 !important; padding: 12px 16px 4px 0; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="gap:26px"] > div + div { padding-left: 16px; border-left: 1px solid var(--line); }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="gap:26px"] > div > div:first-child { color: var(--ink-3) !important; font-size: 13px !important; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="gap:26px"] > div > div:nth-child(2) { font-size: 18px !important; margin: 4px 0 2px !important; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="gap:26px"] > div:has(span[style*="--line-strong"]),
+        .sum-row:has(.sum-v > span[style*="color:var(--ink-3)"]) { opacity: .5; }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] > div[style*="margin-top:8px"] { color: var(--ink-3) !important; font-size: 13px !important; margin-top: 4px !important; }
+        .tech-line { color: var(--ink); }
+        .tech-line span { color: var(--ink-3); }
+        div[style*="background:var(--pine-bg)"][style*="border-top:none"] div[style*="background:var(--red-bg)"] { background: var(--amber-bg) !important; color: var(--amber-ink) !important; border: 1px solid var(--amber-line); }
+        .sum-row { border-top-color: var(--line); }
+        .sum-chip.sp { background: var(--surface-2); color: var(--ink); border: 1px solid var(--line-strong); font-family: var(--font-mono); font-weight: 500; }
+        .btn-extra { border-style: solid !important; background: var(--surface) !important; box-shadow: 0 2px 0 var(--amber-line); }
+        .fold-badges span.red, .bk-badge.red { background: var(--red); color: var(--on-solid); border: 0; }
+        .fold-badges svg.ic.ic, .bk-badge svg.ic.ic { color: inherit; }
+        .new-tag { background: var(--mint); color: var(--ink); border: 0; }
+
+        /* 備註：像貼在上面的便條 */
+        .bk-note { background: var(--amber-bg) !important; border: 1px dashed var(--amber-line) !important; color: var(--ink) !important; }
+
+        .tutorial-box .tt-text { color: var(--ink); }
+        .tutorial-box .tt-text small { color: var(--ink-3); }
+
+        /* 圖示（取代 emoji） */
+        svg.ic { width: 1.25em; height: 1.25em; vertical-align: -0.26em; flex: none; display: inline-block; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        svg.ic.ok { color: var(--pine); } svg.ic.warn { color: var(--amber); } svg.ic.bad { color: var(--red); }
+        .btn-submit svg.ic.ok, .btn-ok svg.ic.ok, .btn-main svg.ic { color: inherit; }
+
+        :where(button, a, input, select, textarea, summary, [tabindex], .date-pick):focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+        .toggle-group label:has(input:focus-visible) { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+        }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@600;700&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
 <body>
+<!-- 圖示：Lucide v1.73.0（ISC 授權） -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14" /> <path d="m19 12-7 7-7-7" /></symbol><symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7" /> <path d="M19 12H5" /></symbol><symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M4.929 4.929 19.07 19.071" /></symbol><symbol id="i-calendar" viewBox="0 0 24 24"><path d="M8 2v3" /> <path d="M16 2v3" /> <rect x="3" y="3" width="18" height="18" rx="2" /> <path d="M3 9h18" /></symbol><symbol id="i-camera" viewBox="0 0 24 24"><path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z" /> <circle cx="12" cy="13" r="3" /></symbol><symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6" /></symbol><symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /></symbol><symbol id="i-circle-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m16 9-5.5 5.5L8 12" /></symbol><symbol id="i-circle-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1" /> <circle cx="12" cy="12" r="10" /></symbol><symbol id="i-circle-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M9 9.5a3 2.5 0 016 0c0 2-2 2-3 3.5" /> <path d="M12 17h.01" /></symbol><symbol id="i-clipboard-list" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /> <path d="M12 11h4" /> <path d="M12 16h4" /> <path d="M8 11h.01" /> <path d="M8 16h.01" /></symbol><symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="M12 6v6l4 2" /></symbol><symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" /> <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" /></symbol><symbol id="i-file-spreadsheet" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" /> <path d="M14 2v5a1 1 0 0 0 1 1h5" /> <path d="M8 13h2" /> <path d="M14 13h2" /> <path d="M8 17h2" /> <path d="M14 17h2" /></symbol><symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></symbol><symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" /></symbol><symbol id="i-folders" viewBox="0 0 24 24"><path d="M20 5a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2.5a1.5 1.5 0 0 1 1.2.6l.6.8a1.5 1.5 0 0 0 1.2.6z" /> <path d="M3 8.268a2 2 0 0 0-1 1.738V19a2 2 0 0 0 2 2h11a2 2 0 0 0 1.732-1" /></symbol><symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3" /></symbol><symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M5 22h14" /> <path d="M5 2h14" /> <path d="M17 22v-4.172a2 2 0 0 0-.586-1.414L12 12l-4.414 4.414A2 2 0 0 0 7 17.828V22" /> <path d="M7 2v4.172a2 2 0 0 0 .586 1.414L12 12l4.414-4.414A2 2 0 0 0 17 6.172V2" /></symbol><symbol id="i-house" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol><symbol id="i-key" viewBox="0 0 24 24"><path d="m2 21 9.6-9.6" /> <path d="m7.5 15.5 2.3 2.3a1 1 0 0 1 0 1.4l-2.1 2.1a1 1 0 0 1-1.4 0L4 19" /> <circle cx="15.5" cy="7.5" r="5.5" /></symbol><symbol id="i-lightbulb" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" /> <path d="M9 18h6" /> <path d="M10 22h4" /></symbol><symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /> <path d="M7 11V7a5 5 0 0 1 10 0v4" /></symbol><symbol id="i-map-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol><symbol id="i-message-circle" viewBox="0 0 24 24"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719" /></symbol><symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14" /></symbol><symbol id="i-music" viewBox="0 0 24 24"><path d="M21 16V3a1 1 0 0 0-1.28-.96l-10 2.917a1 1 0 0 0-.72.96V19" /> <circle cx="18" cy="16" r="3" /> <circle cx="6" cy="19" r="3" /></symbol><symbol id="i-notebook-pen" viewBox="0 0 24 24"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4" /> <path d="M2 6h4" /> <path d="M2 10h4" /> <path d="M2 14h4" /> <path d="M2 18h4" /> <path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z" /></symbol><symbol id="i-octagon-x" viewBox="0 0 24 24"><path d="m15 9-6 6" /> <path d="M2.586 16.726A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2h6.624a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586z" /> <path d="m9 9 6 6" /></symbol><symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" /> <path d="M12 22V12" /> <polyline points="3.29 7 12 12 20.71 7" /> <path d="m7.5 4.27 9 5.15" /></symbol><symbol id="i-paperclip" viewBox="0 0 24 24"><path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551" /></symbol><symbol id="i-party-popper" viewBox="0 0 24 24"><path d="M5.8 11.3 2 22l10.7-3.79" /> <path d="M4 3h.01" /> <path d="M22 8h.01" /> <path d="M15 2h.01" /> <path d="M22 20h.01" /> <path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10" /> <path d="m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17" /> <path d="m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7" /> <path d="M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z" /></symbol><symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol><symbol id="i-phone" viewBox="0 0 24 24"><path d="M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384" /></symbol><symbol id="i-piano" viewBox="0 0 24 24"><path d="M10 13v4" /> <path d="M14 13v4" /> <path d="M18 13v4" /> <path d="M2 13h20" /> <path d="M22 11.5A3.5 3.5 0 0018.5 8a3.52 3.52 0 01-3.173-2A7 7 0 002 9v10a2 2 0 002 2h16a2 2 0 002-2z" /> <path d="M6 13v4" /></symbol><symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5" /> <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" /></symbol><symbol id="i-play" viewBox="0 0 24 24"><path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z" /></symbol><symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5" /> <path d="M15 8V2" /> <path d="M17 8a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1z" /> <path d="M9 8V2" /></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol><symbol id="i-refresh-cw" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /> <path d="M21 3v5h-5" /> <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /> <path d="M8 16H3v5" /></symbol><symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4" /> <path d="M3 11v-1a4 4 0 0 1 4-4h14" /> <path d="m7 22-4-4 4-4" /> <path d="M21 13v1a4 4 0 0 1-4 4H3" /></symbol><symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" /> <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" /> <path d="M7 3v4a1 1 0 0 0 1 1h7" /></symbol><symbol id="i-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34" /> <circle cx="11" cy="11" r="8" /></symbol><symbol id="i-sliders-horizontal" viewBox="0 0 24 24"><path d="M10 5H3" /> <path d="M12 19H3" /> <path d="M14 3v4" /> <path d="M16 17v4" /> <path d="M21 12h-9" /> <path d="M21 19h-5" /> <path d="M21 5h-7" /> <path d="M8 10v4" /> <path d="M8 12H3" /></symbol><symbol id="i-smartphone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2" ry="2" /> <path d="M12 18h.01" /></symbol><symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" /> <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" /></symbol><symbol id="i-trash-2" viewBox="0 0 24 24"><path d="M10 11v6" /> <path d="M14 11v6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /> <path d="M3 6h18" /> <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></symbol><symbol id="i-tree-pine" viewBox="0 0 24 24"><path d="m17 14 3 3.3a1 1 0 0 1-.7 1.7H4.7a1 1 0 0 1-.7-1.7L7 14h-.3a1 1 0 0 1-.7-1.7L9 9h-.2A1 1 0 0 1 8 7.3L12 3l4 4.3a1 1 0 0 1-.8 1.7H15l3 3.3a1 1 0 0 1-.7 1.7H17Z" /> <path d="M12 22v-3" /></symbol><symbol id="i-trees" viewBox="0 0 24 24"><path d="M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z" /> <path d="M7 16v6" /> <path d="M13 19v3" /> <path d="M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5" /></symbol><symbol id="i-triangle-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></symbol><symbol id="i-undo-2" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5" /> <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></symbol><symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></symbol><symbol id="i-volume-1" viewBox="0 0 24 24"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /></symbol><symbol id="i-volume-2" viewBox="0 0 24 24"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" /> <path d="M16 9a5 5 0 0 1 0 6" /> <path d="M19.364 18.364a9 9 0 0 0 0-12.728" /></symbol><symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.106-3.105c.32-.322.863-.22.983.218a6 6 0 0 1-8.259 7.057l-7.91 7.91a1 1 0 0 1-2.999-3l7.91-7.91a6 6 0 0 1 7.057-8.259c.438.12.54.662.219.984z" /></symbol><symbol id="i-zap" viewBox="0 0 24 24"><path d="M15.914 4a1.5 1.5 0 00-2.474-1.561l-9 9A1.5 1.5 0 005.5 14h4.002a.5.5 0 01.471.666L8.086 20a1.5 1.5 0 002.475 1.56l9-9A1.5 1.5 0 0018.5 10h-3.997a.5.5 0 01-.472-.667z" /></symbol></svg>
 
 <!-- 🔥 全域自動載入遮罩 -->
 <!-- 📅 第三十八輪：月曆選日期（openCalendar／renderCalendar） -->
@@ -419,15 +586,15 @@
         <button type="button" class="cal-close" onclick="closeCalendar()">取消</button>
     </div>
 </div>
-<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:white; font-size:18px; font-weight:bold;">
-    <div style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom:15px;"></div>
+<div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color: var(--on-solid); font-size:18px; font-weight:bold;">
+    <div style="border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid var(--surface); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom:15px;"></div>
     <div id="loadingText" style="text-align: center;">處理中，請稍候...</div>
 </div>
 
 <div class="container">
     <h2 onclick="secretAdminTrigger()" style="user-select: none; cursor: pointer;">🎄 2026聖誕餐會 設備外借管理系統</h2>
 
-    <div id="connBanner" style="display:none; background:#fdecea; border:1px solid #f5c6cb; color:#a02622; padding:12px 15px; border-radius:8px; font-size:13px; line-height:1.6; margin-bottom:20px;"></div>
+    <div id="connBanner" style="display:none; background:var(--red-bg); border:1px solid var(--red-line); color:var(--red-ink); padding:12px 15px; border-radius:var(--r-md); font-size:13.5px; line-height:1.6; margin-bottom:20px;"></div>
 
     <!-- 🔁 第三十三輪：改成「管理員（值班同工）代為登記」，會眾不再自己填借用單，
          首頁只留兩個入口：登入後台、借用設備（借用設備也要先登入，是後台功能的一部分）。 -->
@@ -441,7 +608,7 @@
 
     <div id="loginModal" class="modal">
         <div class="modal-content">
-            <h3 style="margin-top: 0; color: #34495e;">🔐 管理員身分驗證</h3>
+            <h3 style="margin-top: 0; color: var(--ink);">🔐 管理員身分驗證</h3>
             <div class="form-group"><label>管理員信箱</label><input type="email" id="adminEmail" placeholder="admin@christmas.com" onkeydown="if(event.key==='Enter'){event.preventDefault(); adminLogin();}"></div>
             <div class="form-group"><label>密碼</label><input type="password" id="adminPassword" onkeydown="if(event.key==='Enter'){event.preventDefault(); adminLogin();}"></div>
             <button class="btn-submit" onclick="adminLogin()">登入後台</button>
@@ -462,28 +629,28 @@
     <!-- ✏️ 管理員編輯借用紀錄的視窗（由 openEdit() 開啟、saveEdit() 儲存） -->
     <div id="extraModal" class="modal">
         <div class="modal-content" style="max-width: 460px;">
-            <h3 style="margin-top: 0; color: #34495e;">📦 登記備註設備</h3>
-            <div id="extraWho" style="color: #5d6d7e; font-size: 13px; margin-bottom: 8px;"></div>
+            <h3 style="margin-top: 0; color: var(--ink);">📦 登記備註設備</h3>
+            <div id="extraWho" style="color: var(--ink-2); font-size: 13.5px; margin-bottom: 8px;"></div>
             <div id="extraNote" class="extra-note"></div>
             <div id="extraHint" class="extra-hint"></div>
             <div id="extraRows"></div>
             <button type="button" class="extra-add" onclick="addExtraRow('', 1, true)">＋ 再加一樣</button>
             <datalist id="extraNames"></datalist>
-            <div style="color: #95a5a6; font-size: 12px; margin-top: 10px;">登記後會算進「設備總結算」和「本日備品準備清單」。</div>
+            <div style="color: var(--ink-3); font-size: 12.5px; margin-top: 10px;">登記後會算進「設備總結算」和「本日備品準備清單」。</div>
             <div style="display: flex; gap: 10px; margin-top: 14px;">
                 <button type="button" class="btn-submit" style="margin: 0; flex: 2;" onclick="saveExtraItems()">儲存</button>
                 <button type="button" class="btn-back" style="margin: 0; flex: 1;" onclick="closeExtra()">關閉</button>
             </div>
             <div class="extra-more">
-                <button type="button" class="btn-noneed" onclick="saveExtraState('none')">➖ 不用登記<br><span style="font-weight: normal; font-size: 12px;">只是一般備註，沒借設備</span></button>
-                <button type="button" class="btn-unreg" id="btnUnreg" onclick="saveExtraState('pending')">↩️ 取消登記<br><span style="font-weight: normal; font-size: 12px;">改回「未登記」</span></button>
+                <button type="button" class="btn-noneed" onclick="saveExtraState('none')">➖ 不用登記<br><span style="font-weight: normal; font-size: 12.5px;">只是一般備註，沒借設備</span></button>
+                <button type="button" class="btn-unreg" id="btnUnreg" onclick="saveExtraState('pending')">↩️ 取消登記<br><span style="font-weight: normal; font-size: 12.5px;">改回「未登記」</span></button>
             </div>
         </div>
     </div>
 
     <div id="editModal" class="modal">
         <div class="modal-content" style="max-width: 520px;">
-            <h3 style="margin-top: 0; color: #34495e;">✏️ 編輯借用紀錄</h3>
+            <h3 style="margin-top: 0; color: var(--ink);">✏️ 編輯借用紀錄</h3>
             <input type="hidden" id="editId">
             <!-- 第三十三輪（使用者反映排列容易混淆後調整）：跟借用表單一致，改成「借用日期＋借用時間」
                  一組、「歸還日期＋歸還時間」一組。 -->
@@ -514,7 +681,7 @@
                     <label><input type="radio" name="editSpeaker" value="否"> 不需要</label>
                 </div>
             </div>
-            <div class="form-group"><label>🎼 譜架 <span id="editStandNote" style="font-weight:normal; color:#7f8c8d; font-size:12.5px;"></span></label>
+            <div class="form-group"><label>🎼 譜架 <span id="editStandNote" style="font-weight:normal; color:var(--ink-2); font-size:13.5px;"></span></label>
                 <select id="editStand">
                     <option value="0">不需要</option><option value="1">1 個</option><option value="2">2 個</option>
                     <option value="3">3 個</option><option value="4">4 個</option><option value="5">5 個</option><option value="6">6 個</option>
@@ -549,8 +716,8 @@
     </div>
 
     <div id="rulesSection" class="form-section">
-        <h3 style="text-align: center; color: #c0392b;">⚠️ 借用設備需知</h3>
-        <div style="background: #fdf2e9; padding: 15px; border-radius: 8px; line-height: 1.6; font-size: 15px;">
+        <h3 style="text-align: center; color: var(--red);">⚠️ 借用設備需知</h3>
+        <div style="background: var(--amber-bg); padding: 15px; border-radius: var(--r-md); line-height: 1.6; font-size: 15px;">
             <p>1. 領取及歸還，務必於「<b>設備外借管理系統</b>」的網頁填寫。</p>
             <p>2. 請於預約時間<b>準時歸還</b>，讓後面租借的小組可以順利進行。</p>
             <p>3. 領取設備時，請至系統查詢您的「<b>領取位置照片</b>」。</p>
@@ -560,7 +727,7 @@
     </div>
 
     <div id="borrowSection" class="form-section">
-        <h3 style="text-align: center; color: #3498db;">📝 填寫借用單</h3>
+        <h3 style="text-align: center; color: var(--pine);">📝 填寫借用單</h3>
         <!-- novalidate：關掉瀏覽器內建的欄位檢查，全部改由 submitBorrow() 檢查。
              iPhone Safari 內建檢查不通過時只會在某個欄位旁邊跳一個很小、很容易錯過的提示，
              使用者會以為「按了送出沒反應」；自己檢查可以跳出清楚的訊息並捲到有問題的欄位。 -->
@@ -592,7 +759,7 @@
                         <select id="endTime" onchange="refreshAvailability()"></select>
                     </div>
                 </div>
-                <div id="availPanel" class="hidden" style="background:#eaf2f8; border:1px solid #bcdff1; border-radius:8px; padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13px; line-height:1.7;"></div>
+                <div id="availPanel" class="hidden" style="background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md); padding:12px 14px; margin-top:12px; margin-bottom:12px; font-size:13.5px; line-height:1.7;"></div>
             </div>
 
             <div class="form-card">
@@ -624,9 +791,9 @@
                 <div class="form-card-sub">以下請依實際需求填寫，不需要的維持預設值即可</div>
 
                 <!-- 第四十三輪：兒主、幼主有現場音響，不借喇叭、不佔機台，選這兩個場地時這題換成下面的說明 -->
-                <div class="hidden" id="ownSoundNote" style="background:#eaf7f1; border:1px solid #c8e6d5; color:#1e8449; border-radius:8px; padding:10px 12px; margin-bottom:15px; font-size:14px; line-height:1.6;">🔊 <span id="ownSoundVenue"></span>有現場音響，不用借喇叭，也不會占用機台。</div>
+                <div class="hidden" id="ownSoundNote" style="background:var(--pine-bg); border:1px solid var(--pine-line); color:var(--pine-ink); border-radius:var(--r-md); padding:10px 12px; margin-bottom:15px; font-size:15px; line-height:1.6;">🔊 <span id="ownSoundVenue"></span>有現場音響，不用借喇叭，也不會占用機台。</div>
                 <div class="form-group" id="speakerGroup">
-                    <label>🔊 是否需要喇叭？<span style="font-weight:normal; color:#7f8c8d; font-size:14px;">（附 2 支麥克風）</span></label>
+                    <label>🔊 是否需要喇叭？<span style="font-weight:normal; color:var(--ink-2); font-size:15px;">（附 2 支麥克風）</span></label>
                     <div class="toggle-group">
                         <label><input type="radio" name="needSpeaker" value="是"> 是</label>
                         <label><input type="radio" name="needSpeaker" value="否" checked> 否</label>
@@ -635,7 +802,7 @@
 
                 <!-- 第三十四輪：音控協助屬於設備需求，從「場地」卡片移到這裡（只有兒主／幼主才會顯示） -->
                 <div class="form-group hidden" id="soundTechSection">
-                    <label style="color: #e74c3c;">是否需要音控同工協助開啟設備？</label>
+                    <label style="color: var(--red);">是否需要音控同工協助開啟設備？</label>
                     <div class="toggle-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
                 </div>
 
@@ -663,8 +830,8 @@
             </div>
 
             <div class="form-card">
-                <div class="form-card-title">📝 其他需求／備註 <span style="font-weight:normal; color:#95a5a6; font-size:12.5px;">（選填）</span></div>
-                <div class="form-card-sub" style="color:#7f8c8d; line-height:1.6;">除了上面的喇叭、譜架、鋼琴，還需要<b>其他設備</b>，或有想提醒管理員的事，請寫在這裡。</div>
+                <div class="form-card-title">📝 其他需求／備註 <span style="font-weight:normal; color:var(--ink-3); font-size:13.5px;">（選填）</span></div>
+                <div class="form-card-sub" style="color:var(--ink-2); line-height:1.6;">除了上面的喇叭、譜架、鋼琴，還需要<b>其他設備</b>，或有想提醒管理員的事，請寫在這裡。</div>
                 <div class="form-group">
                     <textarea id="notes" rows="3" placeholder="例如：延長線 2 條、麥克風架 1 支"></textarea>
                 </div>
@@ -676,7 +843,7 @@
     </div>
 
     <div id="querySection" class="form-section">
-        <h3 style="text-align: center; color: #9b59b6;">🔍 查詢借用與領取狀況</h3>
+        <h3 style="text-align: center; color: var(--amber);">🔍 查詢借用與領取狀況</h3>
         <!-- 🔁 第三十三輪（用戶確認後追加）：改用「借用人姓名」查詢，不再比對電話——
              新登記的借用單已經不收電話了，用電話查一定查不到。同名有好幾筆的話全部列出來，讓使用者自己挑。 -->
         <div class="form-group"><label>請輸入借用人姓名查詢</label><input type="text" id="searchName" maxlength="30" placeholder="例：王小明" onkeydown="if(event.key==='Enter'){event.preventDefault(); queryRecords();}"></div>
@@ -686,7 +853,7 @@
     </div>
 
     <div id="returnSection" class="form-section">
-        <h3 style="text-align: center; color: #e67e22;">🔄 填寫歸還單</h3>
+        <h3 style="text-align: center; color: var(--amber);">🔄 填寫歸還單</h3>
 
         <div class="form-group" id="returnSearchBlock">
             <label>請輸入借用人姓名查詢</label>
@@ -701,8 +868,8 @@
         <form id="returnForm" class="hidden" novalidate onsubmit="event.preventDefault(); submitReturn(); return false;">
             <hr>
             <div class="form-group">
-                <label style="color: #c0392b;">請選擇要歸還的紀錄：</label>
-                <div id="unreturnedList" style="background: #fff; padding: 10px; border-radius: 6px; border: 1px solid #ddd;">
+                <label style="color: var(--red);">請選擇要歸還的紀錄：</label>
+                <div id="unreturnedList" style="background: var(--surface); padding: 10px; border-radius: var(--r-sm); border: 1px solid var(--line);">
                 </div>
             </div>
 
@@ -719,7 +886,7 @@
                     <div class="pp-ok">✅ 照片已選好</div>
                 </div>
             </div>
-            <div class="form-group" id="returnNotesGroup"><label>歸還狀態 <span style="font-weight:normal; color:#95a5a6; font-size:12.5px;">（選填，如有損壞或異常才需要說明）</span></label><input type="text" id="returnNotes" placeholder="一切正常，可以不用填寫"></div>
+            <div class="form-group" id="returnNotesGroup"><label>歸還狀態 <span style="font-weight:normal; color:var(--ink-3); font-size:13.5px;">（選填，如有損壞或異常才需要說明）</span></label><input type="text" id="returnNotes" placeholder="一切正常，可以不用填寫"></div>
 
             <button type="submit" id="submitReturnBtn" class="btn-submit">送出歸還通知</button>
         </form>
@@ -727,7 +894,7 @@
     </div>
 
     <div id="adminSection" class="admin-section">
-        <h3 style="color: #34495e; text-align: center;">📊 設備借還後台管理</h3>
+        <h3 style="color: var(--ink); text-align: center;">📊 設備借還後台管理</h3>
         <!-- 🧭 第三十四輪（管理員操作動線調整）：最常用的「找借用紀錄」放最上面；
              「新增借用」＋「匯出 Excel」並排；「重新整理」縮小；「登出管理員」移到最下面（避免手滑誤按）。 -->
         <!-- 🔍 找借用紀錄：輸入電話（可以只打一部分）或名字（有兩個字對得上就列出來），點「跳到這筆」直接捲過去 -->
@@ -743,7 +910,7 @@
 
         <button class="btn-submit" style="margin-bottom:12px;" onclick="showSection('borrowSection')">📦 新增借用（幫小組登記）</button>
         <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
-            <button class="btn-back" id="btnExportExcel" style="flex:2; margin:0; background-color:#217346;" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
+            <button class="btn-back" id="btnExportExcel" style="flex:2; margin:0; background-color:var(--pine-ink);" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
             <button class="btn-back" style="flex:1; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
         </div>
         <!-- 🔊 第四十二輪（用戶要求）：喇叭教學影片，按「複製給會友」就能直接貼到 LINE -->
@@ -754,8 +921,8 @@
                 <a class="tt-open" href="https://drive.google.com/file/d/1oHQoinOaArzRL0UxMvJP6zYvX3sx_S7h/view" target="_blank" rel="noopener">▶️ 看影片</a>
             </div>
         </div>
-        <div class="form-group" style="background: #eaf2f8; padding: 15px; border-radius: 8px;">
-            <label style="color: #2980b9;">📅 資料篩選</label>
+        <div class="form-group" style="background: var(--surface-2); padding: 15px; border-radius: var(--r-md);">
+            <label style="color: var(--pine);">📅 資料篩選</label>
             <!-- 第三十三輪：開放 11 月後多一個「11 月」整月篩選；12 月維持原本的四週篩選 -->
             <select id="adminWeekFilter" onchange="loadAdminData()">
                 <option value="">所有紀錄</option>
@@ -769,19 +936,19 @@
                 <option value="4">12 月第四週 (12/22 以後)</option>
             </select>
         </div>
-        <div id="adminSummary" style="background:#eef6fb; border:1px solid #cfe4f0; border-radius:8px; padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:#2c3e50; display:flex; gap:22px; flex-wrap:wrap;"></div>
+        <div id="adminSummary" style="background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-md); padding:10px 14px; margin-bottom:18px; font-size:13.5px; color:var(--ink); display:flex; gap:22px; flex-wrap:wrap;"></div>
 
         <div id="todoBox"></div>
 
         <h4>⚠️ 未歸還清單</h4>
         <div id="unreturnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
-        <h4 style="margin-top: 25px; color: #27ae60;">✅ 已歸還清單 <span id="returnedSortHint" style="font-size:12px; font-weight:normal; color:#7f8c8d;">(依借用日期分組，日期早的在上)</span></h4>
+        <h4 style="margin-top: 25px; color: var(--pine);">✅ 已歸還清單 <span id="returnedSortHint" style="font-size:12.5px; font-weight:normal; color:var(--ink-2);">(依借用日期分組，日期早的在上)</span></h4>
         <div id="returnedContainer" style="overflow-x: auto; padding-bottom: 10px;"></div>
 
         <button class="btn-back" style="margin-top: 25px;" onclick="showSection('homeMenu')">返回首頁</button>
         <!-- 登出放在最下面、字小一點，並且會先問一次「確定要登出嗎」 -->
-        <button class="btn-back" style="margin-top: 12px; background-color:#fff; color:#c0392b; border:1px solid #c0392b; font-size:13px; padding:8px;" onclick="if(confirm('確定要登出管理員嗎？')) adminLogout()">登出管理員</button>
+        <button class="btn-back" style="margin-top: 12px; background-color:var(--surface); color:var(--red); border:1px solid var(--red); font-size:13.5px; padding:8px;" onclick="if(confirm('確定要登出管理員嗎？')) adminLogout()">登出管理員</button>
     </div>
 </div>
 
@@ -805,7 +972,7 @@
     function showBanner(msg) {
         let b = document.getElementById('connBanner');
         b.innerHTML = `<b>⚠️ 無法連線到資料庫</b><br>${msg}<br>
-            <span style="color:#7f8c8d;">頁面的畫面與流程都可以正常瀏覽，但「登入後台／查詢／送出申請／歸還」需要連到 Supabase 才能運作。
+            <span style="color:var(--ink-2);">頁面的畫面與流程都可以正常瀏覽，但「登入後台／查詢／送出申請／歸還」需要連到 Supabase 才能運作。
             請把這個 HTML 檔放到您自己的網站空間（GitHub Pages、Netlify、公司網站等）再使用。</span>`;
         b.style.display = 'block';
     }
@@ -1007,8 +1174,8 @@
 
     // 日期＋時間合併顯示成兩行：上面是好讀的日期，下面是時間區間，比純數字清楚
     function dateTimeCell(item) {
-        return `<div style="font-weight:bold; color:#2c3e50;">📅 ${formatDateLabel(item.borrow_date)}</div>
-                <div style="color:#5d7a8c; font-size:12.5px; margin-top:2px;">🕐 ${item.start_time}–${item.end_time}</div>`;
+        return `<div style="font-weight:bold; color:var(--ink);">📅 ${formatDateLabel(item.borrow_date)}</div>
+                <div style="color:var(--ink-2); font-size:13.5px; margin-top:2px;">🕐 ${item.start_time}–${item.end_time}</div>`;
     }
 
     // ⚠️ 判斷這筆借用是否已經「逾期未歸還」：借用時段的結束時間已經過了現在，但還沒標記歸還
@@ -1022,10 +1189,10 @@
     // 🏷️ 查詢頁的借用狀態：依日期區分，避免還沒借的預約就被標成「⚠️ 未歸還」嚇到人
     //    已歸還 → 借用結束時間已過還沒還（逾期）→ 今天就是借用日 → 還沒到借用日（已預約）
     function bookingStatus(item) {
-        if (item.is_returned) return '<b style="color:#27ae60;">✅ 已歸還</b>';
-        if (isOverdue(item)) return '<b style="color:#c0392b;">⚠️ 逾期未歸還</b><br><span style="color:#c0392b; font-size:11.5px;">請盡快到「我要歸還設備」歸還</span>';
-        if (String(item.borrow_date) === todayStr()) return '<b style="color:#d35400;">🟠 今天使用</b><br><span style="color:#b9770e; font-size:11.5px;">用完記得歸還</span>';
-        return '<b style="color:#2471a3;">📅 已預約</b>';
+        if (item.is_returned) return '<b style="color:var(--pine);">✅ 已歸還</b>';
+        if (isOverdue(item)) return '<b style="color:var(--red);">⚠️ 逾期未歸還</b><br><span style="color:var(--red); font-size:12.5px;">請盡快到「我要歸還設備」歸還</span>';
+        if (String(item.borrow_date) === todayStr()) return '<b style="color:var(--amber);">🟠 今天使用</b><br><span style="color:var(--amber-ink); font-size:12.5px;">用完記得歸還</span>';
+        return '<b style="color:var(--pine-ink);">📅 已預約</b>';
     }
 
     // 🕒 從歸還照片檔名還原上傳時間 (檔名格式：<timestamp>_return.jpg)
@@ -1096,25 +1263,25 @@
     //            改成灰字說明「管理員會在借用前分配」。
     function speakerCell(item, forLeader) {
         let n = (parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0);
-        if (n === 0) return '<span style="color:#ccc;">—</span>';
+        if (n === 0) return '<span style="color:var(--line-strong);">—</span>';
         let assigned = normalizeAssignedList(item.ma303_assigned);
-        if (assigned.length > 0) return `<b style="color:#27ae60;">${assigned.join('<br>')}</b>`;
+        if (assigned.length > 0) return `<b style="color:var(--pine);">${assigned.join('<br>')}</b>`;
         return forLeader
-            ? `<b style="color:#16a085;">是</b><br><span style="color:#7f8c8d; font-size:11.5px;">管理員會在借用前分配機台</span>`
-            : `<b style="color:#16a085;">是</b><br><span style="color:#e74c3c; font-size:11px;">等待分配</span>`;
+            ? `<b style="color:var(--pine-ink);">是</b><br><span style="color:var(--ink-2); font-size:12.5px;">管理員會在借用前分配機台</span>`
+            : `<b style="color:var(--pine-ink);">是</b><br><span style="color:var(--red); font-size:12.5px;">等待分配</span>`;
     }
 
     function standCell(item) {
         let n = parseInt(item.music_stand) || 0;
-        return n > 0 ? `<b>${n} 個</b>` : '<span style="color:#ccc;">—</span>';
+        return n > 0 ? `<b>${n} 個</b>` : '<span style="color:var(--line-strong);">—</span>';
     }
 
     function pianoCell(item) {
-        if (item.piano !== '是') return '<span style="color:#ccc;">—</span>';
+        if (item.piano !== '是') return '<span style="color:var(--line-strong);">—</span>';
         let model = String(item.piano_model || '').trim();
-        let modelHtml = model ? `<br><span style="color:#34495e; font-size:13px; font-weight:bold;">🎹 ${noteHtml(model)}</span>` : '';
-        if (需要架設鋼琴(item)) return '<b style="color:#8e44ad;">需架設</b>' + modelHtml;
-        return '<b style="color:#7f8c8d;">會使用</b><br><span style="color:#95a5a6; font-size:11.5px;">場地自有</span>' + modelHtml;
+        let modelHtml = model ? `<br><span style="color:var(--ink); font-size:13.5px; font-weight:bold;">🎹 ${noteHtml(model)}</span>` : '';
+        if (需要架設鋼琴(item)) return '<b style="color:var(--amber);">需架設</b>' + modelHtml;
+        return '<b style="color:var(--ink-2);">會使用</b><br><span style="color:var(--ink-3); font-size:12.5px;">場地自有</span>' + modelHtml;
     }
 
     // 📝 會眾自己打的字（備註）放進畫面前先轉義，避免裡面有 < > 之類的符號把版面弄壞；換行照樣顯示
@@ -1368,8 +1535,8 @@
     // 📸 備品清單裡的「領取照片」：這天幾組已經上傳了
     function dayPhotoStatus(s) {
         let all = s.groups > 0 && s.photoDone >= s.groups;
-        return `<b style="color:${all ? '#27ae60' : (s.photoDone > 0 ? '#d35400' : '#2c3e50')};">${all ? '✅ ' : ''}${s.photoDone} / ${s.groups} 組</b>
-            <span style="color:#7f8c8d; font-size:12px; font-weight:normal;">已上傳</span>`;
+        return `<b style="color:${all ? 'var(--pine)' : (s.photoDone > 0 ? 'var(--amber)' : 'var(--ink)')};">${all ? '✅ ' : ''}${s.photoDone} / ${s.groups} 組</b>
+            <span style="color:var(--ink-2); font-size:12.5px; font-weight:normal;">已上傳</span>`;
     }
     // 一次上傳整天：同一個地方放好幾組的設備，拍一張就套用到這天的每一組（單筆上傳還是在每組自己的欄位）
     function dayPhotoBtn(s) {
@@ -1384,24 +1551,24 @@
     function summaryBoxPhone(s) {
         const row = (label, value, hint) => `<div class="sum-row"><div class="sum-k">${label}</div>
             <div class="sum-v">${value}${hint ? `<div class="sum-hint">${hint}</div>` : ''}</div></div>`;
-        const dash = '<span style="color:#bbb;">—</span>';
+        const dash = '<span style="color:var(--line-strong);">—</span>';
         const chips = (arr, cls) => arr.map(x => `<span class="sum-chip ${cls}">${x}</span>`).join('');
         let pianoHint = s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '';
         if (s.鋼琴自有使用.length > 0) pianoHint += `${pianoHint ? '；' : ''}${s.鋼琴自有使用.join('、')}用自己的鋼琴`;
         let rows = [
             row('🔊 喇叭', s.units.length ? chips(s.units, 'sp') : dash, s.units.length ? '把這幾台搬到櫃檯' : ''),
             row('🎼 譜架', (s.peakStand > 0 ? `<b>${s.peakStand} 個</b>` : dash) + standDayNote(s), s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : ''),
-            row('🎹 鋼琴', s.鋼琴需架設.length ? s.鋼琴需架設.map(t => `<div style="color:#8e44ad; font-weight:bold;">${t}</div>`).join('') : '<span style="color:#95a5a6;">今天不用架設</span>', pianoHint),
+            row('🎹 鋼琴', s.鋼琴需架設.length ? s.鋼琴需架設.map(t => `<div style="color:var(--amber); font-weight:bold;">${t}</div>`).join('') : '<span style="color:var(--ink-3);">今天不用架設</span>', pianoHint),
             row('🎛️ 音控', s.tech.length
                 ? s.tech.map(t => `<div class="tech-line"><b>${escapeHtml(t.loc)} ${t.time}</b><span>｜${escapeHtml(t.name)}</span></div>`).join('')
-                : '<span style="color:#95a5a6;">今天不用</span>',
+                : '<span style="color:var(--ink-3);">今天不用</span>',
                 s.tech.length ? '請安排音控同工，在開始時間前到場幫忙開設備' : '')
         ];
         if (s.extras && s.extras.length > 0) {
             rows.push(row('📦 其他', chips(s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`), 'ex'), '備註登記的，照這個數量準備'));
         }
         let notes = s.notes && s.notes.length > 0
-            ? `<div class="sum-notes"><div style="font-weight:bold; color:#6e4b00;">📝 備註裡的其他需求</div>
+            ? `<div class="sum-notes"><div style="font-weight:bold; color:var(--amber-ink);">📝 備註裡的其他需求</div>
                  <div class="sum-hint" style="margin:2px 0 4px;">還沒登記的不會算進數量，點標籤就可以登記</div>
                  ${s.notes.map(r => `<div class="sum-note">
                      <div class="sum-note-top"><span>${r.start_time}｜${escapeHtml(r.leader_name)}</span>${extraStateTag(r)}</div>
@@ -1409,62 +1576,66 @@
                </div>`
             : '';
         let warn = s.pendingSpeakers > 0
-            ? `<div style="margin-top:10px; background:#fdecea; color:#a02622; padding:8px 10px; border-radius:6px; font-size:13px;">
+            ? `<div style="margin-top:10px; background:var(--red-bg); color:var(--red-ink); padding:8px 10px; border-radius:var(--r-sm); font-size:13.5px;">
                  ⚠️ 還有 <b>${s.pendingSpeakers}</b> 組需要喇叭但還沒分配機台，可以在下方一組一組分配，或讓系統自動分配：
                  <div>${autoAssignBtn(s)}</div></div>`
             : '';
-        return `<div style="background:#f4faf7; border:1px solid #c8e6d5; border-top:none; padding:12px 14px;">
-            <div><b style="color:#1e8449; font-size:14px;">📋 本日備品準備清單</b></div>
+        return `<div style="background:var(--pine-bg); border:1px solid var(--pine-line); border-top:none; padding:12px 14px;">
+            <div><b style="color:var(--pine-ink); font-size:15px;">📋 本日備品準備清單</b></div>
             <div style="margin-top:6px;">${rows.join('')}</div>
             ${notes}${warn}
         </div>`;
+    }
+
+    // 🎹 電腦版「鋼琴架設」欄的說明：要架設就提醒同工，兒主／幼主用自己的鋼琴也寫在同一欄（第四十七輪，原本另起一行）
+    function pianoHintWide(s) {
+        let parts = [];
+        if (s.鋼琴需架設.length > 0) parts.push('請同工事先架設好');
+        if (s.鋼琴自有使用.length > 0) parts.push(`${s.鋼琴自有使用.join('、')}用自己的鋼琴，不需要準備`);
+        return parts.length ? parts.join('；') : '今天不用架設';
     }
 
     function summaryBox(s) {
         if (isPhoneAdmin()) return summaryBoxPhone(s);
         const cell = (label, value, hint) =>
             `<div style="min-width:96px;">
-                <div style="color:#7f8c8d; font-size:11px;">${label}</div>
+                <div style="color:var(--ink-2); font-size:12.5px;">${label}</div>
                 <div style="font-size:16px; font-weight:bold; margin-top:3px;">${value}</div>
-                ${hint ? `<div style="color:#95a5a6; font-size:10px; margin-top:3px;">${hint}</div>` : ''}
+                ${hint ? `<div style="color:var(--ink-3); font-size:12.5px; margin-top:3px;">${hint}</div>` : ''}
             </div>`;
 
-        const dash = '<span style="color:#ccc;">—</span>';
-        let speakerVal = s.units.length > 0 ? `<span style="color:#16a085;">${s.units.join('<br>')}</span>` : dash;
-        let standVal = s.peakStand > 0 ? `<span style="color:#2c3e50;">${s.peakStand} 個</span>` : dash;
+        const dash = '<span style="color:var(--line-strong);">—</span>';
+        let speakerVal = s.units.length > 0 ? `<span style="color:var(--pine-ink);">${s.units.join('<br>')}</span>` : dash;
+        let standVal = s.peakStand > 0 ? `<span style="color:var(--ink);">${s.peakStand} 個</span>` : dash;
         let pianoVal = s.鋼琴需架設.length > 0
-            ? `<span style="color:#8e44ad; font-size:13px;">${s.鋼琴需架設.join('<br>')}</span>`
+            ? `<span style="color:var(--amber); font-size:13.5px;">${s.鋼琴需架設.join('<br>')}</span>`
             : dash;
 
         let warn = s.pendingSpeakers > 0
-            ? `<div style="margin-top:10px; background:#fdecea; color:#a02622; padding:8px 10px; border-radius:4px; font-size:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            ? `<div style="margin-top:10px; background:var(--red-bg); color:var(--red-ink); padding:8px 10px; border-radius:var(--r-sm); font-size:12.5px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
                  <span>⚠️ 還有 <b>${s.pendingSpeakers}</b> 組需要喇叭但尚未分配機台，請先在下方分配（或按右邊讓系統自動分配），這份清單才會完整。</span>
                  ${autoAssignBtn(s, true)}
                </div>`
             : '';
 
-        return `<div style="background:#f4faf7; border:1px solid #c8e6d5; border-top:none; padding:12px 14px;">
-            <b style="color:#1e8449; font-size:13px;">📋 本日備品準備清單</b>
-            <span style="color:#7f8c8d; font-size:11px;">（當日共 ${s.groups} 組借用）</span>
+        return `<div style="background:var(--pine-bg); border:1px solid var(--pine-line); border-top:none; padding:12px 14px;">
+            <b style="color:var(--pine-ink); font-size:13.5px;">📋 本日備品準備清單</b>
+            <span style="color:var(--ink-2); font-size:12.5px;">（當日共 ${s.groups} 組借用）</span>
             <div style="display:flex; gap:26px; flex-wrap:wrap; margin-top:10px;">
                 ${cell('喇叭（機台）', speakerVal, s.units.length > 0 ? '把這幾台搬到櫃檯' : '')}
                 ${cell('譜架', standVal + standDayNote(s), s.peakStand > 0 ? `尖峰在 ${s.peakAt}，準備這個數量就夠` : '')}
-                ${cell('鋼琴架設', pianoVal, s.鋼琴需架設.length > 0 ? '請同工事先架設好' : '今天不用架設')}
+                ${cell('鋼琴架設', pianoVal, pianoHintWide(s))}
                 ${cell('🎛️ 音控協助', s.tech.length
                     ? s.tech.map(t => `<div class="tech-line"><b>${escapeHtml(t.loc)} ${t.time}</b><span>｜${escapeHtml(t.name)}</span></div>`).join('')
-                    : '<span style="color:#ccc;">—</span>',
+                    : '<span style="color:var(--line-strong);">—</span>',
                     s.tech.length ? '請安排音控同工，開始前到場開設備' : '今天不用')}
                 ${s.extras && s.extras.length > 0
-                    ? cell('📦 其他設備（備註登記）', `<span style="color:#9a6a00; font-size:14px;">${s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('<br>')}</span>`, '照登記的數量準備')
+                    ? cell('📦 其他設備（備註登記）', `<span style="color:var(--amber-ink); font-size:15px;">${s.extras.map(x => `${escapeHtml(x.name)} ×${x.qty}`).join('<br>')}</span>`, '照登記的數量準備')
                     : ''}
             </div>
-            ${s.鋼琴自有使用.length > 0
-                ? `<div style="margin-top:8px; color:#7f8c8d; font-size:11px;">
-                     ${s.鋼琴自有使用.join('、')} 會使用自己的鋼琴，不需要準備。</div>`
-                : ''}
             ${s.notes && s.notes.length > 0
-                ? `<div style="margin-top:10px; background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; padding:8px 10px; border-radius:4px; font-size:12.5px; line-height:1.6;">
-                     📝 <b>備註裡的其他需求</b> <span style="font-size:11.5px;">（還沒登記的不會算進數量，點後面的標籤就可以直接登記）</span>
+                ? `<div style="margin-top:10px; background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber-ink); padding:8px 10px; border-radius:var(--r-sm); font-size:13.5px; line-height:1.6;">
+                     📝 <b>備註裡的其他需求</b> <span style="font-size:12.5px;">（還沒登記的不會算進數量，點後面的標籤就可以直接登記）</span>
                      ${s.notes.map(r => `<div>・${r.start_time} ${escapeHtml(r.location)}｜${escapeHtml(r.leader_name)}：${noteInline(r.notes)}${extraStateTag(r)}</div>`).join('')}
                    </div>`
                 : ''}
@@ -1480,22 +1651,22 @@
     function speakerAssignUI(item, allRecords) {
         let assigned = normalizeAssignedList(item.ma303_assigned);
         if (assigned.length > 0) {
-            return `<b style="color:#27ae60;">${assigned.join('、')}</b><br>
-                <button onclick="autoAssignSpeakerFor(${item.id})" style="font-size:12.5px; padding:5px 10px; margin-top:6px; cursor:pointer; border:1px solid #ccc; border-radius:6px; background:#f9f9f9;">🔄 重新分配</button>`;
+            return `<b style="color:var(--pine);">${assigned.join('、')}</b><br>
+                <button onclick="autoAssignSpeakerFor(${item.id})" style="font-size:13.5px; padding:5px 10px; margin-top:6px; cursor:pointer; border:1px solid var(--line-strong); border-radius:var(--r-sm); background:var(--surface-2);">🔄 重新分配</button>`;
         }
         let busy = busyUnits(allRecords, item);
         let free = SPEAKER_UNITS.filter(u => !busy.has(u));
         let noteHint = '';   // 備註已經顯示在卡片上方，這裡不再重複
         if (free.length === 0) {
             // ❓ 這個時段四台都被佔走了：不是系統壞掉，是真的沒機台可分配，請管理員人工協調
-            return `<div style="font-size:11px; background:#fdecea; padding:6px; border-radius:4px; border:1px solid #f1b0a8; margin-top:2px; color:#a02622;">
+            return `<div style="font-size:12.5px; background:var(--red-bg); padding:6px; border-radius:var(--r-sm); border:1px solid var(--red-line); margin-top:2px; color:var(--red-ink);">
                 ${noteHint}<b>❓ 沒有空的機台</b><br>
                 <span style="font-weight:normal;">這個時段 4 台都已分配給其他小組，請調整時段或請其他組換機台後再試。</span>
             </div>`;
         }
         return `<div>
-            <span style="color:#e74c3c; font-weight:bold;">⏳ 尚未分配</span><br>
-            <button onclick="autoAssignSpeakerFor(${item.id})" style="margin-top:6px; cursor:pointer; font-size:13px; background:#34495e; color:white; border:none; padding:7px 12px; border-radius:6px;">⚡ 自動分配（${free[0].replace('MA303 編號', '編號').replace('MA707', 'MA707')}）</button>
+            <span style="color:var(--red); font-weight:bold;">⏳ 尚未分配</span><br>
+            <button onclick="autoAssignSpeakerFor(${item.id})" style="margin-top:6px; cursor:pointer; font-size:13.5px; background:var(--ink); color: var(--on-solid); border:none; padding:7px 12px; border-radius:var(--r-sm);">⚡ 自動分配（${free[0].replace('MA303 編號', '編號').replace('MA707', 'MA707')}）</button>
         </div>`;
     }
 
@@ -1680,7 +1851,7 @@
         input.disabled = !enabled;
         let label = input.parentElement;
         if (label) {
-            label.style.color = enabled ? '' : '#c0392b';
+            label.style.color = enabled ? '' : 'var(--red)';
             label.style.textDecoration = enabled ? '' : 'line-through';
             label.style.opacity = enabled ? '' : '0.55';
             label.style.cursor = enabled ? '' : 'not-allowed';
@@ -1733,7 +1904,7 @@
 
         let my = ++availToken;
         panel.classList.remove('hidden');
-        panel.innerHTML = '<span style="color:#7f8c8d;">正在查詢這個時段的剩餘設備…</span>';
+        panel.innerHTML = '<span style="color:var(--ink-2);">正在查詢這個時段的剩餘設備…</span>';
 
         let res = await fetchDayRecords(date);
         if (my !== availToken) return;               // 使用者又改了條件，捨棄這次結果
@@ -1743,20 +1914,20 @@
         applyAvailabilityLimits(a);
 
         const line = (label, value, ok) =>
-            `<div><span style="color:#7f8c8d;">${label}</span>　<b style="color:${ok ? '#1e8449' : '#c0392b'};">${value}</b></div>`;
+            `<div><span style="color:var(--ink-2);">${label}</span>　<b style="color:${ok ? 'var(--pine-ink)' : 'var(--red)'};">${value}</b></div>`;
 
         let venueMsg = a.busyVenues.length > 0
             ? line('場地', a.busyVenues.join('、') + ' 已被預約', false)
             : line('場地', '全部可借', true);
 
         panel.innerHTML =
-            `<b style="color:#2471a3;">📊 ${formatDateLabel(date)} ${s}–${e} 的剩餘設備</b>
+            `<b style="color:var(--pine-ink);">📊 ${formatDateLabel(date)} ${s}–${e} 的剩餘設備</b>
              <div style="margin-top:8px;">
                 ${venueMsg}
                 ${line('喇叭', a.speakerLeft > 0 ? `還有 ${a.speakerLeft} 台` : '已全部借出', a.speakerLeft > 0)}
                 ${line('譜架', a.standLeft > 0 ? `還有 ${a.standLeft} 個` : '已借完', a.standLeft > 0)}
              </div>
-             <div style="margin-top:8px; color:#7f8c8d; font-size:11px;">借不到的選項已自動鎖住，改時段就會重新計算。<br>鋼琴每個場地各有一台，選到場地就有，不會被別組借走。</div>`;
+             <div style="margin-top:8px; color:var(--ink-2); font-size:12.5px;">借不到的選項已自動鎖住，改時段就會重新計算。<br>鋼琴每個場地各有一台，選到場地就有，不會被別組借走。</div>`;
     }
 
     // 🎼 譜架按鈕能選到幾個：這個時段剩幾個（還沒查就看這天的上限）、場地本身有沒有譜架，取最嚴的
@@ -2019,7 +2190,7 @@
                     <div class="bb-sub">下面是這個姓名的借用紀錄，剛剛申請的那筆標了「🆕 剛剛申請」。</div>
                 </div>`;
             }
-            html += `<div style="color:#7f8c8d; font-size:12.5px; margin-bottom:8px;">共找到 <b style="color:#2471a3;">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
+            html += `<div style="color:var(--ink-2); font-size:13.5px; margin-bottom:8px;">共找到 <b style="color:var(--pine-ink);">${data.length}</b> 筆借用紀錄（由新到舊排列）</div>`;
             html += '<table class="responsive-table"><thead><tr><th>日期／時間</th><th>場地</th><th>喇叭</th><th>譜架</th><th>鋼琴</th><th>狀態與領取位置</th></tr></thead><tbody>';
             // 每格內容各包一層 <div>：手機版卡片的每一列是左右兩端對齊（左邊欄名、右邊內容），
             // 內容如果有好幾段（例如「是」＋「等待分配」）沒包起來會被拆散到左右兩邊，看起來很零散。
@@ -2120,7 +2291,7 @@
         if(inputElement.files.length === 0) return;
         var file = inputElement.files[0];
 
-        showLoading("照片壓縮與上傳中<br><span style='font-size:14px; font-weight:normal;'>大約需要 1~3 秒</span>");
+        showLoading("照片壓縮與上傳中<br><span style='font-size:15px; font-weight:normal;'>大約需要 1~3 秒</span>");
 
         try {
             var compressedFile = await compressImage(file);
@@ -2177,7 +2348,7 @@
         }
         if (!confirm(msg)) return;
 
-        showLoading("照片壓縮與上傳中<br><span style='font-size:14px; font-weight:normal;'>大約需要 1~3 秒</span>");
+        showLoading("照片壓縮與上傳中<br><span style='font-size:15px; font-weight:normal;'>大約需要 1~3 秒</span>");
         try {
             let compressedFile = await compressImage(file);
             let fileName = Date.now() + "_pickup_day.jpg";
@@ -2290,7 +2461,7 @@
             return;
         }
         box.innerHTML = `<div class="todo-box">
-            <div class="todo-title">📌 待辦事項 <span style="font-size:12px; font-weight:normal; color:#7f8c8d;">（點日期直接跳到那一天）</span></div>
+            <div class="todo-title">📌 待辦事項 <span style="font-size:12.5px; font-weight:normal; color:var(--ink-2);">（點日期直接跳到那一天）</span></div>
             ${rows.map(x => {
                 let count = {};
                 x.list.forEach(r => { count[r.borrow_date] = (count[r.borrow_date] || 0) + 1; });
@@ -2399,7 +2570,7 @@
             html += `<div class="sr-item">
                 <div class="sr-main">
                     <div><b>📅 ${formatDateLabel(r.borrow_date)} ${r.start_time}–${r.end_time}</b>　📍 ${escapeHtml(r.location)} ${status}</div>
-                    <div><span style="color:#7f8c8d;">借用人：</span>${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　<span style="color:#7f8c8d;">小組：</span>${res.phone ? escapeHtml(r.group_name || '—') : markMatch(r.group_name || '—', res.q, false)}　<span style="color:#7f8c8d;">設備組負責人：</span>${escapeHtml(r.equipment_lead || '—')}</div>
+                    <div><span style="color:var(--ink-2);">借用人：</span>${res.phone ? escapeHtml(r.leader_name) : markMatch(r.leader_name, res.q, false)}${fuzzy}　<span style="color:var(--ink-2);">小組：</span>${res.phone ? escapeHtml(r.group_name || '—') : markMatch(r.group_name || '—', res.q, false)}　<span style="color:var(--ink-2);">設備組負責人：</span>${escapeHtml(r.equipment_lead || '—')}</div>
                 </div>
                 <div class="sr-actions">
                     <button type="button" class="go" onclick="jumpToRecord(${r.id})">📍 跳到這筆</button>
@@ -2502,7 +2673,7 @@
     function dueDateBadge(item) {
         let due = item.return_due_date;
         if (!due || String(due) === String(item.borrow_date)) return '';
-        return `<span class="bk-badge" style="background:#eaf4fc; color:#2471a3;">→ ${formatDateLabel(due)} 歸還</span>`;
+        return `<span class="bk-badge" style="background:var(--surface-2); color:var(--pine-ink);">→ ${formatDateLabel(due)} 歸還</span>`;
     }
 
     async function adminMarkReturned(id) {
@@ -2828,8 +2999,8 @@
                 hs.map(x => `<span class="who">📅 ${formatDateLabel(x.r.borrow_date)} ${x.r.start_time}　👤 ${escapeHtml(x.r.leader_name)} 要借 ×${x.n}</span>`).join('') + `</li>`;
         });
         let exCard = (exNames.length + upNames.length) === 0 ? '' : `<div class="inv-card${exLate ? ' late' : exNames.length ? ' some' : ''}">
-                    <div class="inv-title"><span>📦 其他設備</span><span class="inv-num">${exNames.length ? `借出中 <b>${sumN(exAll)}</b> 件` : '<span style="color:#1e8449;">目前都在倉庫</span>'}</span></div>
-                    <ul class="inv-list">${outLis.join('')}${upLis.length ? `${outLis.length ? '<li style="color:#7f8c8d; font-size:12px; padding-bottom:0;">還沒到借用時間（東西還在倉庫）：</li>' : ''}${upLis.join('')}` : ''}</ul>
+                    <div class="inv-title"><span>📦 其他設備</span><span class="inv-num">${exNames.length ? `借出中 <b>${sumN(exAll)}</b> 件` : '<span style="color:var(--pine-ink);">目前都在倉庫</span>'}</span></div>
+                    <ul class="inv-list">${outLis.join('')}${upLis.length ? `${outLis.length ? '<li style="color:var(--ink-2); font-size:12.5px; padding-bottom:0;">還沒到借用時間（東西還在倉庫）：</li>' : ''}${upLis.join('')}` : ''}</ul>
                 </div>`;
 
         // 結論
@@ -2923,12 +3094,12 @@
 
         // 未歸還：每天一個深色標題＋備品清單，底下每組一張卡片
         let html = dates.length > 1 ? dayFoldTools() : '';
-        if (dates.length === 0) html = '<p style="color:#7f8c8d;">目前沒有資料</p>';
+        if (dates.length === 0) html = '<p style="color:var(--ink-2);">目前沒有資料</p>';
         dates.forEach(date => {
             let list = unreturnedGroups[date].slice().sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
             html += `<details class="day-fold" data-date="${date}" ontoggle="onDayFoldToggle(this)"${dayFoldOpen(date, list) ? ' open' : ''}>`;
             html += dayFoldSummary(date, list, 'day-head');
-            html += summaryBox(dailySummary(list, date)).replace('border-top:none;', 'border-top:none; border-radius:0 0 10px 10px;');
+            html += summaryBox(dailySummary(list, date)).replace('border-top:none;', 'border-top:none; border-radius:0 0 var(--r-md) var(--r-md);');
             list.forEach(item => {
                 let overdue = isOverdue(item);
                 let needSpeaker = speakerUsage(item) > 0;
@@ -2941,7 +3112,7 @@
                     ${hasNote(item) ? `<div class="bk-note">📝 <b>備註：</b>${noteHtml(item.notes)}</div>` : ''}
                     ${extraBlock(item)}
                     <div class="bk-equip">
-                        <span class="k">🔊 喇叭</span><div>${needSpeaker ? speakerAssignUI(item, records) : '<span style="color:#bbb;">不需要</span>'}</div>
+                        <span class="k">🔊 喇叭</span><div>${needSpeaker ? speakerAssignUI(item, records) : '<span style="color:var(--line-strong);">不需要</span>'}</div>
                         <span class="k">🎼 譜架</span><div>${standCell(item)}</div>
                         <span class="k">🎹 鋼琴</span><div>${pianoCell(item)}</div>
                     </div>
@@ -2965,17 +3136,17 @@
             let byAdmin = parseAdminReturn(item.return_notes);
             let note = byAdmin ? byAdmin.note : (item.return_notes || '').trim();
             let normal = !note || note.includes('正常');
-            let status = normal ? `<span style="color:#27ae60;">✅ ${note || '正常歸還'}</span>` : `<b style="color:#e67e22;">⚠️ ${note}</b>`;
+            let status = normal ? `<span style="color:var(--pine);">✅ ${note || '正常歸還'}</span>` : `<b style="color:var(--amber);">⚠️ ${note}</b>`;
             let equip = [];
             if (speakerUsage(item) > 0) equip.push('🔊 ' + (normalizeAssignedList(item.ma303_assigned).join('、') || '喇叭'));
             if ((parseInt(item.music_stand) || 0) > 0) equip.push(`🎼 譜架 ${item.music_stand} 個`);
             cards += `<div class="bk-card bk-returned" data-id="${item.id}">
                 <div class="bk-top"><b>📅 ${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}</b><span class="bk-venue">📍 ${item.location}</span></div>
                 <div class="bk-person">${whoBlock(item)}</div>
-                <div style="color:#7f8c8d; margin-top:4px;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</div>
-                ${equip.length ? `<div style="margin-top:6px; color:#34495e;">${equip.join('　')}</div>` : ''}
+                <div style="color:var(--ink-2); margin-top:4px;">🕒 歸還 ${ts ? formatReturnTimeShort(ts) : (item.return_date || '—')}</div>
+                ${equip.length ? `<div style="margin-top:6px; color:var(--ink);">${equip.join('　')}</div>` : ''}
                 ${returnedExtraLines(item).length ? `<div class="ret-extra">${returnedExtraLines(item).join('<br>')}</div>` : ''}
-                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:#eef2f5; color:#5d6d7e; margin:0;">👤 管理員登記歸還</span>' : ''}</div>
+                <div style="margin-top:6px;">${status}${byAdmin ? '　<span class="bk-badge" style="background:var(--surface-2); color:var(--ink-2); margin:0;">👤 管理員登記歸還</span>' : ''}</div>
                 <div class="bk-actions two">
                     <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
                     <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
@@ -2984,7 +3155,7 @@
           });
         });
         document.getElementById('returnedContainer').innerHTML = returnedList.length === 0
-            ? '<p style="color:#7f8c8d;">目前沒有資料</p>'
+            ? '<p style="color:var(--ink-2);">目前沒有資料</p>'
             : `<details class="returned-fold"><summary>✅ 已歸還 ${returnedList.length} 組</summary>${cards}</details>`;
     }
 
@@ -3048,9 +3219,9 @@
             if (isOverdue(item)) overdueCount++;
         }));
         document.getElementById('adminSummary').innerHTML =
-            `<span>📋 未歸還 <b style="color:#c0392b;">${totalUnreturned}</b> 組</span>` +
-            (overdueCount > 0 ? `<span style="color:#e74c3c; font-weight:bold;">⚠️ 其中 ${overdueCount} 組已逾期</span>` : '') +
-            `<span>✅ 已歸還 <b style="color:#27ae60;">${returnedList.length}</b> 組</span>`;
+            `<span>📋 未歸還 <b style="color:var(--red);">${totalUnreturned}</b> 組</span>` +
+            (overdueCount > 0 ? `<span style="color:var(--red); font-weight:bold;">⚠️ 其中 ${overdueCount} 組已逾期</span>` : '') +
+            `<span>✅ 已歸還 <b style="color:var(--pine);">${returnedList.length}</b> 組</span>`;
 
         // 📱 手機寬度：改畫卡片版（下面的表格版是電腦寬度才用）
         if (isPhoneAdmin()) {
@@ -3060,7 +3231,7 @@
 
         let unreturnedHtml = '';
         if (dates.length === 0) {
-            unreturnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
+            unreturnedHtml = '<p style="color:var(--ink-2);">目前沒有資料</p>';
         } else {
             dates.forEach(date => {
                 unreturnedGroups[date].sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
@@ -3094,34 +3265,34 @@
 
                     // 逾期/音控各自獨立成一個小徽章，各自跟著自己相關的欄位放
                     let overdueBadge = overdue
-                        ? `<span style="display:inline-block; background:#e74c3c; color:#fff; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">⚠️ 已逾期</span>`
+                        ? `<span style="display:inline-block; background:var(--red); color: var(--on-solid); padding:1px 6px; border-radius:var(--r-sm); font-size:12.5px; font-weight:bold; margin:3px 4px 0 0;">⚠️ 已逾期</span>`
                         : '';
                     let techBadge = item.need_tech === '是'
-                        ? `<span style="display:inline-block; background:#fdecea; color:#c0392b; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin:3px 4px 0 0;">🎛️ 需音控</span>`
+                        ? `<span style="display:inline-block; background:var(--red-bg); color:var(--red); padding:1px 6px; border-radius:var(--r-sm); font-size:12.5px; font-weight:bold; margin:3px 4px 0 0;">🎛️ 需音控</span>`
                         : '';
 
                     // 會眾備註單獨一個淺色小方塊，跟姓名分開，不會混在一起變成一整段字
                     let noteBlock = hasNote(item)
-                        ? `<div style="background:#fff8e1; border:1px solid #f3dfa2; color:#6e4b00; font-size:12.5px; line-height:1.5; border-radius:4px; padding:4px 7px; margin:3px 0 0;">📝 ${noteHtml(item.notes)}</div>`
+                        ? `<div style="background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber-ink); font-size:13.5px; line-height:1.5; border-radius:var(--r-sm); padding:4px 7px; margin:3px 0 0;">📝 ${noteHtml(item.notes)}</div>`
                         : '';
 
 
                     let needSpeaker = ((parseInt(item.ma303) || 0) + (parseInt(item.ma707) || 0)) > 0;
                     let speakerAdmin = needSpeaker
                         ? speakerAssignUI(item, records)
-                        : '<span style="color:#ccc;">—</span>';
+                        : '<span style="color:var(--line-strong);">—</span>';
 
                     let dueBadgeCell = item.return_due_date && String(item.return_due_date) !== String(item.borrow_date)
-                        ? `<br><span style="display:inline-block; background:#eaf4fc; color:#2471a3; padding:1px 6px; border-radius:3px; font-size:10.5px; font-weight:bold; margin-top:3px;">→ ${formatDateLabel(item.return_due_date)} 歸還</span>`
+                        ? `<br><span style="display:inline-block; background:var(--surface-2); color:var(--pine-ink); padding:1px 6px; border-radius:var(--r-sm); font-size:12.5px; font-weight:bold; margin-top:3px;">→ ${formatDateLabel(item.return_due_date)} 歸還</span>`
                         : '';
-                    unreturnedHtml += `<tr data-id="${item.id}"${overdue ? ' style="background:#fdf1ef;"' : ''}>
+                    unreturnedHtml += `<tr data-id="${item.id}"${overdue ? ' style="background:var(--red-bg);"' : ''}>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b>${overdueBadge ? '<br>' + overdueBadge : ''}${dueBadgeCell}</td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
                             <td style="white-space:normal;">${whoBlock(item)}</td>
                             <td style="white-space:normal;">${speakerAdmin}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
-                            <td style="white-space:normal;">${techBadge}${noteBlock}${extraBlock(item)}${!techBadge && !noteBlock && !extraBlock(item) ? '<span style="color:#ccc;">—</span>' : ''}</td>
+                            <td style="white-space:normal;">${techBadge}${noteBlock}${extraBlock(item)}${!techBadge && !noteBlock && !extraBlock(item) ? '<span style="color:var(--line-strong);">—</span>' : ''}</td>
                             <td><div class="row-actions">
                                 <button class="btn-edit" onclick="openEdit(${item.id})">✏️ 修改這筆</button>
                                 <button class="btn-ok" onclick="adminMarkReturned(${item.id})">✅ 歸還</button>
@@ -3138,12 +3309,12 @@
         let rg = groupReturned(returnedList);
         let returnedHtml = '';
         if (returnedList.length === 0) {
-            returnedHtml = '<p style="color:#7f8c8d;">目前沒有資料</p>';
+            returnedHtml = '<p style="color:var(--ink-2);">目前沒有資料</p>';
         } else {
             rg.keys.forEach(key => {
                 let list = rg.groups[key];
                 returnedHtml += `<div style="display:inline-block; min-width:100%; vertical-align:top;">`;
-                returnedHtml += `<div class="date-header flex-head" style="background:#1e8449;"><span>${returnedGroupTitle(key)}</span><span>${list.length} 組</span></div>`;
+                returnedHtml += `<div class="date-header flex-head" style="background:var(--pine-ink);"><span>${returnedGroupTitle(key)}</span><span>${list.length} 組</span></div>`;
                 // 借用日期已經寫在標題上，表格就不重複這一欄
                 returnedHtml += `<table class="grouped-table fixed-cols"><colgroup>
                         <col style="width:11%"><col style="width:12%"><col style="width:10%"><col style="width:14%"><col style="width:12%">
@@ -3162,7 +3333,7 @@
                     let ts = returnTimeOf(item);
                     let timeLabel = ts
                         ? formatReturnTimeShort(ts).replace(' ', '<br>')
-                        : `${item.return_date ? formatDateLabel(item.return_date) : '—'}<br><span style="color:#95a5a6; font-size:11px;">(無時間紀錄)</span>`;
+                        : `${item.return_date ? formatDateLabel(item.return_date) : '—'}<br><span style="color:var(--ink-3); font-size:12.5px;">(無時間紀錄)</span>`;
                     let byAdmin = parseAdminReturn(item.return_notes);
 
                     // 歸還狀態用顏色分流：留空，或會眾自己寫的字裡有「正常」兩個字（不管是「正常歸還」「設備正常」哪種寫法都算），
@@ -3170,21 +3341,21 @@
                     let noteText = byAdmin ? byAdmin.note : (item.return_notes || '').trim();
                     let looksNormal = !noteText || noteText.includes('正常');
                     let statusCell = looksNormal
-                        ? `<span style="color:#27ae60;">✅ ${noteText || '正常歸還'}</span>`
-                        : `<span style="color:#e67e22; font-weight:bold;">⚠️ ${noteText}</span>`;
+                        ? `<span style="color:var(--pine);">✅ ${noteText || '正常歸還'}</span>`
+                        : `<span style="color:var(--amber); font-weight:bold;">⚠️ ${noteText}</span>`;
                     if (byAdmin) {
-                        statusCell += `<br><span style="display:inline-block; background:#eef2f5; color:#5d6d7e; padding:1px 6px; border-radius:3px; font-size:10.5px; margin-top:3px;">👤 管理員登記歸還</span>`;
+                        statusCell += `<br><span style="display:inline-block; background:var(--surface-2); color:var(--ink-2); padding:1px 6px; border-radius:var(--r-sm); font-size:12.5px; margin-top:3px;">👤 管理員登記歸還</span>`;
                     }
 
                     returnedHtml += `<tr data-id="${item.id}">
-                            <td style="white-space:normal;"><b style="color:#27ae60;">${timeLabel}</b></td>
+                            <td style="white-space:normal;"><b style="color:var(--pine);">${timeLabel}</b></td>
                             <td style="white-space:nowrap;"><b>🕐 ${item.start_time}-${item.end_time}</b></td>
                             <td style="white-space:nowrap;">📍 ${item.location}</td>
-                            <td style="white-space:normal; font-size:12.5px;">${whoBlock(item)}</td>
+                            <td style="white-space:normal; font-size:13.5px;">${whoBlock(item)}</td>
                             <td style="white-space:normal;">${speakerCell(item)}</td>
                             <td>${standCell(item)}</td>
                             <td>${pianoCell(item)}</td>
-                            <td style="white-space:normal; max-width:150px; font-size:12px;">${statusCell}</td>
+                            <td style="white-space:normal; max-width:150px; font-size:12.5px;">${statusCell}</td>
                             <td><div class="row-actions">
                                 <button class="btn-undo" onclick="undoReturn(${item.id})">↩️ 改回未歸還</button>
                                 <button class="btn-danger" onclick="deleteRecord(${item.id})">🗑️ 刪除</button>
@@ -3363,8 +3534,8 @@
             let assigned = normalizeAssignedList(item.ma303_assigned);
             // 歸還時機台照理早就分配好了，直接寫出編號讓小組長對照；萬一還沒分配才請他聯絡管理員
             lines.push(assigned.length > 0
-                ? `<div>🔊 喇叭編號：<b style="color:#1e8449; font-size:14px;">${assigned.join('、')}</b></div>`
-                : `<div>🔊 喇叭編號：<b>尚未分配</b> <span style="color:#95a5a6; font-size:11.5px;">（請聯絡管理員）</span></div>`);
+                ? `<div>🔊 喇叭編號：<b style="color:var(--pine-ink); font-size:15px;">${assigned.join('、')}</b></div>`
+                : `<div>🔊 喇叭編號：<b>尚未分配</b> <span style="color:var(--ink-3); font-size:12.5px;">（請聯絡管理員）</span></div>`);
         }
         let stands = parseInt(item.music_stand) || 0;
         if (stands > 0) lines.push(`<div>🎼 譜架：<b>${stands} 個</b></div>`);
@@ -3372,13 +3543,13 @@
         if (extras.length > 0) lines.push(`<div>📦 其他設備：<b>${extraItemsText(extras)}</b></div>`);
         // 借用時寫在備註的其他設備（例如延長線），歸還時一起提醒
         let note = hasNote(item)
-            ? `<div style="${lines.length ? 'margin-top:5px; padding-top:5px; border-top:1px dashed #d6e2ea; ' : ''}color:#7e5109;">📝 備註：<span style="font-weight:normal;">${noteHtml(item.notes)}</span></div>`
+            ? `<div style="${lines.length ? 'margin-top:5px; padding-top:5px; border-top:1px dashed var(--line); ' : ''}color:var(--amber-ink);">📝 備註：<span style="font-weight:normal;">${noteHtml(item.notes)}</span></div>`
             : '';
         let body = lines.length > 0 || note
             ? lines.join('') + note
-            : `<div style="color:#95a5a6;">這次沒有借用需要歸還的設備</div>`;
-        return `<div style="margin-top:7px; background:#f4f8fb; border:1px solid #e1ebf2; border-radius:6px; padding:6px 9px; font-size:12.5px; color:#2c3e50; line-height:1.7;">
-                    <div style="color:#7f8c8d; font-size:11.5px; font-weight:bold;">📦 借用設備（歸還時請確認都有帶回）</div>
+            : `<div style="color:var(--ink-3);">這次沒有借用需要歸還的設備</div>`;
+        return `<div style="margin-top:7px; background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r-sm); padding:6px 9px; font-size:13.5px; color:var(--ink); line-height:1.7;">
+                    <div style="color:var(--ink-2); font-size:12.5px; font-weight:bold;">📦 借用設備（歸還時請確認都有帶回）</div>
                     ${body}
                 </div>`;
     }
@@ -3399,8 +3570,8 @@
             if (!opts.done) return;
             doneBox.innerHTML = `<div class="return-done">
                     <div class="rd-title">✅ 歸還成功！</div>
-                    <div style="color:#2c3e50;">${escapeHtml(opts.done.label)}</div>
-                    <div style="font-size:12.5px; color:#4d6b5a;">歸還時間：${opts.done.time}</div>
+                    <div style="color:var(--ink);">${escapeHtml(opts.done.label)}</div>
+                    <div style="font-size:13.5px; color:var(--ink-2);">歸還時間：${opts.done.time}</div>
                     <div class="rd-next">${next}</div>
                 </div>`;
         };
@@ -3438,28 +3609,28 @@
             let html = '';
             // 有好幾筆可以還的時候不幫他預先勾選：以前預設勾第一筆，小組長沒注意就會還錯筆
             if (returnableCount > 1) {
-                html += `<div style="background:#fef5e7; color:#9c640c; border-radius:6px; padding:8px 10px; font-size:13.5px; font-weight:bold; margin-bottom:10px;">👇 你有 ${returnableCount} 筆可以歸還，請點選這次要歸還的是哪一筆</div>`;
+                html += `<div style="background:var(--amber-bg); color:var(--amber-ink); border-radius:var(--r-sm); padding:8px 10px; font-size:13.5px; font-weight:bold; margin-bottom:10px;">👇 你有 ${returnableCount} 筆可以歸還，請點選這次要歸還的是哪一筆</div>`;
             }
             data.forEach(item => {
                 let notYet = String(item.borrow_date) > today;
                 let checked = (!notYet && returnableCount === 1) ? 'checked' : '';
                 let label = `${formatDateLabel(item.borrow_date)} ${item.start_time}–${item.end_time}｜${item.location}`;
                 let waitNote = notYet
-                    ? `<div style="color:#b9770e; background:#fef5e7; border-radius:5px; padding:4px 8px; font-size:12px; margin-top:6px;">⏳ 還沒到借用日期，${formatDateLabel(item.borrow_date)} 當天用完後才能歸還</div>`
+                    ? `<div style="color:var(--amber-ink); background:var(--amber-bg); border-radius:var(--r-sm); padding:4px 8px; font-size:12.5px; margin-top:6px;">⏳ 還沒到借用日期，${formatDateLabel(item.borrow_date)} 當天用完後才能歸還</div>`
                     : '';
-                html += `<label style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; cursor: ${notYet ? 'not-allowed' : 'pointer'}; border-bottom: 1px dashed #eee; padding-bottom: 8px;${notYet ? ' opacity: 0.6;' : ''}">
+                html += `<label style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px; cursor: ${notYet ? 'not-allowed' : 'pointer'}; border-bottom: 1px dashed var(--line); padding-bottom: 8px;${notYet ? ' opacity: 0.6;' : ''}">
                     <input type="radio" name="returnRecordId" value="${item.id}" data-date="${item.borrow_date}" data-label="${escapeHtml(label)}" ${checked} ${notYet ? 'disabled' : ''} style="margin-top: 3px;">
                     <span>
-                        <div style="font-weight:bold; color:#2c3e50;">📅 日期：${formatDateLabel(item.borrow_date)}</div>
-                        <div style="color:#5d7a8c; font-size:12.5px; margin-top:2px;">🕐 時間：${item.start_time}–${item.end_time}</div>
-                        <div style="color:#2c3e50; font-size:12.5px; margin-top:2px;">📍 場地：${item.location}</div>
+                        <div style="font-weight:bold; color:var(--ink);">📅 日期：${formatDateLabel(item.borrow_date)}</div>
+                        <div style="color:var(--ink-2); font-size:13.5px; margin-top:2px;">🕐 時間：${item.start_time}–${item.end_time}</div>
+                        <div style="color:var(--ink); font-size:13.5px; margin-top:2px;">📍 場地：${item.location}</div>
                         ${returnEquipmentBlock(item)}
                         ${waitNote}
                     </span>
                 </label>`;
             });
             if (!anyReturnable) {
-                html = `<div style="color:#b9770e; font-weight:bold; margin-bottom:10px;">目前沒有可以歸還的紀錄——以下預約都還沒到借用日期，借用當天用完後再回來歸還。</div>` + html;
+                html = `<div style="color:var(--amber-ink); font-weight:bold; margin-bottom:10px;">目前沒有可以歸還的紀錄——以下預約都還沒到借用日期，借用當天用完後再回來歸還。</div>` + html;
             }
             showDone(anyReturnable
                 ? `還有 ${returnableCount} 筆還沒歸還，請在下面繼續選擇下一筆 👇`
@@ -3492,14 +3663,14 @@
                 return;
             }
 
-            showLoading("照片壓縮中 (1/2)<br><span style='font-size:14px; font-weight:normal;'>約需 1~3 秒</span>");
+            showLoading("照片壓縮中 (1/2)<br><span style='font-size:15px; font-weight:normal;'>約需 1~3 秒</span>");
 
             var file = fileInput.files[0];
             var compressedFile = await compressImage(file);
             var uploadedAt = Date.now();
             var fileName = uploadedAt + "_return.jpg";
 
-            document.getElementById('loadingText').innerHTML = "雲端上傳中 (2/2)<br><span style='font-size:14px; font-weight:normal;'>即將完成</span>";
+            document.getElementById('loadingText').innerHTML = "雲端上傳中 (2/2)<br><span style='font-size:15px; font-weight:normal;'>即將完成</span>";
 
             const { error: uploadError } = await db.storage.from('return_photos').upload(fileName, compressedFile);
             if (uploadError) { hideLoading(); alert("照片上傳失敗"); return; }
@@ -3654,6 +3825,70 @@
         clearTimeout(clickTimer);
         clickTimer = setTimeout(() => { clickCount = 0; }, 2000);
     }
+</script>
+<script>
+    // 🎨 換裝（第四十七輪）：畫面上的 emoji 換成同一套線條圖示。
+    //    只改畫面上的文字節點，不改資料，也不碰 alert／確認視窗／Excel 裡的文字，所以操作完全不變。
+    (function () {
+        var MAP = {"✅": ["circle-check", "ok"], "⚠️": ["triangle-alert", "warn"], "⚠": ["triangle-alert", "warn"], "📅": ["calendar", ""], "🔊": ["volume-2", ""], "🔈": ["volume-1", ""], "📦": ["package", ""], "📝": ["notebook-pen", ""], "🎼": ["music", ""], "🔁": ["repeat", ""], "🕐": ["clock", ""], "🕒": ["clock", ""], "✏️": ["pencil", ""], "✏": ["pencil", ""], "🔄": ["refresh-cw", ""], "🎛️": ["sliders-horizontal", ""], "🎛": ["sliders-horizontal", ""], "🎹": ["piano", ""], "📍": ["map-pin", ""], "❓": ["circle-help", "warn"], "📋": ["clipboard-list", ""], "📷": ["camera", ""], "📸": ["camera", ""], "🔍": ["search", ""], "📊": ["file-spreadsheet", ""], "📱": ["smartphone", ""], "📌": ["pin", ""], "⏳": ["hourglass", "warn"], "⚡": ["zap", ""], "⛔": ["ban", "bad"], "👤": ["user", ""], "🗑️": ["trash-2", ""], "🗑": ["trash-2", ""], "➖": ["minus", ""], "➕": ["plus", ""], "🏷️": ["tag", ""], "🏷": ["tag", ""], "🔘": ["circle-dot", ""], "📂": ["folder-open", ""], "🔥": ["flame", ""], "🔐": ["lock", ""], "🔒": ["lock", ""], "🔑": ["key", ""], "🔧": ["wrench", ""], "📞": ["phone", ""], "👇": ["arrow-down", ""], "🔽": ["chevron-down", ""], "📎": ["paperclip", ""], "🗂️": ["folders", ""], "🗂": ["folders", ""], "💬": ["message-circle", ""], "🎄": ["tree-pine", ""], "💾": ["save", ""], "🧭": ["compass", ""], "🔌": ["plug", ""], "🏠": ["house", ""], "🟠": ["circle", "warn"], "💡": ["lightbulb", ""], "🔙": ["arrow-left", ""], "🌳": ["trees", ""], "🎧": ["headphones", ""], "🛑": ["octagon-x", "bad"], "🎉": ["party-popper", ""], "▶️": ["play", ""], "▶": ["play", ""], "↩️": ["undo-2", ""], "↩": ["undo-2", ""]};
+        var KEYS = Object.keys(MAP).sort(function (a, b) { return b.length - a.length; });
+        var RE = new RegExp('(' + KEYS.map(function (k) { return k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }).join('|') + ')\\uFE0F?', 'g');
+        var SKIP = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, OPTION: 1, SELECT: 1, TITLE: 1, svg: 1, SVG: 1 };
+        function icon(k) {
+            var m = MAP[k] || MAP[k.replace(/\uFE0F$/, '')];
+            var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            s.setAttribute('class', 'ic' + (m[1] ? ' ' + m[1] : ''));
+            s.setAttribute('aria-hidden', 'true');
+            var u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+            u.setAttribute('href', '#i-' + m[0]);
+            s.appendChild(u);
+            return s;
+        }
+        function swap(node) {
+            var t = node.nodeValue;
+            RE.lastIndex = 0;
+            if (!RE.test(t)) return;
+            var frag = document.createDocumentFragment(), last = 0;
+            t.replace(RE, function (all, k, i) {
+                if (i > last) frag.appendChild(document.createTextNode(t.slice(last, i)));
+                frag.appendChild(icon(k));
+                last = i + all.length;
+                return all;
+            });
+            if (last < t.length) frag.appendChild(document.createTextNode(t.slice(last)));
+            node.parentNode.replaceChild(frag, node);
+        }
+        function walk(root) {
+            if (root.nodeType === 3) { if (root.parentNode && !SKIP[root.parentNode.nodeName]) swap(root); return; }
+            if (root.nodeType !== 1 || SKIP[root.nodeName]) return;
+            var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+                acceptNode: function (n) {
+                    for (var p = n.parentNode; p && p !== root.parentNode; p = p.parentNode) if (SKIP[p.nodeName]) return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+            });
+            var list = [];
+            while (w.nextNode()) list.push(w.currentNode);
+            list.forEach(swap);
+        }
+
+        // 日期列依星期幾上色（像藥盒的七格），只是外觀
+        function tagDays(root) {
+            var list = (root.querySelectorAll ? root.querySelectorAll('details.day-fold[data-date]') : []);
+            Array.prototype.forEach.call(list, function (d) {
+                var p = String(d.getAttribute('data-date')).split('-');
+                if (p.length === 3) d.setAttribute('data-wd', new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])).getUTCDay());
+            });
+        }
+        walk(document.body);
+        tagDays(document);
+        new MutationObserver(function (ms) {
+            ms.forEach(function (m) {
+                if (m.type === 'characterData') walk(m.target);
+                else m.addedNodes.forEach(function (n) { walk(n); if (n.nodeType === 1) { tagDays(n); if (n.matches && n.matches('details.day-fold[data-date]')) tagDays(n.parentNode); } });
+            });
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    })();
 </script>
 </body>
 </html>
