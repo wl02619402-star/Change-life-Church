@@ -803,7 +803,7 @@
                 <div class="form-card-title">🎛️ 設備需求</div>
                 <div class="form-card-sub">以下請依實際需求填寫，不需要的維持預設值即可</div>
 
-                <!-- 第四十三輪：兒主、幼主有現場音響，不借喇叭、不佔機台，選這兩個場地時這題換成下面的說明 -->
+                <!-- 第四十三輪：兒主、幼主有現場音響，不借喇叭、不佔機台，選這幾個場地時這題換成下面的說明 -->
                 <div class="hidden" id="ownSoundNote" style="background:var(--pine-bg); border:1px solid var(--pine-line); color:var(--pine-ink); border-radius:var(--r-md); padding:10px 12px; margin-bottom:15px; font-size:15px; line-height:1.6;">🔊 <span id="ownSoundVenue"></span>有現場音響，不用借喇叭，也不會占用機台。</div>
                 <div class="form-group" id="speakerGroup">
                     <label>🔊 是否需要喇叭？<span style="font-weight:normal; color:var(--ink-2); font-size:15px;">（附 2 支麥克風）</span></label>
@@ -813,7 +813,7 @@
                     </div>
                 </div>
 
-                <!-- 第三十四輪：音控協助屬於設備需求，從「場地」卡片移到這裡（只有兒主／幼主才會顯示） -->
+                <!-- 第三十四輪：音控協助屬於設備需求，從「場地」卡片移到這裡（只有兒主／幼主／交誼廳才會顯示） -->
                 <div class="form-group hidden" id="soundTechSection">
                     <label style="color: var(--red);">是否需要音控同工協助開啟設備？</label>
                     <div class="toggle-group"><label><input type="radio" name="needTech" value="是"> 是</label><label><input type="radio" name="needTech" value="否" checked> 否</label></div>
@@ -1509,7 +1509,7 @@
         let notes = day.filter(hasNote).sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time));
         // 管理員已經登記的備註設備：當天全部加總（這些東西數量少，不像譜架算尖峰，直接加總最保險）
         let extras = sumExtraItems([].concat(...day.map(extraItemsOf)));
-        // 🎛️ 需要音控同工協助開設備的組（只有兒主、幼主會問這題），依時間排好，管理員才知道要安排誰、幾點到
+        // 🎛️ 需要音控同工協助開設備的組（只有兒主、幼主、交誼廳會問這題），依時間排好，管理員才知道要安排誰、幾點到
         let tech = day.filter(r => r.need_tech === '是')
             .sort((a, b) => timeToFloat(a.start_time) - timeToFloat(b.start_time))
             .map(r => ({ loc: r.location, time: `${r.start_time}–${r.end_time}`, name: r.leader_name }));
@@ -1761,7 +1761,7 @@
     const 需架設鋼琴場地 = ['交誼廳', '餐廳', '小組長辦公室'];
 
     // 🔊 第四十三輪（用戶回報）：兒主、幼主有現場音響，不借喇叭，也就不會佔用 MA303／MA707 機台。
-    const 自有音響場地 = ['兒主', '幼主'];
+    const 自有音響場地 = ['兒主', '幼主', '交誼廳'];   // 第五十一輪：交誼廳也有現場音響，做法同兒主、幼主
     function usesOwnSound(loc) { return 自有音響場地.indexOf(loc) >= 0; }
 
     // 🌳 「教會外場地」其實是各組各自去不同的地方（公園、學校、別人家…），不是同一個空間，
@@ -1791,10 +1791,10 @@
         }
         syncPianoModelVisibility();
 
-        if (loc === "兒主" || loc === "幼主") { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
+        if (usesOwnSound(loc)) { techSec.classList.remove("hidden"); } else { techSec.classList.add("hidden"); }
         let ownSound = usesOwnSound(loc);
         document.getElementById('speakerGroup').classList.toggle('hidden', ownSound);
-        document.getElementById('ownSoundNote').classList.toggle('hidden', !ownSound);
+        document.getElementById('ownSoundNote').classList.toggle('hidden', !ownSound || loc === '交誼廳');   // 交誼廳不顯示說明，只問音控
         document.getElementById('ownSoundVenue').textContent = ownSound ? loc : '';
         if (ownSound) document.querySelector('input[name="needSpeaker"][value="否"]').checked = true;
         applyStandLimit();   // 換場地時譜架跟著鎖／開（兒主本來就有譜架）
@@ -1838,7 +1838,7 @@
     // 🚦 送出前的最後把關：這段時間借這個場地、這些設備會不會跟別組衝突。
     //    回傳錯誤訊息，沒問題回傳 null。records 是當天「其他」紀錄（呼叫端要先排除正在編輯的那筆）。
     //    會眾送出借用、管理員編輯紀錄都用這一個函式，規則才不會兩邊不一致。
-    function findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date) {
+    function findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date, reqPianoModel) {
         let standCap = date ? standCapacity(date) : STAND_TOTAL;
         if (reqStand > 0 && 自有譜架場地.indexOf(loc) >= 0) return `⛔ ${loc}場地已有譜架，不另外借譜架。`;
         if (reqStand > 0 && standCap === 0) return `⛔ 這天譜架已借完！`;
@@ -1849,11 +1849,16 @@
                 if (!r.start_time || !r.end_time) continue;
                 if (timeToFloat(r.start_time) <= t && timeToFloat(r.end_time) > t) {
                     if (r.location === loc && !isSharedVenue(loc)) return `⛔ ${timeStr}「${loc}」已被預約！`;
+                    // 🎹 第五十一輪（用戶交代）：要架設的鋼琴只有兩台（RD64、舊二琴），同一台同一時段不能借給兩組。
+                    //    兒主／幼主用自己的鋼琴，沒有型號，不在這裡檢查。
+                    if (reqPianoModel && r.piano === '是' && String(r.piano_model || '').trim() === reqPianoModel && r.location !== loc) {
+                        return `⛔ ${timeStr}「${reqPianoModel}」鋼琴已被其他組借走了！請改選另一台鋼琴，或換時段。`;
+                    }
                     usedSpeaker += speakerUsage(r);
                     usedStand += parseInt(r.music_stand) || 0;
                 }
             }
-            // 鋼琴不檢查：每個場地各有一台，場地訂到就有
+            // 兒主／幼主自己的鋼琴不檢查；要架設的鋼琴（RD64、舊二琴）上面已逐時段檢查
             if (reqSpeaker > 0 && reqSpeaker + usedSpeaker > SPEAKER_TOTAL) return `⛔ ${timeStr} 喇叭已全部借出！`;
             if (reqStand > 0 && reqStand + usedStand > standCap) return `⛔ ${timeStr} 譜架已借完！`;
         }
@@ -2797,7 +2802,7 @@
         let ownSound = usesOwnSound(loc);
         document.getElementById('editSpeakerGroup').style.display = ownSound ? 'none' : '';
         if (ownSound) setRadio('editSpeaker', '否');
-        let hasTech = (loc === '兒主' || loc === '幼主');
+        let hasTech = usesOwnSound(loc);
         document.getElementById('editTechGroup').style.display = hasTech ? '' : 'none';
         let standSel = document.getElementById('editStand');
         let venueHasStand = 自有譜架場地.indexOf(loc) >= 0;
@@ -2849,7 +2854,7 @@
 
             let assigned = normalizeAssignedList(old.ma303_assigned);
             let reqSpeaker = wantSpeaker ? Math.max(1, assigned.length) : 0;
-            let conflict = findSlotConflict(others, loc, s, e, reqSpeaker, stand, date);
+            let conflict = findSlotConflict(others, loc, s, e, reqSpeaker, stand, date, (piano === '是' && 需架設鋼琴場地.indexOf(loc) >= 0) ? pianoModel : '');
             if (conflict) { hideLoading(); alert(conflict + '\n\n請改其他時段或場地。'); return; }
 
             // 機台分配：不需要喇叭就清掉；改了日期/時間，要確認原本分配的機台在新時段沒被別組用走
@@ -3445,7 +3450,7 @@
             const { data: records, error: fetchError } = await fetchDayRecords(date);
             if (fetchError) { hideLoading(); alert("系統連線失敗"); return; }
 
-            let conflict = findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date);
+            let conflict = findSlotConflict(records, loc, startFloat, endFloat, reqSpeaker, reqStand, date, (reqPiano && 需架設鋼琴場地.indexOf(loc) >= 0) ? pianoModel : '');
             if (conflict) { hideLoading(); alert(conflict); return; }
 
             // 🔊 第三十三輪：喇叭改成系統自動分配下一台空著的機台（不再由管理員手動勾選 A/B/C/MA707），
@@ -3472,7 +3477,7 @@
 
             document.getElementById('loadingText').innerText = "資料傳送中...";
             let techNode = document.querySelector('input[name="needTech"]:checked');
-            var techOption = (loc === "兒主" || loc === "幼主") && techNode ? techNode.value : "否";
+            var techOption = usesOwnSound(loc) && techNode ? techNode.value : "否";
 
             const { error } = await db.from('borrow_records').insert([{
                 borrow_date: date, start_time: startTime, end_time: endTime, return_due_date: returnDueDate, location: loc,
