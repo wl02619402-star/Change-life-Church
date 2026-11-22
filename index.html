@@ -668,15 +668,15 @@
             <!-- 第三十三輪（使用者反映排列容易混淆後調整）：跟借用表單一致，改成「借用日期＋借用時間」
                  一組、「歸還日期＋歸還時間」一組。 -->
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期</label><button type="button" class="date-pick empty" id="editDate" value="" onclick="openCalendar('editDate')" onchange="syncEditReturnDueDate()">請選擇日期</button></div>
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label><select id="editStart" onchange="syncEndTimeOptions('editStart', 'editEnd')"></select></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用日期</label><button type="button" class="date-pick empty" id="editDate" value="" onclick="openCalendar('editDate')" onchange="syncEditReturnDueDate(); refreshEditAvailability()">請選擇日期</button></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>借用時間</label><select id="editStart" onchange="syncEndTimeOptions('editStart', 'editEnd'); refreshEditAvailability()"></select></div>
             </div>
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還日期</label><button type="button" class="date-pick empty" id="editReturnDueDate" value="" data-min-from="editDate" onclick="openCalendar('editReturnDueDate')">請選擇日期</button></div>
-                <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label><select id="editEnd"></select></div>
+                <div class="form-group" style="flex: 1; min-width: 0;"><label>歸還時間</label><select id="editEnd" onchange="refreshEditAvailability()"></select></div>
             </div>
             <div class="form-group"><label>場地</label>
-                <select id="editLocation" onchange="syncEditVenueFields()">
+                <select id="editLocation" onchange="syncEditVenueFields(); refreshEditAvailability()">
                     <option value="交誼廳">交誼廳</option><option value="餐廳">餐廳</option><option value="兒主">兒主</option>
                     <option value="幼主">幼主</option><option value="圖書室">圖書室</option><option value="小組長辦公室">小組長辦公室</option><option value="小親子室">小親子室</option><option value="課輔教室">課輔教室</option><option value="教會外場地">教會外場地</option>
                 </select>
@@ -688,7 +688,7 @@
                     <select id="editLead"><option value="">請選擇...</option></select>
                 </div>
             </div>
-            <div class="form-group" id="editSpeakerGroup"><label>🔊 喇叭</label>
+            <div class="form-group" id="editSpeakerGroup"><label>🔊 喇叭 <span id="editSpeakerNote" style="font-weight:normal; color:var(--ink-2); font-size:13.5px;"></span></label>
                 <div class="toggle-group">
                     <label><input type="radio" name="editSpeaker" value="是"> 需要</label>
                     <label><input type="radio" name="editSpeaker" value="否"> 不需要</label>
@@ -2768,6 +2768,66 @@
             : '存檔前會跟借用申請一樣檢查場地與設備有沒有衝突。';
         syncEditVenueFields();
         document.getElementById('editModal').style.display = 'flex';
+        refreshEditAvailability();
+    }
+
+    // 🚫 第五十二輪（用戶交代）：後台修改時，喇叭／譜架／鋼琴已經被別組借完的選項要直接鎖住，管理員不會誤選。
+    //    算法跟借用表單一樣（windowAvailability），只是要把「正在編輯的這一筆」自己排除，不然會跟自己搶。
+    let editAvailToken = 0;
+    async function refreshEditAvailability() {
+        let modal = document.getElementById('editModal');
+        if (!db || !modal || modal.style.display === 'none') return;
+        let id = parseInt(document.getElementById('editId').value, 10);
+        let date = document.getElementById('editDate').value;
+        let st = document.getElementById('editStart').value, en = document.getElementById('editEnd').value;
+        let loc = document.getElementById('editLocation').value;
+        if (!date || !st || !en || timeToFloat(st) >= timeToFloat(en)) return;
+        let my = ++editAvailToken;
+        const { data, error } = await db.from('borrow_records').select('*').eq('borrow_date', date).neq('id', id);
+        if (my !== editAvailToken || error) return;
+        let others = (data || []).filter(r => r.id !== id && String(r.borrow_date) === String(date));
+        let s = timeToFloat(st), e = timeToFloat(en);
+        let a = windowAvailability(others, s, e, date);
+
+        // 喇叭：沒有剩的就鎖住「需要」（兒主、幼主、交誼廳本來就不借喇叭，那題是隱藏的）
+        let yes = document.querySelector('input[name="editSpeaker"][value="是"]');
+        let noSp = document.querySelector('input[name="editSpeaker"][value="否"]');
+        let spFull = a.speakerLeft <= 0 && !usesOwnSound(loc);
+        setOptionEnabled(yes, !spFull);
+        if (spFull && yes.checked) noSp.checked = true;
+        document.getElementById('editSpeakerNote').textContent = spFull ? '這個時段已借完' : '';
+        document.getElementById('editSpeakerNote').style.color = spFull ? 'var(--red)' : '';
+
+        // 譜架：超過剩餘數量的選項鎖住（場地自有譜架的由 syncEditVenueFields 整個鎖）
+        let standSel = document.getElementById('editStand');
+        let venueHasStand = 自有譜架場地.indexOf(loc) >= 0;
+        if (!venueHasStand) {
+            [...standSel.options].forEach(o => { o.disabled = parseInt(o.value) > a.standLeft; });
+            if (parseInt(standSel.value) > a.standLeft) standSel.value = String(Math.max(0, a.standLeft));
+            document.getElementById('editStandNote').textContent = a.standLeft <= 0 ? '（這個時段已借完）' : `（這個時段還剩 ${a.standLeft} 個）`;
+        }
+
+        // 鋼琴：要架設的兩台（RD64、舊二琴）同時段被別組借走的型號鎖住
+        let modelSel = document.getElementById('editPianoModel');
+        if (modelSel && 需架設鋼琴場地.indexOf(loc) >= 0) {
+            let taken = new Set();
+            others.forEach(r => {
+                if (r.piano !== '是' || !r.piano_model || r.location === loc) return;
+                if (timeToFloat(r.start_time) < e && timeToFloat(r.end_time) > s) taken.add(String(r.piano_model).trim());
+            });
+            [...modelSel.options].forEach(o => { o.disabled = taken.has(o.value); });
+            if (modelSel.value && taken.has(modelSel.value)) {
+                let free = [...modelSel.options].find(o => !o.disabled);
+                if (free) modelSel.value = free.value;
+                else { setRadio('editPiano', '無'); syncEditPianoModelVisibility(); }
+            }
+            let pyes = document.querySelector('input[name="editPiano"][value="是"]');
+            setOptionEnabled(pyes, [...modelSel.options].some(o => !o.disabled));
+        } else if (modelSel) {
+            [...modelSel.options].forEach(o => { o.disabled = false; });
+            setOptionEnabled(document.querySelector('input[name="editPiano"][value="是"]'), true);
+        }
+        syncToggles();
     }
 
     function closeEdit() { document.getElementById('editModal').style.display = 'none'; }
