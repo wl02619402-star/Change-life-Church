@@ -622,6 +622,17 @@
             body.signing #signOverlay .sign-page { margin: 0; break-after: page; }
             body.signing #signOverlay .sign-page:last-child { break-after: auto; }
             body.signing * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            /* Safari 列印時會把版面放大約 7%、不理會上面的紙張邊界，可印範圍也比較小，
+               用原尺寸會一頁切成兩頁、右邊被切掉，所以另外給一組較小的尺寸 */
+            body.signing #signOverlay.webkit .sign-pages { width: 255mm; margin: 0 auto; }
+            body.signing #signOverlay.webkit .sign-page { width: 255mm; page-break-after: always; page-break-inside: avoid; }
+            body.signing #signOverlay.webkit .sign-page:last-child { page-break-after: auto; }
+            body.signing #signOverlay.webkit table, body.signing #signOverlay.webkit .sign-foot { width: 254mm; }
+            body.signing #signOverlay.webkit th, body.signing #signOverlay.webkit td { height: 15mm; }
+            body.signing #signOverlay.webkit th { height: 8mm; }
+            body.signing #signOverlay.webkit td.t { font-size: 13.5pt; line-height: 1.15; }
+            body.signing #signOverlay.webkit td.e.many { font-size: 12pt; line-height: 1.15; }
+            body.signing #signOverlay.webkit .who { height: 14.4mm; }
         }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -3959,7 +3970,7 @@
             .sort((a, b) => String(a.borrow_date).localeCompare(String(b.borrow_date)) || timeToFloat(a.start_time) - timeToFloat(b.start_time));
         let label = signWeekLabel(簽收表週一), range = `${signShortDate(簽收表週一)}–${signShortDate(sunday)}`;
         let pages = Math.ceil((list.length + 1) / 簽收表每頁列數);        // 至少留 1 列給臨時借用手寫
-        let head = '<colgroup>' + 簽收表欄位.map(c => `<col style="width:${c[1]}mm">`).join('') + '</colgroup><thead><tr>' +
+        let head = '<colgroup>' + 簽收表欄位.map(c => `<col style="width:${(c[1] / 279 * 100).toFixed(3)}%">`).join('') + '</colgroup><thead><tr>' +
             簽收表欄位.map(c => `<th${c[0].indexOf('簽名') >= 0 ? ' class="sig"' : ''}>${c[0]}</th>`).join('') + '</tr></thead>';
         let html = '';
         for (let p = 0; p < pages; p++) {
@@ -4012,6 +4023,7 @@
         closeSignSheet();
         let box = document.createElement('div');
         box.id = 'signOverlay';
+        if (/Apple/.test(navigator.vendor || '')) box.className = 'webkit';   // Safari、iPhone 用專用列印尺寸
         box.innerHTML = `<div class="sign-bar"><div class="sign-week"></div>
             <button type="button" onclick="shiftSignWeek(-1)">上一週</button>
             <button type="button" onclick="shiftSignWeek(1)">下一週</button>
