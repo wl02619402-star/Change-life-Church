@@ -577,6 +577,46 @@
         @media (prefers-reduced-motion: reduce) {
             *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
         }
+
+        /* 📋 簽收表（第五十四輪）：紙本用固定的黑白與淡色，不跟著網站配色走 */
+        #signOverlay { position: fixed; inset: 0; z-index: 3000; overflow: auto; background: var(--surface-2); }
+        #signOverlay .sign-bar { position: sticky; top: 0; left: 0; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; padding: 10px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+        #signOverlay .sign-bar button { min-height: 44px; padding: 8px 14px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--ink); font: bold 15px var(--font); cursor: pointer; }
+        #signOverlay .sign-bar button.go { background: var(--pine-ink); border-color: var(--pine-ink); color: var(--on-solid); }
+        #signOverlay .sign-bar button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+        #signOverlay .sign-week { flex-basis: 100%; text-align: center; font-weight: bold; }
+        #signOverlay .sign-week small { display: block; font-weight: normal; color: var(--ink-3); }
+        #signOverlay .sign-pages { width: 281mm; margin: 0 auto; }
+        #signOverlay .sign-page { width: 281mm; margin: 12px 0; padding: 0; background: #fff; color: #111; }
+        #signOverlay .sign-title { text-align: center; font-size: 17pt; font-weight: bold; line-height: 1.3; }
+        #signOverlay .sign-warn { margin-bottom: 1.5mm; text-align: center; font-size: 14pt; font-weight: bold; line-height: 1.3; color: #c00000; }
+        #signOverlay table { width: 279mm; margin: 0 auto; border-collapse: collapse; table-layout: fixed; white-space: normal; line-height: 1.25; }
+        #signOverlay th, #signOverlay td { height: 19.5mm; padding: 0 1.5mm; border: 0.3mm solid #333; background: #fff; color: #111; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+        #signOverlay th { height: 9mm; background: #b4c6e7; font-size: 14pt; }
+        #signOverlay th.sig { background: #ffe699; }
+        #signOverlay td.d { background: #f8cbcb; font-size: 18pt; font-weight: bold; }
+        #signOverlay td.d small { font-size: 14pt; font-weight: bold; color: #111; }
+        #signOverlay td.t { font-size: 15pt; white-space: nowrap; }
+        #signOverlay td.w { font-size: 19pt; font-weight: bold; }
+        #signOverlay td.w small { font-size: 11.5pt; font-weight: normal; }
+        #signOverlay td.e { font-size: 16pt; font-weight: bold; text-align: left; padding-left: 3mm; }
+        #signOverlay td.e.many { font-size: 13pt; line-height: 1.2; }
+        #signOverlay td.e .g { white-space: nowrap; }
+        #signOverlay td.e small { font-size: 12pt; font-weight: normal; }
+        #signOverlay tr.newday td { border-top: 1mm solid #111; }
+        #signOverlay td small { display: block; color: #333; }
+        #signOverlay .sign-foot { padding-top: 1mm; text-align: right; font-size: 9pt; color: #555; }
+        @media print {
+            @page { size: A4 landscape; margin: 8mm; }
+            html body.signing { margin: 0; padding: 0; background: #fff; }
+            body.signing > *:not(#signOverlay) { display: none !important; }
+            body.signing #signOverlay { position: static; overflow: visible; background: #fff; }
+            body.signing #signOverlay .sign-bar { display: none; }
+            body.signing #signOverlay .sign-pages { zoom: 1 !important; }
+            body.signing #signOverlay .sign-page { margin: 0; break-after: page; }
+            body.signing #signOverlay .sign-page:last-child { break-after: auto; }
+            body.signing * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@600;700&family=Instrument+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -922,6 +962,7 @@
         </div>
 
         <button class="btn-submit" style="margin-bottom:12px;" onclick="showSection('borrowSection')">📦 新增借用（幫小組登記）</button>
+        <button class="btn-back" id="btnSignSheet" style="margin:0 0 10px; background-color:var(--pine-ink);" onclick="openSignSheet()">📋 列印簽收表（給領取的人簽名）</button>
         <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 15px;">
             <button class="btn-back" id="btnExportExcel" style="flex:2; margin:0; background-color:var(--pine-ink);" onclick="exportExcel()">📊 匯出 Excel（簽到簿）</button>
             <button class="btn-back" style="flex:1; margin:0;" onclick="loadAdminData()">🔄 重新整理</button>
@@ -3782,8 +3823,8 @@
 
     // ================= 📊 第三十三輪：匯出 Excel 簽到簿 =================
     //    一週一個工作表，標題「2026 小組聖誕餐會外借設備｜第X週」，欄位對照紙本簽到單；
-    //    出借簽名／歸還簽名留空給現場手寫簽名，其他欄位從資料庫的借用紀錄自動填好。
-    const XLSX_HEADERS = ['日期', '星期', '出借簽名', '歸還簽名', '借用時間', '歸還時間', '使用地點', '小組負責人', '負責音控同工', 'MA303', 'MA707', '鋼琴（包含型號）', '譜架', '備註'];
+    //    領取簽名／歸還簽名放最右邊、留空給現場手寫簽名，其他欄位從資料庫的借用紀錄自動填好。
+    const XLSX_HEADERS = ['日期', '星期', '借用時間', '歸還時間', '使用地點', '小組負責人', '負責音控同工', 'MA303', 'MA707', '鋼琴（包含型號）', '譜架', '備註', '領取簽名', '歸還簽名'];
 
     // 這天在哪個「週」（跟後台的週次篩選同一套分法）：11、12 月都照 1-7/8-14/15-21/22+ 分四週
     function xlsxWeekOf(dateStr) {
@@ -3812,13 +3853,14 @@
         let pianoModelTrim = String(item.piano_model || '').trim();
         let pianoCol = item.piano === '是' ? (pianoModelTrim || '✓') : '';
         return [
-            dateCol, weekdayCol, '', '',
+            dateCol, weekdayCol,
             item.start_time || '', item.end_time || '', item.location || '',
             item.group_name || '', item.equipment_lead || '',
             ma303Letters, ma707Mark,
             pianoCol,
             standN > 0 ? String(standN) : '',
-            item.notes || ''
+            item.notes || '',
+            '', ''
         ];
     }
 
@@ -3856,6 +3898,122 @@
         });
         if (sheetCount === 0) { alert('目前沒有可以匯出的借用紀錄（11、12 月都還沒有資料）。'); return; }
         XLSX.writeFile(wb, `2026聖誕餐會外借設備簽到簿_${todayStr()}.xlsx`);
+    }
+
+    // ===================== 📋 列印簽收表（第五十四輪） =====================
+    //    每週印一張給領取的人簽名：資料自動帶入，簽名欄固定在最右邊。
+    //    第五十四輪（使用者交代）：A4 橫式就要看得清楚、簽名格夠大，所以欄位合併、一頁只放 8 組。
+    const 簽收表每頁列數 = 8;
+    const 簽收表欄位 = [['日期', 24], ['時間', 27], ['小組負責人／地點', 52], ['領取設備', 52], ['領取簽名', 62], ['歸還簽名', 62]];   // 寬度 mm，合計 279
+    let 簽收表資料 = [], 簽收表週一 = '';
+
+    function mondayOf(dateStr) {
+        let wd = new Date(dateStr + 'T00:00:00Z').getUTCDay();
+        return addDaysStr(dateStr, -((wd + 6) % 7));
+    }
+    // 週次名稱看那週的星期五：11/23–11/29 是「11月第四週」，11/30–12/6 是「12月第一週」
+    function signWeekLabel(monday) {
+        let fri = addDaysStr(monday, 4);
+        let m = Number(fri.slice(5, 7)), d = Number(fri.slice(8, 10));
+        return `${m}月第${['一', '二', '三', '四', '五'][Math.ceil(d / 7) - 1]}週`;
+    }
+    function signShortDate(dateStr) { return `${Number(dateStr.slice(5, 7))}/${Number(dateStr.slice(8, 10))}`; }
+
+    // 一筆借用紀錄 → 簽收表的一列（簽名欄留白），每格回傳 [樣式, 內容]
+    function signRowCells(item) {
+        let m = formatDateLabel(item.borrow_date).match(/^(.*)（(.+)）$/);
+        let date = m ? `${m[1]}<small>（${m[2]}）</small>` : '';
+        let time = `借 ${escapeHtml(item.start_time || '')}<br>還 ${escapeHtml(item.end_time || '')}`;
+        let due = String(item.return_due_date || '');
+        if (due && due !== item.borrow_date) time += `<small>${signShortDate(due)} 歸還</small>`;
+        let group = String(item.group_name || '').trim(), person = String(item.leader_name || '').trim();
+        let who = escapeHtml(group || person);
+        let sub = [];
+        if (group && person && group.indexOf(person) < 0 && person.indexOf(group) < 0) sub.push(`借用人 ${escapeHtml(person)}`);
+        sub.push(escapeHtml(item.location || ''));
+        who += `<small>${sub.join('，')}</small>`;
+        let gear = [];
+        let units = normalizeAssignedList(item.ma303_assigned).map(u => u.replace('MA303 編號', ''));
+        if (units.length) gear.push('喇叭 ' + units.join('、'));
+        else if (speakerUsage(item) > 0) gear.push('喇叭（未分配）');
+        let stand = parseInt(item.music_stand) || 0;
+        if (stand > 0) gear.push(`譜架 ${stand} 個`);
+        if (需要架設鋼琴(item)) gear.push('鋼琴 ' + escapeHtml(String(item.piano_model || '').trim()));
+        extraItemsOf(item).forEach(x => gear.push(`${escapeHtml(x.name)} ×${x.qty}`));
+        let gearHtml = gear.length > 3 ? gear.map(g => `<span class="g">${g}</span>`).join('、') : gear.join('<br>');   // 品項不從中間斷行
+        return [['d', date], ['t', time], ['w', who], [gear.length > 2 ? 'e many' : 'e', gearHtml || '<small>沒有外借設備</small>'], ['', ''], ['', '']];
+    }
+
+    function renderSignSheet() {
+        let box = document.getElementById('signOverlay');
+        if (!box) return;
+        let sunday = addDaysStr(簽收表週一, 6);
+        let list = 簽收表資料.filter(r => r.borrow_date >= 簽收表週一 && r.borrow_date <= sunday)
+            .sort((a, b) => String(a.borrow_date).localeCompare(String(b.borrow_date)) || timeToFloat(a.start_time) - timeToFloat(b.start_time));
+        let label = signWeekLabel(簽收表週一), range = `${signShortDate(簽收表週一)}–${signShortDate(sunday)}`;
+        let pages = Math.ceil((list.length + 1) / 簽收表每頁列數);        // 至少留 1 列給臨時借用手寫
+        let head = '<colgroup>' + 簽收表欄位.map(c => `<col style="width:${c[1]}mm">`).join('') + '</colgroup><thead><tr>' +
+            簽收表欄位.map(c => `<th${c[0].indexOf('簽名') >= 0 ? ' class="sig"' : ''}>${c[0]}</th>`).join('') + '</tr></thead>';
+        let html = '';
+        for (let p = 0; p < pages; p++) {
+            let rows = '';
+            for (let i = 0; i < 簽收表每頁列數; i++) {
+                let k = p * 簽收表每頁列數 + i, item = list[k];
+                let cells = item ? signRowCells(item) : [['d', ''], ['t', ''], ['w', ''], ['e', ''], ['', ''], ['', '']];
+                let newDay = item && i > 0 && list[k - 1].borrow_date !== item.borrow_date;   // 換日期畫粗線
+                rows += `<tr${newDay ? ' class="newday"' : ''}>` + cells.map(c => `<td class="${c[0]}">${c[1]}</td>`).join('') + '</tr>';
+            }
+            html += `<div class="sign-page"><div class="sign-title">2026 小組聖誕餐會外借設備｜${label}（${range}）</div>
+                <div class="sign-warn">領取、歸還請務必簽名，謝謝！！</div><table>${head}<tbody>${rows}</tbody></table>
+                <div class="sign-foot">第 ${p + 1} 頁，共 ${pages} 頁。資料產生日期 ${signShortDate(todayStr())}</div></div>`;
+        }
+        box.querySelector('.sign-pages').innerHTML = html;
+        box.querySelector('.sign-week').innerHTML = `${label}（${range}）<small>${list.length ? `共 ${list.length} 組、${pages} 頁` : '這週沒有借用'}</small>`;
+        fitSignSheet();
+    }
+
+    // 手機螢幕比紙窄：預覽時整張縮小到看得完（列印時固定原尺寸）
+    function fitSignSheet() {
+        let pages = document.querySelector('#signOverlay .sign-pages');
+        if (!pages) return;
+        pages.style.zoom = 1;
+        let w = pages.offsetWidth;
+        if (w) pages.style.zoom = Math.min(1, (document.documentElement.clientWidth - 16) / w);
+    }
+    function shiftSignWeek(n) { 簽收表週一 = addDaysStr(簽收表週一, n * 7); renderSignSheet(); }
+    function closeSignSheet() {
+        let box = document.getElementById('signOverlay');
+        if (box) box.remove();
+        document.body.classList.remove('signing');
+        window.removeEventListener('resize', fitSignSheet);
+        window.removeEventListener('popstate', closeSignSheet);
+    }
+
+    async function openSignSheet() {
+        if (!requireDb()) return;
+        showLoading('整理簽收表中...');
+        const { data: records, error } = await db.from('borrow_records').select('*');
+        hideLoading();
+        if (error) { alert('讀取資料失敗：' + error.message); return; }
+        簽收表資料 = (records || []).filter(r => /^\d{4}-\d{2}-\d{2}$/.test(String(r.borrow_date || '')));
+        // 預設本週；本週已經沒有任何借用就跳到下一個有借用的週
+        let today = todayStr();
+        簽收表週一 = mondayOf(today);
+        let upcoming = 簽收表資料.map(r => r.borrow_date).filter(d => d >= today).sort()[0];
+        if (upcoming) 簽收表週一 = mondayOf(upcoming);
+        closeSignSheet();
+        let box = document.createElement('div');
+        box.id = 'signOverlay';
+        box.innerHTML = `<div class="sign-bar"><div class="sign-week"></div>
+            <button type="button" onclick="shiftSignWeek(-1)">上一週</button>
+            <button type="button" onclick="shiftSignWeek(1)">下一週</button>
+            <button type="button" class="go" onclick="window.print()">列印／存成 PDF</button>
+            <button type="button" onclick="closeSignSheet()">關閉</button></div><div class="sign-pages"></div>`;
+        document.body.appendChild(box);
+        document.body.classList.add('signing');
+        window.addEventListener('resize', fitSignSheet);
+        window.addEventListener('popstate', closeSignSheet);
+        renderSignSheet();
     }
 
     // 🔄 第三十四輪：管理員在後台按瀏覽器「重新整理」，不要被踢回首頁——
