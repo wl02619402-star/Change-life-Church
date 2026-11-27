@@ -598,7 +598,10 @@
         #signOverlay td.d small { font-size: 14pt; font-weight: bold; color: #111; }
         #signOverlay td.t { font-size: 15pt; white-space: nowrap; }
         #signOverlay td.w { font-size: 19pt; font-weight: bold; }
-        #signOverlay td.w small { font-size: 11.5pt; font-weight: normal; }
+        #signOverlay .who { display: flex; flex-direction: column; height: 18.8mm; }
+        #signOverlay .who .nm { flex: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; align-content: center; line-height: 1.15; }
+        #signOverlay .who .nm span { white-space: nowrap; }
+        #signOverlay .who .loc { align-self: flex-end; padding-bottom: 0.6mm; font-size: 10.5pt; font-weight: normal; line-height: 1.2; color: #333; }
         #signOverlay td.e { font-size: 16pt; font-weight: bold; text-align: left; padding-left: 3mm; }
         #signOverlay td.e.many { font-size: 13pt; line-height: 1.2; }
         #signOverlay td.e .g { white-space: nowrap; }
@@ -3904,7 +3907,7 @@
     //    每週印一張給領取的人簽名：資料自動帶入，簽名欄固定在最右邊。
     //    第五十四輪（使用者交代）：A4 橫式就要看得清楚、簽名格夠大，所以欄位合併、一頁只放 8 組。
     const 簽收表每頁列數 = 8;
-    const 簽收表欄位 = [['日期', 24], ['時間', 27], ['小組負責人／地點', 52], ['領取設備', 52], ['領取簽名', 62], ['歸還簽名', 62]];   // 寬度 mm，合計 279
+    const 簽收表欄位 = [['日期', 24], ['時間', 27], ['小組負責人', 52], ['領取設備', 52], ['領取簽名', 62], ['歸還簽名', 62]];   // 寬度 mm，合計 279
     let 簽收表資料 = [], 簽收表週一 = '';
 
     function mondayOf(dateStr) {
@@ -3926,12 +3929,13 @@
         let time = `借 ${escapeHtml(item.start_time || '')}<br>還 ${escapeHtml(item.end_time || '')}`;
         let due = String(item.return_due_date || '');
         if (due && due !== item.borrow_date) time += `<small>${signShortDate(due)} 歸還</small>`;
+        // 小組負責人跟借用人是同一個名字只寫一個；不同人就兩個名字一樣大並排（不加「借用人」三個字）
         let group = String(item.group_name || '').trim(), person = String(item.leader_name || '').trim();
-        let who = escapeHtml(group || person);
-        let sub = [];
-        if (group && person && group.indexOf(person) < 0 && person.indexOf(group) < 0) sub.push(`借用人 ${escapeHtml(person)}`);
-        sub.push(escapeHtml(item.location || ''));
-        who += `<small>${sub.join('，')}</small>`;
+        let names = [group || person];
+        if (group && person && group.indexOf(person) < 0 && person.indexOf(group) < 0) names.push(person);
+        // 地點是給設備組看的，固定放在這格的右下角
+        let who = `<div class="who"><div class="nm">${names.map((n, k) => `<span>${k ? '／' : ''}${escapeHtml(n)}</span>`).join('')}</div>` +
+            `<div class="loc">${escapeHtml(item.location || '')}</div></div>`;
         let gear = [];
         let units = normalizeAssignedList(item.ma303_assigned).map(u => u.replace('MA303 編號', ''));
         if (units.length) gear.push('喇叭 ' + units.join('、'));
