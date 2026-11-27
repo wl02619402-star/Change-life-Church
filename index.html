@@ -608,7 +608,10 @@
         #signOverlay td.e small { font-size: 12pt; font-weight: normal; }
         #signOverlay tr.newday td { border-top: 1mm solid #111; }
         #signOverlay td small { display: block; color: #333; }
-        #signOverlay .sign-foot { padding-top: 1mm; text-align: right; font-size: 9pt; color: #555; }
+        #signOverlay .sign-foot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; width: 279mm; margin: 0 auto; padding-top: 1mm; font-size: 9pt; color: #555; }
+        /* 後面還有借用資料時，在這頁正下方放醒目的翻頁提醒 */
+        #signOverlay .sign-more { grid-column: 2; padding: 0.6mm 8mm; border-radius: 2mm; background: #c00000; color: #fff; font-size: 15pt; font-weight: bold; line-height: 1.35; }
+        #signOverlay .sign-no { grid-column: 3; text-align: right; }
         @media print {
             @page { size: A4 landscape; margin: 8mm; }
             html body.signing { margin: 0; padding: 0; background: #fff; }
@@ -3969,7 +3972,8 @@
             }
             html += `<div class="sign-page"><div class="sign-title">2026 小組聖誕餐會外借設備｜${label}（${range}）</div>
                 <div class="sign-warn">領取、歸還請務必簽名，謝謝！！</div><table>${head}<tbody>${rows}</tbody></table>
-                <div class="sign-foot">第 ${p + 1} 頁，共 ${pages} 頁。資料產生日期 ${signShortDate(todayStr())}</div></div>`;
+                <div class="sign-foot">${(p + 1) * 簽收表每頁列數 < list.length ? '<div class="sign-more">▼ 還有下一頁，找不到名字請翻頁 ▼</div>' : ''}
+                <div class="sign-no">第 ${p + 1} 頁，共 ${pages} 頁。資料產生日期 ${signShortDate(todayStr())}</div></div></div>`;
         }
         box.querySelector('.sign-pages').innerHTML = html;
         box.querySelector('.sign-week').innerHTML = `${label}（${range}）<small>${list.length ? `共 ${list.length} 組、${pages} 頁` : '這週沒有借用'}</small>`;
